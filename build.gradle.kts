@@ -77,18 +77,6 @@ subprojects {
                 }
             }
         }
-
-        repositories {
-            maven {
-                name = "SonatypeCentralPortal"
-                url = uri("https://central.sonatype.com/api/v1/publisher/upload")
-
-                credentials {
-                    username = findProperty("sonatypeUsername") as String? ?: System.getenv("SONATYPE_USERNAME")
-                    password = findProperty("sonatypePassword") as String? ?: System.getenv("SONATYPE_PASSWORD")
-                }
-            }
-        }
     }
 
     configure<SigningExtension> {

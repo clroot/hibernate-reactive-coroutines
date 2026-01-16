@@ -14,7 +14,7 @@ tasks.jar {
 }
 
 dependencies {
-    api(project(":hibernate-reactive-coroutines"))
+    api(project(":hibernate-reactive-coroutines-core"))
 
     // PostgreSQL SCRAM Authentication (required by Vert.x pg-client at runtime)
     runtimeOnly(libs.scram.client)

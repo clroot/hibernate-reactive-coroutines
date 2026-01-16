@@ -37,7 +37,7 @@ jobs:
         run: ./gradlew build
 
       - name: Publish to Maven Central
-        run: ./gradlew publishMavenPublicationToSonatypeCentralPortalRepository
+        run: ./gradlew publishAggregationToCentralPortal
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
