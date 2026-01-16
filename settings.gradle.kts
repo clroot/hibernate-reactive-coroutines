@@ -23,6 +23,6 @@ nmcpSettings {
             ?: providers.gradleProperty("sonatypeUsername").orNull
         password = providers.environmentVariable("SONATYPE_PASSWORD").orNull
             ?: providers.gradleProperty("sonatypePassword").orNull
-        publishingType = "USER_MANAGED"
+        publishingType = "AUTOMATIC"
     }
 }
