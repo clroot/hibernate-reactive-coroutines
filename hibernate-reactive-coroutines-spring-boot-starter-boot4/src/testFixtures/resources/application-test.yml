@@ -1,0 +1,23 @@
+spring:
+  reactor:
+    context-propagation: auto
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+kotlin:
+  hibernate:
+    reactive:
+      pool-size: 5
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    io.github.clroot.khr: DEBUG
+    io.clroot.hibernate.reactive: DEBUG
+    org.springframework.transaction: DEBUG

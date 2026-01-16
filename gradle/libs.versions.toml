@@ -1,0 +1,51 @@
+[versions]
+kotlin = "2.2.0"
+coroutines = "1.10.2"
+hibernate-reactive = "3.1.0.Final"
+mutiny = "2.6.0"
+vertx = "4.5.23"
+kotest = "6.0.7"
+mockk = "1.14.7"
+testcontainers = "1.20.4"
+testcontainers-core = "2.0.2"
+
+[libraries]
+# Hibernate Reactive
+hibernate-reactive-core = { module = "org.hibernate.reactive:hibernate-reactive-core", version.ref = "hibernate-reactive" }
+
+# Mutiny
+mutiny-kotlin = { module = "io.smallrye.reactive:mutiny-kotlin", version.ref = "mutiny" }
+
+# Vert.x
+vertx-core = { module = "io.vertx:vertx-core", version.ref = "vertx" }
+vertx-lang-kotlin-coroutines = { module = "io.vertx:vertx-lang-kotlin-coroutines", version.ref = "vertx" }
+
+# Kotlin Coroutines
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-reactive = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactive", version.ref = "coroutines" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "coroutines" }
+
+# Mutiny-Reactor (for Uni/Mono conversion)
+mutiny-reactor = { module = "io.smallrye.reactive:mutiny-reactor", version.ref = "mutiny" }
+
+# Test
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-extensions-spring = { module = "io.kotest:kotest-extensions-spring", version.ref = "kotest" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+# Testcontainers
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers-core" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+
+# Database
+vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx" }
+vertx-pg-client = { module = "io.vertx:vertx-pg-client", version.ref = "vertx" }
+postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
+scram-client = { module = "com.ongres.scram:scram-client", version = "3.2" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

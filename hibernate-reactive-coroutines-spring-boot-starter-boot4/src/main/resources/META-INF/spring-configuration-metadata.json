@@ -1,0 +1,284 @@
+{
+  "groups": [
+    {
+      "name": "spring.jpa",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.hibernate",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.query",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.cache",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive",
+      "type": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties",
+      "description": "Hibernate Reactive specific configuration properties."
+    }
+  ],
+  "properties": [
+    {
+      "name": "spring.jpa.database-platform",
+      "type": "java.lang.String",
+      "description": "Hibernate dialect class name. Used by Hibernate Reactive to determine SQL syntax.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.hibernate.ddl-auto",
+      "type": "java.lang.String",
+      "description": "DDL mode (none, validate, update, create, create-drop). Default is 'none'.",
+      "defaultValue": "none",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.show-sql",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable logging of SQL statements. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.format_sql",
+      "type": "java.lang.Boolean",
+      "description": "Whether to format SQL output for better readability. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.use_sql_comments",
+      "type": "java.lang.Boolean",
+      "description": "Whether to add comments to SQL statements showing the origin query. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.highlight_sql",
+      "type": "java.lang.Boolean",
+      "description": "Whether to highlight SQL syntax in console output with ANSI colors. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.default_batch_fetch_size",
+      "type": "java.lang.Integer",
+      "description": "Default batch size for fetching associations. Helps solve N+1 query problems.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.max_fetch_depth",
+      "type": "java.lang.Integer",
+      "description": "Maximum depth of outer join fetching for single-ended associations.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc.batch_size",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of statements Hibernate will batch together before executing. Enables JDBC batching for better insert/update performance.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc.fetch_size",
+      "type": "java.lang.Integer",
+      "description": "JDBC fetch size hint. Determines how many rows are fetched from the database at once.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.order_inserts",
+      "type": "java.lang.Boolean",
+      "description": "Whether to order SQL inserts by primary key value. Enables better batching but may have performance overhead. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.order_updates",
+      "type": "java.lang.Boolean",
+      "description": "Whether to order SQL updates by primary key value. Reduces deadlocks in concurrent systems but may have performance overhead. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc.batch_versioned_data",
+      "type": "java.lang.Boolean",
+      "description": "Whether to batch versioned data (optimistic locking). Should be false if JDBC driver returns incorrect row counts. Default is true.",
+      "defaultValue": true,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.generate_statistics",
+      "type": "java.lang.Boolean",
+      "description": "Whether to collect statistics for performance analysis. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.query.plan_cache_max_size",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of query plans to cache. Increase for better performance with many different queries. Default is 2048.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch",
+      "type": "java.lang.Boolean",
+      "description": "Whether to fail when pagination is applied to a query with collection fetch. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.query.in_clause_parameter_padding",
+      "type": "java.lang.Boolean",
+      "description": "Whether to pad IN clause parameters to power-of-2 sizes for better query plan caching. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.globally_quoted_identifiers",
+      "type": "java.lang.Boolean",
+      "description": "Whether to quote all database identifiers. Useful when using reserved words as column names. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.physical_naming_strategy",
+      "type": "java.lang.String",
+      "description": "Fully qualified class name of the physical naming strategy. Controls how entity/property names are translated to database names.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.implicit_naming_strategy",
+      "type": "java.lang.String",
+      "description": "Fully qualified class name of the implicit naming strategy. Determines default names for database objects.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc.time_zone",
+      "type": "java.lang.String",
+      "description": "JDBC time zone for reading/writing timestamp values. Example: 'UTC', 'Asia/Seoul'.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.cache.use_second_level_cache",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable the second-level cache. Requires a cache provider. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.cache.use_query_cache",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable the query cache. Requires second-level cache to be enabled. Default is false.",
+      "defaultValue": false,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.pool-size",
+      "type": "java.lang.Integer",
+      "description": "Hibernate Reactive connection pool size. Unlike HikariCP, Hibernate Reactive uses its own connection pool.",
+      "defaultValue": 10,
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.ssl-mode",
+      "type": "java.lang.String",
+      "description": "Vert.x PG Client SSL mode. For AWS RDS, use 'require'.",
+      "defaultValue": "disable",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.connect-timeout",
+      "type": "java.lang.Integer",
+      "description": "Maximum wait time (ms) when requesting a connection from the pool. Timeout exception if exceeded.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.idle-timeout",
+      "type": "java.lang.Integer",
+      "description": "Maximum idle time (ms) for connections. Unused connections are removed from the pool after this time.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.max-wait-queue-size",
+      "type": "java.lang.Integer",
+      "description": "Maximum size of the connection pool wait queue. Exception thrown immediately if queue is full.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    }
+  ],
+  "hints": [
+    {
+      "name": "spring.jpa.database-platform",
+      "values": [
+        {"value": "org.hibernate.dialect.PostgreSQLDialect", "description": "PostgreSQL dialect"},
+        {"value": "org.hibernate.dialect.MySQLDialect", "description": "MySQL dialect"},
+        {"value": "org.hibernate.dialect.MariaDBDialect", "description": "MariaDB dialect"},
+        {"value": "org.hibernate.dialect.H2Dialect", "description": "H2 dialect"}
+      ]
+    },
+    {
+      "name": "spring.jpa.hibernate.ddl-auto",
+      "values": [
+        {"value": "none", "description": "Do nothing"},
+        {"value": "validate", "description": "Validate the schema, make no changes"},
+        {"value": "update", "description": "Update the schema"},
+        {"value": "create", "description": "Create the schema, destroying previous data"},
+        {"value": "create-drop", "description": "Create and then drop the schema when SessionFactory closes"}
+      ]
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.ssl-mode",
+      "values": [
+        {"value": "disable", "description": "No SSL"},
+        {"value": "allow", "description": "Use SSL if server requires it"},
+        {"value": "prefer", "description": "Try SSL first, fall back to non-encrypted"},
+        {"value": "require", "description": "SSL required (no certificate verification)"},
+        {"value": "verify-ca", "description": "SSL + CA certificate verification"},
+        {"value": "verify-full", "description": "SSL + CA + hostname verification"}
+      ]
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.physical_naming_strategy",
+      "values": [
+        {"value": "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl", "description": "Default - use names as-is"},
+        {"value": "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy", "description": "Convert camelCase to snake_case"},
+        {"value": "org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy", "description": "Spring's snake_case strategy"}
+      ]
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.implicit_naming_strategy",
+      "values": [
+        {"value": "org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl", "description": "JPA 2.0 compliant"},
+        {"value": "org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl", "description": "Legacy JPA strategy"},
+        {"value": "org.hibernate.boot.model.naming.ImplicitNamingStrategyComponentPathImpl", "description": "Include component path in names"},
+        {"value": "org.springframework.boot.orm.jpa.hibernate.SpringImplicitNamingStrategy", "description": "Spring's implicit naming strategy"}
+      ]
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.jdbc.time_zone",
+      "values": [
+        {"value": "UTC", "description": "Coordinated Universal Time"},
+        {"value": "Asia/Seoul", "description": "Korea Standard Time"},
+        {"value": "America/New_York", "description": "Eastern Time"},
+        {"value": "Europe/London", "description": "Greenwich Mean Time"}
+      ]
+    }
+  ]
+}

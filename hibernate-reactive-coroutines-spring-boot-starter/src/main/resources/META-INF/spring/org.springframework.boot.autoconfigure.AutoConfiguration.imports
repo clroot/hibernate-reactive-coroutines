@@ -1,0 +1,3 @@
+io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration
+io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveRepositoryAutoConfiguration
+io.clroot.hibernate.reactive.spring.boot.autoconfigure.AuditingAutoConfiguration
