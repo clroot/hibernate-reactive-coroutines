@@ -3,12 +3,13 @@ plugins {
     alias(libs.plugins.kotlin.spring) apply false
     alias(libs.plugins.kotlin.jpa) apply false
     `maven-publish`
+    signing
 }
 
 allprojects {
     apply(plugin = "maven-publish")
 
-    group = "com.github.clroot"
+    group = "io.clroot"
     version = "1.0.0"
 
     repositories {
@@ -19,6 +20,7 @@ allprojects {
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "maven-publish")
+    apply(plugin = "signing")
 
     configure<JavaPluginExtension> {
         toolchain {
@@ -63,6 +65,7 @@ subprojects {
                         developer {
                             id.set("clroot")
                             name.set("clroot")
+                            url.set("https://github.com/clroot")
                         }
                     }
 
@@ -73,6 +76,48 @@ subprojects {
                     }
                 }
             }
+        }
+
+        repositories {
+            maven {
+                name = "OSSRH"
+                val releasesRepoUrl = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+                val snapshotsRepoUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+                url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
+
+                credentials {
+                    username = findProperty("ossrhUsername") as String? ?: System.getenv("OSSRH_USERNAME")
+                    password = findProperty("ossrhPassword") as String? ?: System.getenv("OSSRH_PASSWORD")
+                }
+            }
+
+            maven {
+                name = "SonatypeCentralPortal"
+                url = uri("https://central.sonatype.com/api/v1/publisher/upload")
+
+                credentials {
+                    username = findProperty("sonatypeUsername") as String? ?: System.getenv("SONATYPE_USERNAME")
+                    password = findProperty("sonatypePassword") as String? ?: System.getenv("SONATYPE_PASSWORD")
+                }
+            }
+        }
+    }
+
+    configure<SigningExtension> {
+        val signingKey = findProperty("signingKey") as String? ?: System.getenv("GPG_SIGNING_KEY")
+        val signingPassword = findProperty("signingPassword") as String? ?: System.getenv("GPG_SIGNING_PASSWORD")
+
+        if (signingKey != null && signingPassword != null) {
+            useInMemoryPgpKeys(signingKey, signingPassword)
+        }
+
+        sign(extensions.getByType<PublishingExtension>().publications["maven"])
+    }
+
+    tasks.withType<Sign>().configureEach {
+        onlyIf {
+            val signingKey = findProperty("signingKey") as String? ?: System.getenv("GPG_SIGNING_KEY")
+            signingKey != null
         }
     }
 }
