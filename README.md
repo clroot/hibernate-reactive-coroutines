@@ -1,6 +1,6 @@
 # Hibernate Reactive Coroutines
 
-[![](https://jitpack.io/v/clroot/hibernate-reactive-coroutines.svg)](https://jitpack.io/#clroot/hibernate-reactive-coroutines)
+[![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.0-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-3.1.0-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -22,26 +22,52 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 
 ## 설치
 
-```kotlin
-// settings.gradle.kts
-dependencyResolutionManagement {
-    repositories {
-        mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-    }
-}
+### Gradle (Kotlin DSL)
 
-// build.gradle.kts
+```kotlin
 dependencies {
     // Spring Boot 3.x
-    implementation("com.github.clroot.hibernate-reactive-coroutines:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
     
     // Spring Boot 4.x
-    implementation("com.github.clroot.hibernate-reactive-coroutines:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0")
     
     // DB 드라이버
     implementation("io.vertx:vertx-pg-client:4.5.16")
 }
+```
+
+### Gradle (Groovy)
+
+```groovy
+dependencies {
+    // Spring Boot 3.x
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0'
+    
+    // Spring Boot 4.x
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0'
+    
+    // DB 드라이버
+    implementation 'io.vertx:vertx-pg-client:4.5.16'
+}
+```
+
+### Maven
+
+```xml
+<!-- Spring Boot 3.x -->
+<dependency>
+    <groupId>io.clroot</groupId>
+    <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
+    <version>1.0.0</version>
+</dependency>
+
+<!-- Spring Boot 4.x -->
+<dependency>
+    <groupId>io.clroot</groupId>
+    <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 ## 빠른 시작
