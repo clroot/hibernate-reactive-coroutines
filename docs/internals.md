@@ -1,39 +1,41 @@
-# 내부 동작 원리
+# How It Works
 
-## 아키텍처 개요
+**[🇰🇷 한국어](internals.ko.md)**
+
+## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                     Service Layer                       │
-│  @Transactional / ReactiveTransactionExecutor           │
-└─────────────────────────┬───────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                     Service Layer                          │
+│  @Transactional / ReactiveTransactionExecutor              │
+└─────────────────────────┬──────────────────────────────────┘
                           │
-┌─────────────────────────▼───────────────────────────────┐
-│              TransactionalAwareSessionProvider          │
-│  세션 우선순위: @Transactional > ReactiveSessionContext    │
-└─────────────────────────┬───────────────────────────────┘
+┌─────────────────────────▼──────────────────────────────────┐
+│              TransactionalAwareSessionProvider             │
+│  Session priority: @Transactional > ReactiveSessionContext │
+└─────────────────────────┬──────────────────────────────────┘
                           │
-┌─────────────────────────▼───────────────────────────────┐
-│                  Repository Proxy                       │
-│  쿼리 메서드 파싱, HQL 생성, 실행                             │
-└─────────────────────────┬───────────────────────────────┘
+┌─────────────────────────▼──────────────────────────────────┐
+│                  Repository Proxy                          │
+│  Query method parsing, HQL generation, execution           │
+└─────────────────────────┬──────────────────────────────────┘
                           │
-┌─────────────────────────▼───────────────────────────────┐
-│               Hibernate Reactive (Mutiny)               │
-│  Mutiny.Session, Mutiny.SessionFactory                  │
-└─────────────────────────┬───────────────────────────────┘
+┌─────────────────────────▼──────────────────────────────────┐
+│               Hibernate Reactive (Mutiny)                  │
+│  Mutiny.Session, Mutiny.SessionFactory                     │
+└─────────────────────────┬──────────────────────────────────┘
                           │
-┌─────────────────────────▼───────────────────────────────┐
-│                   Vert.x SQL Client                     │
-│  비동기 DB 연결, EventLoop 스레드                           │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────▼──────────────────────────────────┐
+│                   Vert.x SQL Client                        │
+│  Async DB connection, EventLoop thread                     │
+└────────────────────────────────────────────────────────────┘
 ```
 
-## 핵심 컴포넌트
+## Core Components
 
 ### ReactiveSessionContext
 
-CoroutineContext Element로 세션과 트랜잭션 정보를 코루틴 체인에 전파합니다.
+A CoroutineContext Element that propagates session and transaction information through the coroutine chain.
 
 ```kotlin
 data class ReactiveSessionContext(
@@ -45,15 +47,15 @@ data class ReactiveSessionContext(
 
 ### TransactionalAwareSessionProvider
 
-세션 획득 우선순위를 관리합니다:
+Manages session acquisition priority:
 
-1. **@Transactional 컨텍스트** - Spring ReactorContext에서 MutinySessionHolder 조회
-2. **ReactiveSessionContext** - Kotlin CoroutineContext에서 세션 조회
-3. **새 세션 생성** - 컨텍스트가 없으면 새 세션 생성
+1. **@Transactional context** - Retrieves MutinySessionHolder from Spring ReactorContext
+2. **ReactiveSessionContext** - Retrieves session from Kotlin CoroutineContext
+3. **New session** - Creates a new session if no context exists
 
 ```kotlin
 open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
-    // 1. @Transactional 컨텍스트 확인
+    // 1. Check @Transactional context
     val transactionalContext = getTransactionalSessionContext()
     if (transactionalContext != null) {
         return withContext(transactionalContext.dispatcher) {
@@ -61,13 +63,13 @@ open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
         }
     }
 
-    // 2. ReactiveSessionContext 확인
+    // 2. Check ReactiveSessionContext
     val existingContext = currentContextOrNull()
     if (existingContext != null) {
         return block(existingContext.session).awaitSuspending()
     }
 
-    // 3. 새 세션 생성
+    // 3. Create new session
     return sessionFactory.withSession { session ->
         block(session)
     }.awaitSuspending()
@@ -76,7 +78,7 @@ open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
 
 ### HibernateReactiveTransactionManager
 
-Spring의 `ReactiveTransactionManager` 구현체입니다.
+Spring's `ReactiveTransactionManager` implementation.
 
 ```kotlin
 class HibernateReactiveTransactionManager(
@@ -84,61 +86,61 @@ class HibernateReactiveTransactionManager(
 ) : AbstractReactiveTransactionManager()
 ```
 
-**트랜잭션 흐름:**
+**Transaction Flow:**
 
 ```
 doBegin()
     │
-    ├─ Mutiny.Session 생성
-    ├─ Transaction 시작
-    ├─ MutinySessionHolder 생성
-    └─ TransactionSynchronizationManager에 바인딩
+    ├─ Create Mutiny.Session
+    ├─ Start Transaction
+    ├─ Create MutinySessionHolder
+    └─ Bind to TransactionSynchronizationManager
          │
          ▼
-    비즈니스 로직 실행
+    Execute business logic
          │
          ▼
 doCommit() / doRollback()
     │
     ├─ session.flush()  (Dirty Checking)
-    ├─ commitTransaction() 또는 rollbackTransaction()
-    └─ 세션 정리
+    ├─ commitTransaction() or rollbackTransaction()
+    └─ Cleanup session
 ```
 
 ### MutinySessionHolder
 
-세션과 Vert.x Context를 함께 보관합니다.
+Holds the session along with Vert.x Context.
 
 ```kotlin
 class MutinySessionHolder(
     session: Mutiny.Session,
-    vertxContext: io.vertx.core.Context?,  // 스레드 일관성 보장
+    vertxContext: io.vertx.core.Context?,  // Ensures thread consistency
     mode: TransactionMode,
     timeout: Duration,
 ) : ResourceHolderSupport()
 ```
 
-## Vert.x 스레드 일관성
+## Vert.x Thread Consistency
 
-Hibernate Reactive 세션은 특정 Vert.x EventLoop 스레드에 바인딩됩니다. 다른 스레드에서 세션에 접근하면 `HR000069` 에러가 발생합니다.
+Hibernate Reactive sessions are bound to a specific Vert.x EventLoop thread. Accessing a session from a different thread results in the `HR000069` error.
 
-이 라이브러리는 `MutinySessionHolder`에 `vertxContext`를 저장하고, `withContext(dispatcher)`를 사용하여 항상 올바른 스레드에서 세션 작업이 수행되도록 보장합니다.
+This library stores `vertxContext` in `MutinySessionHolder` and uses `withContext(dispatcher)` to ensure session operations always run on the correct thread.
 
 ```kotlin
-// TransactionalAwareSessionProvider 내부
+// Inside TransactionalAwareSessionProvider
 return withContext(transactionalContext.dispatcher ?: currentCoroutineContext()) {
     block(transactionalContext.session).awaitSuspending()
 }
 ```
 
-## Repository 프록시 생성
+## Repository Proxy Generation
 
-`@EnableHibernateReactiveRepositories` 또는 Auto-configuration이 활성화되면:
+When `@EnableHibernateReactiveRepositories` or Auto-configuration is enabled:
 
-1. `CoroutineCrudRepository`를 상속한 인터페이스 스캔
-2. 각 인터페이스에 대해 JDK Dynamic Proxy 생성
-3. 메서드 호출 시 `HibernateReactiveRepositoryInvocationHandler`가 처리
-4. 메서드 이름 파싱 → HQL 생성 → 실행
+1. Scan interfaces extending `CoroutineCrudRepository`
+2. Create JDK Dynamic Proxy for each interface
+3. Method calls are handled by `HibernateReactiveRepositoryInvocationHandler`
+4. Parse method name → Generate HQL → Execute
 
 ```kotlin
 class HibernateReactiveRepositoryInvocationHandler(
@@ -156,22 +158,22 @@ class HibernateReactiveRepositoryInvocationHandler(
 }
 ```
 
-## 쿼리 메서드 파싱
+## Query Method Parsing
 
-메서드 이름이 다음 규칙으로 파싱됩니다:
+Method names are parsed according to these rules:
 
 ```
 findAllByStatusAndNameContainingOrderByCreatedAtDesc
 │      │      │   │           │       │
-│      │      │   │           │       └─ 정렬: createdAt DESC
-│      │      │   │           └─ 키워드: OrderBy
-│      │      │   └─ 키워드: Containing (LIKE %?%)
-│      │      └─ 필드: name
-│      └─ 키워드: And
-└─ 접두사: findAllBy (List 반환)
+│      │      │   │           │       └─ Sort: createdAt DESC
+│      │      │   │           └─ Keyword: OrderBy
+│      │      │   └─ Keyword: Containing (LIKE %?%)
+│      │      └─ Field: name
+│      └─ Keyword: And
+└─ Prefix: findAllBy (returns List)
 ```
 
-생성되는 HQL:
+Generated HQL:
 
 ```sql
 SELECT e FROM Entity e

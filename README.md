@@ -1,39 +1,52 @@
 # Hibernate Reactive Coroutines
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.0-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-3.1.0-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
-> Hibernate Reactive를 Spring Data JPA처럼 사용하세요.
+> A **Hibernate Reactive Spring Boot Starter** that brings Spring Data JPA-like convenience to Kotlin Coroutines.
 
-Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성을 제공하는 라이브러리입니다.
+**[🇰🇷 한국어 문서](README.ko.md)**
 
-## 주요 기능
+---
 
-- `CoroutineCrudRepository` 인터페이스 지원
-- 쿼리 메서드 자동 생성 (`findByEmail`, `existsByStatus` 등)
-- `@Query` 어노테이션으로 커스텀 JPQL
-- 페이지네이션 (`Page`, `Slice`, `Pageable`)
-- Spring `@Transactional` 통합
-- Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
+## What is this?
 
-**Spring Data JPA 기능 커버리지: ~85-90%** - 자세한 내용은 [JPA 호환성](docs/jpa-compatibility.md) 문서를 참고하세요.
+This library provides a **Spring Boot starter for Hibernate Reactive** with first-class Kotlin Coroutines support. If you're looking for a way to use Hibernate Reactive with Spring Boot while maintaining the familiar Spring Data JPA developer experience, this is it.
 
-## 설치
+### Why use this?
+
+- **Spring Data JPA-like API**: Use familiar patterns like `findByEmail`, `existsByStatus`, and `@Query` annotations
+- **Native Kotlin Coroutines**: All repository methods are `suspend` functions - no `Uni`/`Mono` conversion needed
+- **Spring Boot Auto-configuration**: Just add the starter dependency and start coding
+- **Non-blocking Database Access**: Built on Hibernate Reactive and Vert.x for true reactive performance
+
+## Features
+
+- `CoroutineCrudRepository` interface with suspend functions
+- **Query method derivation** (`findByEmail`, `findAllByStatus`, `countByActive`, etc.)
+- **`@Query` annotation** for custom JPQL/HQL queries
+- **Pagination support** (`Page`, `Slice`, `Pageable`)
+- **Spring `@Transactional`** integration with coroutine context propagation
+- **Auditing** (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
+
+**Spring Data JPA feature coverage: ~85-90%** — See [Migration Guide](docs/migration.md) for details.
+
+## Installation
 
 ### Gradle (Kotlin DSL)
 
 ```kotlin
 dependencies {
-    // Spring Boot 3.x
+    // For Spring Boot 3.x
     implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
-    
-    // Spring Boot 4.x
+
+    // For Spring Boot 4.x
     implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0")
-    
-    // DB 드라이버
-    implementation("io.vertx:vertx-pg-client:4.5.16")
+
+    // Database driver (choose one)
+    implementation("io.vertx:vertx-pg-client:4.5.16")      // PostgreSQL
+    // implementation("io.vertx:vertx-mysql-client:4.5.16") // MySQL
 }
 ```
 
@@ -41,13 +54,13 @@ dependencies {
 
 ```groovy
 dependencies {
-    // Spring Boot 3.x
+    // For Spring Boot 3.x
     implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0'
-    
-    // Spring Boot 4.x
+
+    // For Spring Boot 4.x
     implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0'
-    
-    // DB 드라이버
+
+    // Database driver
     implementation 'io.vertx:vertx-pg-client:4.5.16'
 }
 ```
@@ -55,14 +68,14 @@ dependencies {
 ### Maven
 
 ```xml
-<!-- Spring Boot 3.x -->
+<!-- For Spring Boot 3.x -->
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
     <version>1.0.0</version>
 </dependency>
 
-<!-- Spring Boot 4.x -->
+<!-- For Spring Boot 4.x -->
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
@@ -70,39 +83,77 @@ dependencies {
 </dependency>
 ```
 
-## 빠른 시작
+## Quick Start
 
-### 1. Repository 정의
+### 1. Define your Entity
+
+```kotlin
+@Entity
+@Table(name = "users")
+class User(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+
+    @Column(nullable = false)
+    var name: String,
+
+    @Column(unique = true)
+    var email: String,
+
+    @Enumerated(EnumType.STRING)
+    var status: Status = Status.ACTIVE
+)
+
+enum class Status { ACTIVE, INACTIVE }
+```
+
+### 2. Define your Repository
 
 ```kotlin
 interface UserRepository : CoroutineCrudRepository<User, Long> {
+    // Query methods - automatically implemented!
     suspend fun findByEmail(email: String): User?
     suspend fun findAllByStatus(status: Status): List<User>
-    
-    @Query("SELECT u FROM User u WHERE u.role = :role")
-    suspend fun findByRole(role: Role): List<User>
+    suspend fun existsByEmail(email: String): Boolean
+    suspend fun countByStatus(status: Status): Long
+
+    // Custom JPQL query
+    @Query("SELECT u FROM User u WHERE u.name LIKE :pattern")
+    suspend fun searchByName(pattern: String): List<User>
+
+    // Pagination
+    suspend fun findAllByStatus(status: Status, pageable: Pageable): Page<User>
 }
 ```
 
-### 2. Service에서 사용
+### 3. Use in your Service
 
 ```kotlin
 @Service
 class UserService(private val userRepository: UserRepository) {
-    
+
     @Transactional
-    suspend fun createUser(name: String): User {
-        return userRepository.save(User(name = name))
+    suspend fun createUser(name: String, email: String): User {
+        return userRepository.save(User(name = name, email = email))
     }
-    
+
     @Transactional(readOnly = true)
-    suspend fun findUser(id: Long): User? {
-        return userRepository.findById(id)
+    suspend fun findByEmail(email: String): User? {
+        return userRepository.findByEmail(email)
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun listActiveUsers(page: Int, size: Int): Page<User> {
+        return userRepository.findAllByStatus(
+            Status.ACTIVE,
+            PageRequest.of(page, size)
+        )
     }
 }
 ```
 
-### 3. 설정
+### 4. Configure
 
 ```yaml
 # application.yml
@@ -115,38 +166,54 @@ spring:
 kotlin:
   hibernate:
     reactive:
-      pool-size: 10
+      pool-size: 10  # Connection pool size (default: 10)
 ```
 
-## 문서
+## Documentation
 
-| 문서 | 설명 |
-|------|------|
-| [사용 가이드](docs/usage-guide.md) | 상세 사용법 및 예제 |
-| [설정 레퍼런스](docs/configuration.md) | 모든 설정 옵션 |
-| [JPA 호환성](docs/jpa-compatibility.md) | JPA 스펙 지원 및 제약사항 |
-| [내부 동작](docs/internals.md) | 아키텍처 및 동작 원리 |
-| [마이그레이션](docs/migration.md) | Spring Data JPA에서 전환 가이드 |
+| Document | Description |
+|----------|-------------|
+| [Usage Guide](docs/usage-guide.md) | Configuration, usage, and examples |
+| [Migration Guide](docs/migration.md) | JPA compatibility and migration from Spring Data JPA |
+| [Internals](docs/internals.md) | Architecture and how it works |
 
-## 주의사항
+## Important Notes
 
 ### Lazy Loading
 
-Hibernate Reactive에서는 동기적 Lazy Loading(`parent.children.size`)이 지원되지 않습니다.
+Synchronous lazy loading (`parent.children.size`) is not supported in Hibernate Reactive. Use one of these alternatives:
 
 ```kotlin
-// FETCH JOIN 사용 (권장)
+// Option 1: FETCH JOIN (recommended)
 @Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
 suspend fun findByIdWithChildren(id: Long): Parent?
 
-// 또는 fetch() 메서드 사용
+// Option 2: Explicit fetch
 val children = sessionProvider.fetch(parent, Parent::children)
 ```
 
-### REQUIRES_NEW 미지원
+### REQUIRES_NEW Not Supported
 
-리액티브 환경에서 커넥션 풀 고갈 위험이 있어 지원하지 않습니다.
+`Propagation.REQUIRES_NEW` is not supported due to potential connection pool exhaustion in reactive environments.
 
-## 라이선스
+## Comparison with Alternatives
+
+| Feature | This Library | Spring Data R2DBC | Quarkus Panache |
+|---------|--------------|-------------------|-----------------|
+| JPA/Hibernate | ✅ Full JPA | ❌ No JPA | ✅ Hibernate ORM |
+| Kotlin Coroutines | ✅ Native | ⚠️ Requires conversion | ⚠️ Mutiny-based |
+| Spring Boot | ✅ Auto-config | ✅ Auto-config | ❌ Quarkus only |
+| Query Methods | ✅ Derived queries | ✅ Derived queries | ⚠️ Limited |
+| Entity Relationships | ✅ Full support | ⚠️ Limited | ✅ Full support |
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
 
 MIT License
+
+---
+
+**Keywords**: hibernate reactive, spring boot starter, kotlin coroutines, reactive repository, spring data jpa alternative, non-blocking database, suspend functions, reactive spring, vertx, mutiny

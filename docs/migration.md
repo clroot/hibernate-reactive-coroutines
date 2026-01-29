@@ -1,156 +1,132 @@
-# Spring Data JPA에서 마이그레이션
+# Migration from Spring Data JPA
 
-## 개요
+**[🇰🇷 한국어](migration.ko.md)**
 
-Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입니다.
+A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
 
-## 1. 의존성 변경
+---
+
+## JPA Feature Coverage
+
+**Overall Coverage: ~85-90%** - All core features are supported.
+
+### Repository Features
+
+| Feature                              | Supported | Notes                                                    |
+| ------------------------------------ | :-------: | -------------------------------------------------------- |
+| `CrudRepository` methods             |     ✅     | save, findById, findAll, delete, count, existsById, etc. |
+| `findBy*` query methods              |     ✅     | PartTree-based auto-generation                           |
+| `countBy*`, `existsBy*`, `deleteBy*` |     ✅     |                                                          |
+| LIKE search                          |     ✅     | Containing, StartingWith, EndingWith                     |
+| Comparison operators                 |     ✅     | GreaterThan, LessThan, Between, etc.                     |
+| `@Query` (JPQL)                      |     ✅     | Named/Positional Parameters                              |
+| `@Query` (Native)                    |     ✅     | Read-only, countQuery required                           |
+| `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE                                       |
+| Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
+
+### Transactions
+
+| Feature                   | Supported | Notes                                            |
+| ------------------------- | :-------: | ------------------------------------------------ |
+| `@Transactional`          |     ✅     | Supports suspend functions                       |
+| readOnly / timeout        |     ✅     |                                                  |
+| Propagation.REQUIRED      |     ✅     | Default                                          |
+| Propagation.REQUIRES_NEW  |     ⚠️     | Connection pool exhaustion risk, limited nesting |
+| Programmatic Transaction  |     ✅     | ReactiveTransactionExecutor                      |
+
+### JPA Behaviors
+
+| Feature                    | Supported | Notes                         |
+| -------------------------- | :-------: | ----------------------------- |
+| Dirty Checking             |     ✅     | Auto-persist on commit        |
+| First-level Cache          |     ✅     | Same instance within tx       |
+| Optimistic Locking         |     ✅     | `@Version`                    |
+| Entity Lifecycle Callbacks |     ✅     | @PrePersist, @PreUpdate, etc. |
+| Lazy Loading               |     ✅     | Use `fetch()` method          |
+| Pessimistic Locking        |     ❌     |                               |
+
+### Unsupported Features
+
+| Feature                         | Alternative                    |
+| ------------------------------- | ------------------------------ |
+| Specification (dynamic queries) | Write directly with `@Query`   |
+| QueryByExample                  | Combine conditional methods    |
+| Projection (interface-based)    | Use `SELECT new DTO(...)`      |
+| `@EntityGraph`                  | FETCH JOIN or `fetch()` method |
+| Native @Modifying               | Use JPQL instead               |
+
+---
+
+## Migration Steps
+
+### 1. Change Dependencies
 
 ```kotlin
-// 제거
+// Remove
 implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
-// 추가
-implementation("com.github.clroot.hibernate-reactive-coroutines:hibernate-reactive-coroutines-spring-boot-starter:1.4.1")
-implementation("io.vertx:vertx-pg-client:4.5.16")  // 또는 MySQL
+// Add
+implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
+implementation("io.vertx:vertx-pg-client:4.5.16")  // or MySQL
 ```
 
-## 2. Repository 인터페이스 수정
-
-### Before (Spring Data JPA)
+### 2. Modify Repository Interfaces
 
 ```kotlin
+// Before (Spring Data JPA)
 interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
-    fun findAllByStatus(status: Status): List<User>
 }
-```
 
-### After (Hibernate Reactive Coroutines)
-
-```kotlin
+// After (Hibernate Reactive Coroutines)
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
-    suspend fun findAllByStatus(status: Status): List<User>
 }
 ```
 
-**변경 사항:**
+**Changes:** `JpaRepository` → `CoroutineCrudRepository`, add `suspend` to all methods
 
-- `JpaRepository` → `CoroutineCrudRepository`
-- 모든 메서드에 `suspend` 키워드 추가
-
-## 3. Service 레이어 수정
-
-### Before
-
-```kotlin
-@Service
-class UserService(private val userRepository: UserRepository) {
-
-    @Transactional
-    fun createUser(name: String): User {
-        return userRepository.save(User(name = name))
-    }
-
-    @Transactional(readOnly = true)
-    fun findUser(id: Long): User? {
-        return userRepository.findById(id).orElse(null)
-    }
-}
-```
-
-### After
-
-```kotlin
-@Service
-class UserService(private val userRepository: UserRepository) {
-
-    @Transactional
-    suspend fun createUser(name: String): User {
-        return userRepository.save(User(name = name))
-    }
-
-    @Transactional(readOnly = true)
-    suspend fun findUser(id: Long): User? {
-        return userRepository.findById(id)
-    }
-}
-```
-
-**변경 사항:**
-
-- 모든 메서드에 `suspend` 키워드 추가
-- `findById().orElse(null)` → `findById()` (nullable 반환)
-
-## 4. Lazy Loading 코드 수정
-
-### Before
-
-```kotlin
-@Transactional(readOnly = true)
-fun getParentWithChildren(id: Long): Parent {
-    val parent = parentRepository.findById(id).orElseThrow()
-    parent.children.size  // Lazy Loading 발생
-    return parent
-}
-```
-
-### After - 방법 1: FETCH JOIN (권장)
-
-```kotlin
-// Repository
-@Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
-suspend fun findByIdWithChildren(id: Long): Parent?
-
-// Service
-@Transactional(readOnly = true)
-suspend fun getParentWithChildren(id: Long): Parent {
-    return parentRepository.findByIdWithChildren(id)!!
-}
-```
-
-### After - 방법 2: fetch() 메서드
-
-```kotlin
-@Service
-class ParentService(
-    private val parentRepository: ParentRepository,
-    private val sessionProvider: TransactionalAwareSessionProvider,
-) {
-    @Transactional(readOnly = true)
-    suspend fun getParentWithChildren(id: Long): Parent {
-        val parent = parentRepository.findById(id)!!
-        sessionProvider.fetch(parent, Parent::children)
-        return parent
-    }
-}
-```
-
-## 5. 지원되지 않는 기능 대체
-
-### REQUIRES_NEW
+### 3. Modify Service Layer
 
 ```kotlin
 // Before
-@Transactional(propagation = Propagation.REQUIRES_NEW)
-fun audit(event: AuditEvent) { ... }
+@Transactional
+fun createUser(name: String): User {
+    return userRepository.save(User(name = name))
+}
 
-// After - 이벤트 기반으로 분리
-@EventListener
-suspend fun handleAudit(event: AuditEvent) {
-    // 별도 트랜잭션에서 처리
+// After
+@Transactional
+suspend fun createUser(name: String): User {
+    return userRepository.save(User(name = name))
 }
 ```
 
-### @EntityGraph
+**Changes:** Add `suspend`, `findById().orElse(null)` → `findById()` (nullable return)
 
+### 4. Convert Lazy Loading
+
+```kotlin
+// Before - Does NOT work in Hibernate Reactive
+parent.children.size  // HR000069 error
+
+// After - Option 1: FETCH JOIN (Recommended)
+@Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
+suspend fun findByIdWithChildren(id: Long): Parent?
+
+// After - Option 2: fetch() method
+sessionProvider.fetch(parent, Parent::children)
+```
+
+### 5. Replace Unsupported Features
+
+**@EntityGraph → FETCH JOIN:**
 ```kotlin
 // Before
 @EntityGraph(attributePaths = ["children", "address"])
 fun findById(id: Long): Parent?
 
-// After - FETCH JOIN 사용
+// After
 @Query("""
     SELECT p FROM Parent p
     LEFT JOIN FETCH p.children
@@ -160,27 +136,37 @@ fun findById(id: Long): Parent?
 suspend fun findByIdWithDetails(id: Long): Parent?
 ```
 
-### Native @Modifying
-
+**REQUIRES_NEW → Event-based:**
 ```kotlin
 // Before
-@Modifying
-@Query(value = "UPDATE users SET status = ?1 WHERE id = ?2", nativeQuery = true)
-fun updateStatus(status: String, id: Long): Int
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+fun audit(event: AuditEvent) { ... }
 
-// After - JPQL 사용
-@Modifying
-@Query("UPDATE User u SET u.status = :status WHERE u.id = :id")
-suspend fun updateStatus(status: Status, id: Long): Int
+// After
+@EventListener
+suspend fun handleAudit(event: AuditEvent) { ... }
 ```
 
-## 체크리스트
+**Native @Modifying → JPQL:**
+```kotlin
+// Before
+@Query(value = "UPDATE users SET status = ?1", nativeQuery = true)
+fun updateStatus(status: String): Int
 
-- [ ] 의존성 변경
-- [ ] Repository 인터페이스에 `suspend` 추가
-- [ ] Service 메서드에 `suspend` 추가
-- [ ] Lazy Loading 코드를 FETCH JOIN 또는 `fetch()`로 변경
-- [ ] `REQUIRES_NEW` 사용 부분 리팩토링
-- [ ] `@EntityGraph` → FETCH JOIN 변경
-- [ ] Native @Modifying → JPQL 변경
-- [ ] 테스트 코드 업데이트 (runBlocking 또는 runTest 사용)
+// After
+@Query("UPDATE User u SET u.status = :status")
+suspend fun updateStatus(status: Status): Int
+```
+
+---
+
+## Checklist
+
+- [ ] Change dependencies
+- [ ] Add `suspend` to Repository interfaces
+- [ ] Add `suspend` to Service methods
+- [ ] Convert Lazy Loading → FETCH JOIN or `fetch()`
+- [ ] Convert `@EntityGraph` → FETCH JOIN
+- [ ] Convert `REQUIRES_NEW` → Event-based
+- [ ] Convert Native @Modifying → JPQL
+- [ ] Update tests (use `runBlocking` or `runTest`)
