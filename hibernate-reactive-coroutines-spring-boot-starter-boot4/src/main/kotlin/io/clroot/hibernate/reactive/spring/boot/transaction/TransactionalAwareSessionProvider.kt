@@ -35,6 +35,9 @@ import kotlin.reflect.KProperty1
 open class TransactionalAwareSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
 ) {
+    internal val metamodel
+        get() = sessionFactory.metamodel
+
     /**
      * 읽기 전용 작업을 수행합니다.
      *
@@ -122,15 +125,16 @@ open class TransactionalAwareSessionProvider(
 
         return try {
             TransactionSynchronizationManager.forCurrentTransaction()
-                .mapNotNull { tsm ->
-                    val holder = tsm.getResource(sessionFactory) as? MutinySessionHolder
-                    holder?.let {
-                        TransactionalSessionInfo(
-                            session = it.getSession(),
-                            isReadOnly = it.toReactiveSessionContext().isReadOnly,
-                            dispatcher = it.getDispatcher(),
-                        )
+                .map { tsm ->
+                    val holder = tsm.getResource(sessionFactory)
+                    check(holder is MutinySessionHolder) {
+                        "No Hibernate Reactive session is bound to the active Spring transaction"
                     }
+                    TransactionalSessionInfo(
+                        session = holder.getSession(),
+                        isReadOnly = holder.toReactiveSessionContext().isReadOnly,
+                        dispatcher = holder.getDispatcher(),
+                    )
                 }
                 .contextWrite(reactorContext)
                 .awaitSingleOrNull()
