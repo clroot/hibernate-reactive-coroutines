@@ -47,14 +47,13 @@ internal object ConditionBuilderRegistry {
         // 컬렉션 체크
         Part.Type.IS_EMPTY to IsEmptyCondition,
         Part.Type.IS_NOT_EMPTY to IsNotEmptyCondition,
-
-        // 특수
-        Part.Type.REGEX to RegexCondition,
-        Part.Type.EXISTS to ExistsCondition,
     )
-
-    /** 지원하지 않는 타입들 (Geospatial) */
-    private val unsupportedTypes = setOf(Part.Type.NEAR, Part.Type.WITHIN)
+    private val unsupportedTypes = setOf(
+        Part.Type.NEAR,
+        Part.Type.WITHIN,
+        Part.Type.REGEX,
+        Part.Type.EXISTS,
+    )
 
     /**
      * Part.Type에 해당하는 ConditionBuilder를 반환합니다.
@@ -66,7 +65,7 @@ internal object ConditionBuilderRegistry {
      */
     fun get(type: Part.Type): ConditionBuilder {
         if (type in unsupportedTypes) {
-            throw UnsupportedOperationException("Geospatial queries are not supported: $type")
+            throw UnsupportedOperationException("Derived query type is not supported: ${type.name}")
         }
         return builders[type]
             ?: throw IllegalArgumentException("Unknown Part.Type: $type")
