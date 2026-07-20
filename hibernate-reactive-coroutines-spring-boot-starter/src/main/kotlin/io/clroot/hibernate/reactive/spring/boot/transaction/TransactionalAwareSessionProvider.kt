@@ -125,8 +125,11 @@ open class TransactionalAwareSessionProvider(
 
         return try {
             TransactionSynchronizationManager.forCurrentTransaction()
-                .map { tsm ->
+                .mapNotNull { tsm ->
                     val holder = tsm.getResource(sessionFactory)
+                    if (holder == null && !tsm.isActualTransactionActive) {
+                        return@mapNotNull null
+                    }
                     check(holder is MutinySessionHolder) {
                         "No Hibernate Reactive session is bound to the active Spring transaction"
                     }

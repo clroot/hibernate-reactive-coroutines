@@ -4,6 +4,7 @@ import io.smallrye.mutiny.Uni
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.reactor.asCoroutineDispatcher
 import kotlinx.coroutines.reactor.mono
@@ -11,6 +12,7 @@ import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.transaction.reactive.TransactionContextManager
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
 import reactor.core.scheduler.Schedulers
+import java.util.function.Function
 
 class TransactionalAwareSessionProviderTest : DescribeSpec({
 
@@ -37,12 +39,35 @@ class TransactionalAwareSessionProviderTest : DescribeSpec({
             usedTransactionalSession shouldBe true
         }
 
+        it("uses a standalone session when synchronization exists without an actual transaction") {
+            val sessionFactory = mockk<Mutiny.SessionFactory>()
+            val standaloneSession = mockk<Mutiny.Session>()
+            val provider = TransactionalAwareSessionProvider(sessionFactory)
+            every { sessionFactory.withSession<Boolean>(any()) } answers {
+                firstArg<Function<Mutiny.Session, Uni<Boolean>>>().apply(standaloneSession)
+            }
+
+            val usedStandaloneSession = TransactionSynchronizationManager.forCurrentTransaction()
+                .then(
+                    mono {
+                        provider.read { session ->
+                            Uni.createFrom().item(session === standaloneSession)
+                        }
+                    },
+                )
+                .contextWrite(TransactionContextManager.createTransactionContext())
+                .block()
+
+            usedStandaloneSession shouldBe true
+        }
+
         it("fails closed when an active Spring transaction has no Hibernate Reactive session") {
             val sessionFactory = mockk<Mutiny.SessionFactory>()
             val provider = TransactionalAwareSessionProvider(sessionFactory)
 
             val failure = shouldThrow<IllegalStateException> {
                 TransactionSynchronizationManager.forCurrentTransaction()
+                    .doOnNext { it.setActualTransactionActive(true) }
                     .then(
                         mono {
                             provider.read { Uni.createFrom().item(Unit) }
@@ -62,7 +87,10 @@ class TransactionalAwareSessionProviderTest : DescribeSpec({
 
             val failure = shouldThrow<IllegalStateException> {
                 TransactionSynchronizationManager.forCurrentTransaction()
-                    .doOnNext { it.bindResource(sessionFactory, Any()) }
+                    .doOnNext {
+                        it.setActualTransactionActive(true)
+                        it.bindResource(sessionFactory, Any())
+                    }
                     .then(
                         mono {
                             provider.write { Uni.createFrom().item(Unit) }
