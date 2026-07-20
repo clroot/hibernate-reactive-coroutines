@@ -5,6 +5,11 @@ import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMe
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import jakarta.persistence.metamodel.Attribute
+import jakarta.persistence.metamodel.ManagedType
+import jakarta.persistence.metamodel.Metamodel
+import jakarta.persistence.metamodel.PluralAttribute
+import jakarta.persistence.metamodel.SingularAttribute
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
@@ -20,7 +25,12 @@ import org.springframework.data.domain.Sort
 internal class QueryOperations<T : Any>(
     private val entityClass: Class<T>,
     private val sessionProvider: TransactionalAwareSessionProvider,
+    private val metamodel: Metamodel? = null,
 ) {
+    companion object {
+        private val VALID_SORT_PATH = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
+    }
+
     // ============================================
     // PartTree 쿼리 실행
     // ============================================
@@ -210,7 +220,39 @@ internal class QueryOperations<T : Any>(
         if (sort.isUnsorted) return ""
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
+            val segments = order.property.split('.')
+            require(VALID_SORT_PATH.matches(order.property) && "class" !in segments) {
+                "Invalid sort property"
+            }
+
+            var owningType: ManagedType<*> = managedType(entityClass)
+            segments.forEachIndexed { index, segment ->
+                val attribute = try {
+                    owningType.getAttribute(segment)
+                } catch (_: IllegalArgumentException) {
+                    throw IllegalArgumentException("Unknown sort property")
+                }
+
+                if (attribute is PluralAttribute<*, *, *>) {
+                    throw IllegalArgumentException("Unsupported plural sort property")
+                }
+                if (attribute !is SingularAttribute<*, *>) {
+                    throw IllegalArgumentException("Unknown sort property")
+                }
+
+                if (index < segments.lastIndex) {
+                    owningType = managedType(attribute.type.javaType)
+                } else if (attribute.persistentAttributeType != Attribute.PersistentAttributeType.BASIC) {
+                    throw IllegalArgumentException("Sort property must resolve to a basic attribute")
+                }
+            }
             "e.${order.property} $direction"
         }.joinToString(", ")
+    }
+
+    private fun managedType(javaType: Class<*>): ManagedType<*> = try {
+        (metamodel ?: sessionProvider.metamodel).managedType(javaType)
+    } catch (_: IllegalArgumentException) {
+        throw IllegalArgumentException("Unknown sort property")
     }
 }

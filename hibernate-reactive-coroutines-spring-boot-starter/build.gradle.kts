@@ -1,24 +1,16 @@
 plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
-    id("org.springframework.boot") version "3.4.13"
-    id("io.spring.dependency-management") version "1.1.7"
     `java-test-fixtures`
 }
 
-// Library module - disable bootJar, enable plain jar without classifier
-tasks.bootJar { enabled = false }
-tasks.jar {
-    enabled = true
-    archiveClassifier.set("")
-}
-
-// Override versions to match hibernate-reactive-core requirement
-extra["hibernate.version"] = "7.1.0.Final"
-extra["jakarta-persistence.version"] = "3.2.0"
-
 dependencies {
     api(project(":hibernate-reactive-coroutines-core"))
+    api(platform("org.springframework.boot:spring-boot-dependencies:3.4.13"))
+    constraints {
+        api("org.hibernate.orm:hibernate-core:7.1.0.Final")
+        api("jakarta.persistence:jakarta.persistence-api:3.2.0")
+    }
 
     // PostgreSQL SCRAM Authentication (required by Vert.x pg-client at runtime)
     runtimeOnly(libs.scram.client)
@@ -32,8 +24,8 @@ dependencies {
     // Spring Boot (versions managed by BOM)
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-autoconfigure")
-    implementation("org.springframework:spring-tx")
-    implementation("org.springframework.data:spring-data-commons")
+    api("org.springframework:spring-tx")
+    api("org.springframework.data:spring-data-commons")
 
     // Kotlin Coroutines Reactive (for Flow conversion)
     implementation(libs.kotlinx.coroutines.reactive)
@@ -43,6 +35,7 @@ dependencies {
     implementation(libs.mutiny.reactor)
 
     // Spring Boot annotation processor
+    annotationProcessor(platform("org.springframework.boot:spring-boot-dependencies:3.4.13"))
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     // Test
@@ -54,6 +47,7 @@ dependencies {
     testImplementation(libs.scram.client)
 
     // TestFixtures
+    testFixturesImplementation(platform("org.springframework.boot:spring-boot-dependencies:3.4.13"))
     testFixturesApi("org.springframework:spring-tx")
     testFixturesApi("org.springframework.data:spring-data-commons")
     testFixturesApi("org.springframework.boot:spring-boot-starter-test")

@@ -1,20 +1,16 @@
 plugins {
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
-    id("org.springframework.boot") version "4.0.0"
-    id("io.spring.dependency-management") version "1.1.7"
     `java-test-fixtures`
-}
-
-// Library module - disable bootJar, enable plain jar without classifier
-tasks.bootJar { enabled = false }
-tasks.jar {
-    enabled = true
-    archiveClassifier.set("")
 }
 
 dependencies {
     api(project(":hibernate-reactive-coroutines-core"))
+    api(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
+    constraints {
+        api("org.hibernate.orm:hibernate-core:7.1.0.Final")
+        api("jakarta.persistence:jakarta.persistence-api:3.2.0")
+    }
 
     // PostgreSQL SCRAM Authentication (required by Vert.x pg-client at runtime)
     runtimeOnly(libs.scram.client)
@@ -30,10 +26,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-autoconfigure")
 
     // Spring Transaction (version managed by Spring Boot 4 BOM)
-    implementation("org.springframework:spring-tx")
+    api("org.springframework:spring-tx")
 
     // Spring Data (version managed by Spring Boot 4 BOM)
-    implementation("org.springframework.data:spring-data-commons")
+    api("org.springframework.data:spring-data-commons")
 
     // Kotlin Coroutines Reactive (for Flow conversion)
     implementation(libs.kotlinx.coroutines.reactive)
@@ -43,6 +39,7 @@ dependencies {
     implementation(libs.mutiny.reactor)
 
     // Spring Boot annotation processor
+    annotationProcessor(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     // Test
@@ -54,6 +51,7 @@ dependencies {
     testImplementation(libs.scram.client)
 
     // TestFixtures
+    testFixturesImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
     testFixturesApi("org.springframework:spring-tx")
     testFixturesApi("org.springframework.data:spring-data-commons")
     testFixturesApi("org.springframework.boot:spring-boot-starter-test")
