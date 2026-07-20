@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -298,6 +299,31 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 val result = builder.build()
 
                 result.hql shouldBe "SELECT COUNT(e) FROM User e WHERE e.email = :p0"
+            }
+        }
+
+        context("지원하지 않는 조건") {
+
+            it("Regex 조건을 LIKE로 대체하지 않고 거부한다") {
+                val partTree = PartTree("findByNameRegex", User::class.java)
+                val builder = PartTreeHqlBuilder("User", partTree)
+
+                val error = shouldThrow<UnsupportedOperationException> {
+                    builder.build()
+                }
+
+                error.message shouldBe "Derived query type is not supported: REGEX"
+            }
+
+            it("Exists 조건으로 잘못된 HQL을 만들지 않고 거부한다") {
+                val partTree = PartTree("findByNameExists", User::class.java)
+                val builder = PartTreeHqlBuilder("User", partTree)
+
+                val error = shouldThrow<UnsupportedOperationException> {
+                    builder.build()
+                }
+
+                error.message shouldBe "Derived query type is not supported: EXISTS"
             }
         }
 
