@@ -5,6 +5,7 @@ import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMe
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
 import jakarta.persistence.metamodel.Metamodel
 import jakarta.persistence.metamodel.PluralAttribute
@@ -232,13 +233,17 @@ internal class QueryOperations<T : Any>(
                     throw IllegalArgumentException("Unknown sort property")
                 }
 
+                if (attribute is PluralAttribute<*, *, *>) {
+                    throw IllegalArgumentException("Unsupported plural sort property")
+                }
+                if (attribute !is SingularAttribute<*, *>) {
+                    throw IllegalArgumentException("Unknown sort property")
+                }
+
                 if (index < segments.lastIndex) {
-                    val nestedType = when (attribute) {
-                        is PluralAttribute<*, *, *> -> attribute.elementType.javaType
-                        is SingularAttribute<*, *> -> attribute.type.javaType
-                        else -> attribute.javaType
-                    }
-                    owningType = managedType(nestedType)
+                    owningType = managedType(attribute.type.javaType)
+                } else if (attribute.persistentAttributeType != Attribute.PersistentAttributeType.BASIC) {
+                    throw IllegalArgumentException("Sort property must resolve to a basic attribute")
                 }
             }
             "e.${order.property} $direction"
