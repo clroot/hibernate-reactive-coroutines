@@ -5,10 +5,11 @@ import io.clroot.hibernate.reactive.currentContextOrNull
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.coroutines.awaitSuspending
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.ReactorContext
 import kotlinx.coroutines.withContext
 import org.hibernate.reactive.mutiny.Mutiny
-import org.slf4j.LoggerFactory
+import org.springframework.transaction.NoTransactionException
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
 import kotlin.reflect.KProperty1
 
@@ -34,8 +35,6 @@ import kotlin.reflect.KProperty1
 open class TransactionalAwareSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
-
     /**
      * 읽기 전용 작업을 수행합니다.
      *
@@ -133,10 +132,9 @@ open class TransactionalAwareSessionProvider(
                         )
                     }
                 }
-                .contextWrite { it.putAll(reactorContext) }
-                .block() // ReactorContext 내에서 동기적으로 조회
-        } catch (e: Exception) {
-            log.debug("Failed to get transactional session context, which may be expected if none exists.", e)
+                .contextWrite(reactorContext)
+                .awaitSingleOrNull()
+        } catch (_: NoTransactionException) {
             null
         }
     }

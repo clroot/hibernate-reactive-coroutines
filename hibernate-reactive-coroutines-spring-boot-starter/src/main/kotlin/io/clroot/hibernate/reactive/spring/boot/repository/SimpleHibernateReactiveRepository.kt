@@ -5,17 +5,14 @@ import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.future.future
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
-import java.util.concurrent.CompletableFuture
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.startCoroutine
 
 /**
  * CoroutineCrudRepository 인터페이스의 기본 구현체.
@@ -62,8 +59,6 @@ class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     private val crud = CrudOperations<T, ID>(entityClass, sessionProvider, transactionExecutor, auditingHandler)
     private val query = QueryOperations<T>(entityClass, sessionProvider)
     private val pagination = PaginationOperations<T>(entityClass, sessionProvider, query)
-
-    private val scope = CoroutineScope(Dispatchers.Unconfined)
 
     // ============================================
     // InvocationHandler 구현
@@ -134,17 +129,10 @@ class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
         args: List<Any?>,
         continuation: Continuation<Any?>,
     ): Any {
-        val future: CompletableFuture<Any?> = scope.future(continuation.context) {
+        val operation: suspend () -> Any? = {
             routeSuspendMethod(methodName, args)
         }
-
-        future.whenComplete { result, error ->
-            if (error != null) {
-                continuation.resumeWith(Result.failure(error))
-            } else {
-                continuation.resumeWith(Result.success(result))
-            }
-        }
+        operation.startCoroutine(continuation)
 
         return kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
     }

@@ -9,6 +9,8 @@ import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import java.lang.reflect.Proxy
 import kotlin.coroutines.EmptyCoroutineContext
@@ -30,6 +32,20 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
             arrayOf(TestRepository::class.java),
             handler,
         ) as TestRepository
+    }
+
+    fun createCustomProxy(): RepositoryWithCustomMethod {
+        val handler = SimpleHibernateReactiveRepository(
+            entityClass = TestEntity::class.java,
+            idClass = Long::class.java,
+            sessionProvider = sessionProvider,
+            transactionExecutor = transactionExecutor,
+        )
+        return Proxy.newProxyInstance(
+            RepositoryWithCustomMethod::class.java.classLoader,
+            arrayOf(RepositoryWithCustomMethod::class.java),
+            handler,
+        ) as RepositoryWithCustomMethod
     }
 
     describe("SimpleHibernateReactiveRepository") {
@@ -80,6 +96,20 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
         }
 
         context("에러 메시지 개선") {
+
+            it("리포지토리 예외를 잡은 뒤에도 호출자 코루틴을 활성 상태로 유지한다") {
+                val proxy = createCustomProxy()
+                var caught = false
+
+                try {
+                    proxy.findByld(1L)
+                } catch (_: UnsupportedOperationException) {
+                    caught = true
+                }
+
+                caught shouldBe true
+                currentCoroutineContext().isActive shouldBe true
+            }
 
             it("알 수 없는 메서드 호출 시 유사한 메서드를 추천한다") {
                 val handler = SimpleHibernateReactiveRepository(
