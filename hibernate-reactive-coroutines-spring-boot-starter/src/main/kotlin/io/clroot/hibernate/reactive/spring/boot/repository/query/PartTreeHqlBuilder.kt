@@ -16,6 +16,10 @@ class PartTreeHqlBuilder(
     private val partTree: PartTree,
 ) {
 
+    companion object {
+        private val SAFE_PROPERTY_PATH = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
+    }
+
     private var parameterIndex = 0
     private val parameterBinders = mutableListOf<ParameterBinder>()
 
@@ -124,7 +128,7 @@ class PartTreeHqlBuilder(
      * [ConditionBuilderRegistry]를 통해 적절한 빌더를 조회하여 위임합니다.
      */
     private fun buildCondition(part: Part): String {
-        val property = "e.${part.property.segment}"
+        val property = "e.${part.property.toDotPath()}"
         val builder = ConditionBuilderRegistry.get(part.type)
         val result = builder.build(property, parameterIndex)
 
@@ -142,7 +146,10 @@ class PartTreeHqlBuilder(
         if (sort.isUnsorted) return ""
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
-            "e.${order.property} $direction"
+            val property = order.property.also {
+                require(SAFE_PROPERTY_PATH.matches(it)) { "Invalid sort property: $it" }
+            }
+            "e.$property $direction"
         }.joinToString(", ")
     }
 }

@@ -6,6 +6,7 @@ import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
 import org.hibernate.reactive.mutiny.Mutiny
+import org.springframework.beans.BeanUtils
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 
@@ -21,6 +22,10 @@ internal class QueryOperations<T : Any>(
     private val entityClass: Class<T>,
     private val sessionProvider: TransactionalAwareSessionProvider,
 ) {
+    companion object {
+        private val VALID_SORT_PATH = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
+    }
+
     // ============================================
     // PartTree 쿼리 실행
     // ============================================
@@ -210,6 +215,17 @@ internal class QueryOperations<T : Any>(
         if (sort.isUnsorted) return ""
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
+            require(VALID_SORT_PATH.matches(order.property)) { "Invalid sort property: ${order.property}" }
+
+            var owningType: Class<*> = entityClass
+            order.property.split('.').forEach { segment ->
+                val descriptor = BeanUtils.getPropertyDescriptor(owningType, segment)
+                    ?.takeIf { it.readMethod != null && it.name != "class" }
+                    ?: throw IllegalArgumentException(
+                        "Unknown sort property '${order.property}' for ${entityClass.name}",
+                    )
+                owningType = descriptor.propertyType
+            }
             "e.${order.property} $direction"
         }.joinToString(", ")
     }
