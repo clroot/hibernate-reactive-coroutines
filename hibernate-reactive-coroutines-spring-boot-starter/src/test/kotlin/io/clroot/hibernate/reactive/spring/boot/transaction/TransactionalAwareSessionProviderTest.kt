@@ -16,6 +16,29 @@ import java.util.function.Function
 
 class TransactionalAwareSessionProviderTest : DescribeSpec({
 
+    fun usesStandaloneSessionWithInactiveSynchronization(resource: (() -> Any)? = null): Boolean {
+        val sessionFactory = mockk<Mutiny.SessionFactory>()
+        val standaloneSession = mockk<Mutiny.Session>()
+        val provider = TransactionalAwareSessionProvider(sessionFactory)
+        every { sessionFactory.withSession<Boolean>(any()) } answers {
+            firstArg<Function<Mutiny.Session, Uni<Boolean>>>().apply(standaloneSession)
+        }
+
+        return TransactionSynchronizationManager.forCurrentTransaction()
+            .doOnNext { tsm ->
+                resource?.invoke()?.let { tsm.bindResource(sessionFactory, it) }
+            }
+            .then(
+                mono {
+                    provider.read { session ->
+                        Uni.createFrom().item(session === standaloneSession)
+                    }
+                },
+            )
+            .contextWrite(TransactionContextManager.createTransactionContext())
+            .block() == true
+    }
+
     describe("transactional session lookup") {
         it("reuses the Spring transaction session on a Reactor non-blocking thread") {
             val sessionFactory = mockk<Mutiny.SessionFactory>()
@@ -25,7 +48,10 @@ class TransactionalAwareSessionProviderTest : DescribeSpec({
             val dispatcher = Schedulers.parallel().asCoroutineDispatcher()
 
             val usedTransactionalSession = TransactionSynchronizationManager.forCurrentTransaction()
-                .doOnNext { it.bindResource(sessionFactory, holder) }
+                .doOnNext {
+                    it.setActualTransactionActive(true)
+                    it.bindResource(sessionFactory, holder)
+                }
                 .then(
                     mono(dispatcher) {
                         provider.read { session ->
@@ -40,25 +66,17 @@ class TransactionalAwareSessionProviderTest : DescribeSpec({
         }
 
         it("uses a standalone session when synchronization exists without an actual transaction") {
-            val sessionFactory = mockk<Mutiny.SessionFactory>()
-            val standaloneSession = mockk<Mutiny.Session>()
-            val provider = TransactionalAwareSessionProvider(sessionFactory)
-            every { sessionFactory.withSession<Boolean>(any()) } answers {
-                firstArg<Function<Mutiny.Session, Uni<Boolean>>>().apply(standaloneSession)
-            }
+            usesStandaloneSessionWithInactiveSynchronization() shouldBe true
+        }
 
-            val usedStandaloneSession = TransactionSynchronizationManager.forCurrentTransaction()
-                .then(
-                    mono {
-                        provider.read { session ->
-                            Uni.createFrom().item(session === standaloneSession)
-                        }
-                    },
-                )
-                .contextWrite(TransactionContextManager.createTransactionContext())
-                .block()
+        it("ignores a stale session holder when no actual transaction is active") {
+            usesStandaloneSessionWithInactiveSynchronization {
+                MutinySessionHolder(mockk())
+            } shouldBe true
+        }
 
-            usedStandaloneSession shouldBe true
+        it("ignores a malformed resource when no actual transaction is active") {
+            usesStandaloneSessionWithInactiveSynchronization { Any() } shouldBe true
         }
 
         it("fails closed when an active Spring transaction has no Hibernate Reactive session") {
