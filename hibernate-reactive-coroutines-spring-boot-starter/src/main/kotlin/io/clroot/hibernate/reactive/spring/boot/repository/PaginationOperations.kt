@@ -176,7 +176,7 @@ internal class PaginationOperations<T : Any>(
                 session.createQuery(countHql, Long::class.javaObjectType)
             }
 
-            queryOps.bindAnnotatedParameters(query, prepared, args)
+            queryOps.bindAnnotatedCountParameters(query, prepared, args)
             query.singleResult
         } ?: 0L
     }

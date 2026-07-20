@@ -32,4 +32,14 @@ data class PreparedQueryMethod(
     val isModifying: Boolean = false,
     val parameterStyle: ParameterStyle = ParameterStyle.NONE,
     val parameterNames: List<String> = emptyList(),
-)
+) {
+    internal val annotatedParameters: QueryParameters by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        QueryParameterParser.parse(hql)
+    }
+
+    internal val countAnnotatedParameters: QueryParameters by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        countHql
+            ?.let(QueryParameterParser::parse)
+            ?: QueryParameters(ParameterStyle.NONE)
+    }
+}

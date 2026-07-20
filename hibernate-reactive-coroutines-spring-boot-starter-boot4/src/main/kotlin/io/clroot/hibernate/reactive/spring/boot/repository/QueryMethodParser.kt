@@ -1,12 +1,14 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
+import io.clroot.hibernate.reactive.spring.boot.repository.query.CountQueryDeriver
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Param
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PartTreeHqlBuilder
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameterParser
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -40,12 +42,6 @@ internal class QueryMethodParser(
             "findById", "findAll", "findAllById",
             "existsById", "count",
             "deleteById", "delete", "deleteAllById", "deleteAll",
-        )
-
-        /** SELECT ~ FROM 패턴 (COUNT 쿼리 변환용) */
-        private val SELECT_FROM_REGEX = Regex(
-            "SELECT\\s+.*?\\s+FROM",
-            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
         )
     }
 
@@ -116,14 +112,13 @@ internal class QueryMethodParser(
         }
 
         val query = queryAnnotation.value
-        val parameterStyle = detectParameterStyle(query)
-        val parameterNames = if (parameterStyle == ParameterStyle.NAMED) {
-            extractParameterNames(method)
-        } else {
-            emptyList()
-        }
-
         val countHql = generateCountHqlIfNeeded(returnType, queryAnnotation, query)
+        val queryParameters = QueryParameterParser.parse(query)
+        val countParameters = countHql
+            ?.let(QueryParameterParser::parse)
+            ?: QueryParameters(ParameterStyle.NONE)
+        val argumentNames = extractParameterNames(method)
+        validateQueryParameters(method, queryParameters, countParameters, argumentNames)
 
         return PreparedQueryMethod(
             method = method,
@@ -135,8 +130,8 @@ internal class QueryMethodParser(
             isAnnotatedQuery = true,
             isNativeQuery = queryAnnotation.nativeQuery,
             isModifying = isModifying,
-            parameterStyle = parameterStyle,
-            parameterNames = parameterNames,
+            parameterStyle = queryParameters.style,
+            parameterNames = argumentNames,
         )
     }
 
@@ -158,12 +153,12 @@ internal class QueryMethodParser(
         if (returnType != QueryReturnType.PAGE) return null
 
         return when {
-            queryAnnotation.countQuery.isNotEmpty() -> queryAnnotation.countQuery
+            queryAnnotation.countQuery.isNotBlank() -> queryAnnotation.countQuery
             queryAnnotation.nativeQuery -> throw IllegalStateException(
                 "Native query with Page return type requires explicit countQuery",
             )
 
-            else -> generateCountQuery(query)
+            else -> CountQueryDeriver.derive(query)
         }
     }
 
@@ -250,18 +245,62 @@ internal class QueryMethodParser(
     // 파라미터 분석
     // ============================================
 
-    private fun detectParameterStyle(query: String): ParameterStyle {
-        val hasNamed = query.contains(Regex(":\\w+"))
-        val hasPositional = query.contains(Regex("\\?\\d+"))
-
-        return when {
-            hasNamed && hasPositional -> throw IllegalStateException(
-                "Query mixes named (:name) and positional (?1) parameters",
+    private fun validateQueryParameters(
+        method: Method,
+        query: QueryParameters,
+        count: QueryParameters,
+        argumentNames: List<String>,
+    ) {
+        val duplicateName = argumentNames
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .firstOrNull { it.value > 1 }
+            ?.key
+        if (duplicateName != null) {
+            throw IllegalStateException(
+                "Method '${method.name}' declares duplicate query parameter name '$duplicateName'",
             )
+        }
 
-            hasNamed -> ParameterStyle.NAMED
-            hasPositional -> ParameterStyle.POSITIONAL
-            else -> ParameterStyle.NONE
+        if (query.style != ParameterStyle.NONE && count.style != ParameterStyle.NONE &&
+            query.style != count.style
+        ) {
+            throw IllegalStateException(
+                "Query and countQuery for method '${method.name}' use different parameter styles",
+            )
+        }
+
+        val countOnlyName = count.names.firstOrNull { it !in query.names }
+        if (countOnlyName != null) {
+            throw IllegalStateException(
+                "countQuery for method '${method.name}' references parameter '$countOnlyName' " +
+                        "that is not used by the content query",
+            )
+        }
+        val countOnlyPosition = count.positions.firstOrNull { it !in query.positions }
+        if (countOnlyPosition != null) {
+            throw IllegalStateException(
+                "countQuery for method '${method.name}' references parameter ?$countOnlyPosition " +
+                        "that is not used by the content query",
+            )
+        }
+
+        val unknownNames = (query.names + count.names).distinct() - argumentNames.toSet()
+        if (unknownNames.isNotEmpty()) {
+            throw IllegalStateException(
+                "Query for method '${method.name}' references unknown parameter '${unknownNames.first()}'",
+            )
+        }
+
+        val argumentCount = argumentNames.size
+        val invalidPosition = (query.positions + count.positions)
+            .firstOrNull { it > argumentCount }
+        if (invalidPosition != null) {
+            throw IllegalStateException(
+                "Query for method '${method.name}' references positional parameter ?$invalidPosition " +
+                        "but has only $argumentCount query arguments",
+            )
         }
     }
 
@@ -272,12 +311,13 @@ internal class QueryMethodParser(
             ?: emptyList()
 
         return method.parameters
-            .filter { it.type != Continuation::class.java }
-            .filter { !Pageable::class.java.isAssignableFrom(it.type) }
-            .filter { !Sort::class.java.isAssignableFrom(it.type) }
-            .mapIndexed { index, param ->
+            .mapIndexed { index, param -> param to kotlinParams.getOrNull(index)?.name }
+            .filter { (param) -> param.type != Continuation::class.java }
+            .filter { (param) -> !Pageable::class.java.isAssignableFrom(param.type) }
+            .filter { (param) -> !Sort::class.java.isAssignableFrom(param.type) }
+            .map { (param, kotlinName) ->
                 param.getAnnotation(Param::class.java)?.value
-                    ?: kotlinParams.getOrNull(index)?.name
+                    ?: kotlinName
                     ?: param.name
             }
     }
@@ -355,23 +395,4 @@ internal class QueryMethodParser(
         }
     }
 
-    // ============================================
-    // COUNT 쿼리 생성
-    // ============================================
-
-    private fun generateCountQuery(query: String): String {
-        val normalized = query.trim()
-
-        return when {
-            normalized.startsWith("FROM", ignoreCase = true) ->
-                "SELECT COUNT(*) $normalized".replace(ORDER_BY_REGEX, "")
-
-            normalized.startsWith("SELECT", ignoreCase = true) ->
-                normalized
-                    .replaceFirst(SELECT_FROM_REGEX, "SELECT COUNT(*) FROM")
-                    .replace(ORDER_BY_REGEX, "")
-
-            else -> throw IllegalStateException("Cannot generate count query from: $query")
-        }
-    }
 }
