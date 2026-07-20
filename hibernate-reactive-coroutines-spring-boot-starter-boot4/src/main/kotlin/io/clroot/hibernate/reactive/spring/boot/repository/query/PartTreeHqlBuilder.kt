@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.parser.PartTree
  * Spring Data Commons의 PartTree를 순회하며 Hibernate HQL을 생성합니다.
  * 각 조건 타입의 HQL 생성은 [ConditionBuilderRegistry]에 위임합니다.
  */
-class PartTreeHqlBuilder(
+internal class PartTreeHqlBuilder(
     private val entityName: String,
     private val partTree: PartTree,
 ) {
@@ -147,7 +147,9 @@ class PartTreeHqlBuilder(
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
             val property = order.property.also {
-                require(SAFE_PROPERTY_PATH.matches(it)) { "Invalid sort property: $it" }
+                require(SAFE_PROPERTY_PATH.matches(it) && "class" !in it.split('.')) {
+                    "Invalid sort property"
+                }
             }
             "e.$property $direction"
         }.joinToString(", ")
@@ -157,7 +159,7 @@ class PartTreeHqlBuilder(
 /**
  * HQL 빌드 결과.
  */
-data class HqlBuildResult(
+internal data class HqlBuildResult(
     val hql: String,
     val parameterBinders: List<ParameterBinder>,
 )
