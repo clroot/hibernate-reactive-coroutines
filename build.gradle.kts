@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.spring) apply false
     alias(libs.plugins.kotlin.jpa) apply false
+    alias(libs.plugins.dokka) apply false
     `maven-publish`
     signing
 }
@@ -63,6 +64,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
 
@@ -72,6 +74,34 @@ subprojects {
         }
         withSourcesJar()
         withJavadocJar()
+    }
+
+    val dokkaHtml = tasks.named("dokkaGeneratePublicationHtml")
+    val javadocJar = tasks.named<Jar>("javadocJar") {
+        dependsOn(dokkaHtml)
+        from(dokkaHtml.map { it.outputs.files })
+    }
+    val verifyJavadocJar by tasks.registering {
+        group = "verification"
+        description = "Verifies that the published javadoc JAR contains Dokka HTML."
+        dependsOn(javadocJar)
+        inputs.file(javadocJar.flatMap { it.archiveFile })
+
+        doLast(Action<Task> {
+            val archive = inputs.files.singleFile
+            val containsDocumentation = java.util.zip.ZipFile(archive).use { zip ->
+                zip.entries().asSequence().any { entry ->
+                    !entry.isDirectory && entry.name.endsWith(".html")
+                }
+            }
+            if (!containsDocumentation) {
+                throw GradleException("$path found an empty javadoc JAR: $archive")
+            }
+        })
+    }
+
+    tasks.named("check") {
+        dependsOn(verifyJavadocJar)
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {

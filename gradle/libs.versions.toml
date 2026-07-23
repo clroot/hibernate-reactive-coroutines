@@ -1,5 +1,6 @@
 [versions]
 kotlin = "2.2.0"
+dokka = "2.2.0"
 coroutines = "1.10.2"
 hibernate-reactive = "3.1.0.Final"
 mutiny = "2.6.0"
@@ -49,3 +50,4 @@ scram-client = { module = "com.ongres.scram:scram-client", version = "3.2" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
