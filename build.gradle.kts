@@ -6,14 +6,58 @@ plugins {
     signing
 }
 
+val releaseVersion = providers.gradleProperty("releaseVersion")
+val releaseTag = providers.gradleProperty("releaseTag")
+val effectiveVersion = releaseVersion.orElse("1.0.0-SNAPSHOT")
+val releaseVersionPattern = Regex("""^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$""")
+val centralReleaseTaskNames = setOf(
+    "publishAllPublicationsToCentralPortal",
+    "publishAllPublicationsToNmcpRepository",
+    "nmcpPublishAllPublicationsToCentralPortal",
+    "nmcpPublishAggregationToCentralPortal",
+    "publishAggregationToCentralPortal",
+)
+
+val validateReleaseVersion by tasks.registering {
+    group = "verification"
+    description = "Validates the release version and its optional source tag."
+
+    doLast {
+        val versionToPublish = releaseVersion.orNull
+            ?: throw GradleException(
+                "releaseVersion is required for a Central release. " +
+                    "Pass -PreleaseVersion=<version> or ORG_GRADLE_PROJECT_releaseVersion.",
+            )
+
+        if (!releaseVersionPattern.matches(versionToPublish)) {
+            throw GradleException("Invalid releaseVersion '$versionToPublish'.")
+        }
+
+        releaseTag.orNull
+            ?.takeIf { it.isNotBlank() }
+            ?.removePrefix("v")
+            ?.let { normalizedTag ->
+                if (normalizedTag != versionToPublish) {
+                    throw GradleException(
+                        "releaseVersion '$versionToPublish' does not match releaseTag '${releaseTag.get()}'.",
+                    )
+                }
+            }
+    }
+}
+
 allprojects {
     apply(plugin = "maven-publish")
 
     group = "io.clroot"
-    version = "1.0.0"
+    version = effectiveVersion.get()
 
     repositories {
         mavenCentral()
+    }
+
+    tasks.matching { it.name in centralReleaseTaskNames }.configureEach {
+        dependsOn(rootProject.tasks.named("validateReleaseVersion"))
     }
 }
 
