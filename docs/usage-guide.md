@@ -145,6 +145,11 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+`@Modifying` methods must return either `Int` (the affected row count) or `Unit`.
+Bulk updates do not synchronize already managed entities. Use
+`@Modifying(clearAutomatically = true)` when subsequent reads in the same transaction must
+discard the current session cache and observe the database result.
+
 ### Pagination
 
 ```kotlin

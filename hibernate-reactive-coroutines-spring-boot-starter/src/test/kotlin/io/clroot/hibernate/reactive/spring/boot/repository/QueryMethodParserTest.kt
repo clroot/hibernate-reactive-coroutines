@@ -1,8 +1,10 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
+import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Param
+import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -120,6 +122,20 @@ class QueryMethodParserTest : DescribeSpec({
             error.message shouldContain "not used by the content query"
         }
     }
+
+    describe("@Modifying return types") {
+        it("accepts Unit and preserves its declared return contract") {
+            parse("deactivate").returnType shouldBe QueryReturnType.VOID
+        }
+
+        it("rejects unsupported return types during repository initialization") {
+            val error = shouldThrow<IllegalStateException> {
+                parse("deactivateWithMessage")
+            }
+
+            error.message shouldContain "must return Int or Unit"
+        }
+    }
 })
 
 private data class User(
@@ -129,6 +145,14 @@ private data class User(
 )
 
 private interface QueryRepository {
+    @Modifying
+    @Query("UPDATE User e SET e.active = false WHERE e.id = :id")
+    suspend fun deactivate(id: Long)
+
+    @Modifying
+    @Query("UPDATE User e SET e.active = false WHERE e.id = :id")
+    suspend fun deactivateWithMessage(id: Long): String
+
     @Query(
         """
         SELECT e FROM User e WHERE e.active = true

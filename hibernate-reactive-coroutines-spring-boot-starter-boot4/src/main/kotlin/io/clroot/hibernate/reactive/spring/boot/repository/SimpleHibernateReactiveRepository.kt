@@ -231,6 +231,10 @@ class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     ): Any? {
         return when (prepared.returnType) {
             QueryReturnType.MODIFYING -> query.executeModifyingAnnotatedQuery(prepared, args)
+            QueryReturnType.VOID -> {
+                query.executeModifyingAnnotatedQuery(prepared, args)
+                Unit
+            }
             QueryReturnType.PAGE -> pagination.executePageAnnotatedQuery(prepared, args, pageable!!)
             QueryReturnType.SLICE -> pagination.executeSliceAnnotatedQuery(prepared, args, pageable!!)
             QueryReturnType.LIST -> query.executeListAnnotatedQuery(prepared, args)

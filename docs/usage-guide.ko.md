@@ -143,6 +143,11 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+`@Modifying` 메서드는 영향받은 행 수를 받는 `Int` 또는 결과를 노출하지 않는 `Unit`을
+반환해야 합니다. 벌크 업데이트는 이미 관리 중인 엔티티를 동기화하지 않습니다.
+같은 트랜잭션의 후속 조회에서 현재 세션 캐시를 비우고 DB 결과를 읽어야 한다면
+`@Modifying(clearAutomatically = true)`를 사용하세요.
+
 ### 페이지네이션
 
 ```kotlin

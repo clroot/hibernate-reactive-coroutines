@@ -19,7 +19,7 @@ Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입
 | 비교 연산                            |  ✅  | GreaterThan, LessThan, Between 등                     |
 | `@Query` (JPQL)                      |  ✅  | Named/Positional Parameter                            |
 | `@Query` (Native)                    |  ✅  | 읽기만 지원, Page는 `countQuery` 필요                 |
-| `@Modifying`                         |  ✅  | JPQL UPDATE/DELETE                                    |
+| `@Modifying`                         |  ✅  | JPQL UPDATE/DELETE, `Int`/`Unit`, 선택적 자동 clear   |
 | 페이지네이션 (`Page`, `Slice`)       |  ✅  | 스마트 COUNT 스킵 최적화                              |
 
 `Page`를 반환하는 HQL/JPQL `@Query` 메서드는 단순 엔티티 `SELECT`/`FROM` 쿼리만 COUNT를 자동
