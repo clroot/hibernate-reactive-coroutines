@@ -9,11 +9,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-kotlin:
-  hibernate:
-    reactive:
-      pool-size: 5
+        reactive:
+          pool-size: 5
 
 logging:
   level:

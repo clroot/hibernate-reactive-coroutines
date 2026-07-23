@@ -162,11 +162,12 @@ spring:
     url: jdbc:postgresql://localhost:5432/mydb
     username: user
     password: password
-
-kotlin:
-  hibernate:
-    reactive:
-      pool-size: 10  # Connection pool size (default: 10)
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        reactive:
+          pool-size: 10  # Connection pool size (default: 10)
 ```
 
 ## Documentation
