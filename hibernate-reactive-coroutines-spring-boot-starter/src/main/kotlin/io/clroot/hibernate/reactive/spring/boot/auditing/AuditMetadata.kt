@@ -7,7 +7,6 @@ import org.springframework.data.annotation.CreatedBy
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedBy
 import org.springframework.data.annotation.LastModifiedDate
-import org.springframework.data.domain.Persistable
 import java.lang.reflect.Field
 import java.time.Instant
 import java.time.LocalDateTime
@@ -33,37 +32,6 @@ internal object AuditMetadata {
         return cache.computeIfAbsent(entityClass) { cls ->
             extractAuditInfo(cls)
         }
-    }
-
-    /**
-     * 엔티티가 신규인지 판단합니다.
-     *
-     * 판단 순서:
-     * 1. Persistable 인터페이스 구현 시 isNew() 호출
-     * 2. @Version 필드가 있고 null이거나 0이면 신규
-     * 3. @Id 필드가 null이면 신규
-     */
-    fun isNew(entity: Any): Boolean {
-        // 1. Persistable 인터페이스 확인
-        if (entity is Persistable<*>) {
-            return entity.isNew
-        }
-
-        val auditInfo = getAuditInfo(entity.javaClass)
-
-        // 2. @Version 필드 확인
-        auditInfo.versionField?.let { field ->
-            val value = getFieldValueSafely(entity, field)
-            return value == null || (value is Number && value.toLong() == 0L)
-        }
-
-        // 3. @Id 필드 확인
-        auditInfo.idField?.let { field ->
-            return getFieldValueSafely(entity, field) == null
-        }
-
-        // 판단 불가 시 신규로 간주
-        return true
     }
 
     /**

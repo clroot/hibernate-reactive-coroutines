@@ -1,7 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
-import io.clroot.hibernate.reactive.spring.boot.auditing.AuditMetadata
 import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
 import kotlinx.coroutines.flow.Flow
@@ -31,8 +30,8 @@ internal class CrudOperations<T : Any, ID : Any>(
     // ============================================
 
     suspend fun save(entity: T): T {
+        val isNew = EntityStateDetector.isNew(entity)
         if (auditingHandler != null) {
-            val isNew = AuditMetadata.isNew(entity)
             if (isNew) {
                 auditingHandler.markCreated(entity)
             } else {
@@ -41,7 +40,11 @@ internal class CrudOperations<T : Any, ID : Any>(
         }
 
         return sessionProvider.write { session ->
-            session.merge(entity)
+            if (isNew) {
+                session.persist(entity).replaceWith(entity)
+            } else {
+                session.merge(entity)
+            }
         }
     }
 

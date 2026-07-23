@@ -110,6 +110,11 @@ class JpaSpecTestService(
     }
 
     @Transactional
+    suspend fun saveVersionedEntity(entity: VersionedEntity): VersionedEntity {
+        return versionedEntityRepository.save(entity)
+    }
+
+    @Transactional
     suspend fun updateVersionedEntity(id: Long, newName: String, newValue: Int): VersionedEntity {
         val entity = versionedEntityRepository.findById(id)!!
         entity.name = newName

@@ -8,7 +8,6 @@ import io.clroot.hibernate.reactive.test.entity.VersionedEntity
 import io.clroot.hibernate.reactive.test.repository.ParentEntityRepository
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
 import io.clroot.hibernate.reactive.test.repository.VersionedEntityRepository
-import io.smallrye.mutiny.coroutines.awaitSuspending
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -111,6 +110,11 @@ class JpaSpecTestService(
     }
 
     @Transactional
+    suspend fun saveVersionedEntity(entity: VersionedEntity): VersionedEntity {
+        return versionedEntityRepository.save(entity)
+    }
+
+    @Transactional
     suspend fun updateVersionedEntity(id: Long, newName: String, newValue: Int): VersionedEntity {
         val entity = versionedEntityRepository.findById(id)!!
         entity.name = newName
@@ -138,7 +142,7 @@ class JpaSpecTestService(
         id: Long,
         newName: String,
         newValue: Int,
-        delayMs: Long
+        delayMs: Long,
     ): VersionedEntity {
         val entity = versionedEntityRepository.findById(id)!!
         delay(delayMs)

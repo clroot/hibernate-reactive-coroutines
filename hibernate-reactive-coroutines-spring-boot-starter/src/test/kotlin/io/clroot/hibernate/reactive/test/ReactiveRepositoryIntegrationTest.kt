@@ -34,6 +34,29 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
                     saved.value shouldBe 100
                 }
 
+                it("신규 엔티티는 전달한 인스턴스가 관리되고 생성된 ID도 같은 인스턴스에 반영된다") {
+                    val entity = TestEntity(name = "persistNew", value = 101)
+
+                    val saved = tx.transactional {
+                        testEntityRepository.save(entity)
+                    }
+
+                    saved shouldBe entity
+                    entity.id.shouldNotBeNull()
+                }
+
+                it("saveAll도 신규 엔티티 인스턴스를 그대로 persist한다") {
+                    val entities = listOf(
+                        TestEntity(name = "persistAll1", value = 102),
+                        TestEntity(name = "persistAll2", value = 103),
+                    )
+
+                    val saved = testEntityRepository.saveAll(entities).toList()
+
+                    saved shouldBe entities
+                    entities.forEach { it.id.shouldNotBeNull() }
+                }
+
                 it("기존 엔티티를 업데이트한다") {
                     // given
                     val entity = TestEntity(name = "updateTest", value = 50)
