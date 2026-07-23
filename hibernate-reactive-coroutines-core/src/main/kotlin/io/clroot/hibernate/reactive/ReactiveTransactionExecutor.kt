@@ -102,6 +102,7 @@ class ReactiveTransactionExecutor(
     ): T {
         val parentContext = currentContextOrNull()
         val effectiveTimeout = calculateEffectiveTimeout(parentContext, timeout)
+        val callerContext = currentCoroutineContext().minusKey(Job)
 
         return if (parentContext != null) {
             // 기존 세션 재사용 (REQUIRED 동작)
@@ -111,7 +112,7 @@ class ReactiveTransactionExecutor(
             executeWithTimeout(effectiveTimeout) {
                 sessionStarter { session ->
                     val vertxDispatcher = requireVertxContext().dispatcher()
-                    CoroutineScope(vertxDispatcher)
+                    CoroutineScope(callerContext + vertxDispatcher)
                         .async {
                             val newContext = ReactiveSessionContext(
                                 session = session,
