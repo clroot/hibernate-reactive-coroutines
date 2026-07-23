@@ -256,6 +256,9 @@ class OrderService(
 }
 ```
 
+`transactional`과 `readOnly`는 DB 작업을 필수 Vert.x dispatcher로 옮기면서도 MDC/트레이싱
+어댑터와 Reactor context 같은 호출자 코루틴 컨텍스트 요소를 유지합니다.
+
 ## Lazy Loading
 
 Hibernate Reactive에서는 동기적 Lazy Loading이 지원되지 않습니다.

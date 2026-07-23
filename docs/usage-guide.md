@@ -259,6 +259,9 @@ class OrderService(
 }
 ```
 
+`transactional` and `readOnly` preserve caller coroutine context elements such as MDC/tracing
+adapters and Reactor context while moving database work onto the required Vert.x dispatcher.
+
 ## Lazy Loading
 
 Synchronous Lazy Loading is not supported in Hibernate Reactive.

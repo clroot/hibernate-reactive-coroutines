@@ -9,6 +9,10 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.asContextElement
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
@@ -129,6 +133,16 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                     }
 
                     result shouldBe "nested success"
+                }
+
+                it("호출자의 코루틴 컨텍스트를 트랜잭션 블록에 전파한다") {
+                    val traceContext = ThreadLocal<String>()
+                    withContext(CoroutineName("request-trace") + traceContext.asContextElement("trace-123")) {
+                        tx.transactional {
+                            currentCoroutineContext()[CoroutineName]?.name shouldBe "request-trace"
+                            traceContext.get() shouldBe "trace-123"
+                        }
+                    }
                 }
             }
 
