@@ -62,6 +62,6 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            hibernate-reactive-coroutines/build/libs/*.jar
+            hibernate-reactive-coroutines-core/build/libs/*.jar
             hibernate-reactive-coroutines-spring-boot-starter/build/libs/*.jar
             hibernate-reactive-coroutines-spring-boot-starter-boot4/build/libs/*.jar
