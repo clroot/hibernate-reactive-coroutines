@@ -155,6 +155,29 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+For `@Query` methods returning `Page`, a count query is derived automatically only for simple
+entity queries such as `SELECT u FROM User u ...` or `FROM User u ...`. Declare `countQuery`
+explicitly when the query contains projections, joins (including implicit joins), `GROUP BY`,
+`HAVING`, set operations, trailing `SELECT`, query-level pagination, or a parameterized
+`ORDER BY`. Automatic derivation accepts only simple root-property ordering such as
+`ORDER BY u.id DESC`; functions, collection indexing, and path navigation in an order expression
+require an explicit `countQuery`. Native page queries always require an explicit `countQuery`.
+`Slice` does not run a count query.
+
+Within each annotated query, positional parameters must start at `?1` and remain contiguous, as
+required by Hibernate; unlabeled `?` parameters are not supported. Every `countQuery` parameter
+must also appear in the content query. PostgreSQL dollar-quoted literals, line comments, and nested
+block comments are rejected because their parameter parsing is not consistent across Hibernate's
+HQL and native-query parsers.
+
+```kotlin
+@Query(
+    value = "SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.status = :status",
+    countQuery = "SELECT COUNT(u) FROM User u WHERE u.status = :status",
+)
+suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
+```
+
 **Usage Example:**
 
 ```kotlin

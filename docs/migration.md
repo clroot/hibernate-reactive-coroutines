@@ -20,9 +20,13 @@ A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
 | LIKE search                          |     ✅     | Containing, StartingWith, EndingWith                     |
 | Comparison operators                 |     ✅     | GreaterThan, LessThan, Between, etc.                     |
 | `@Query` (JPQL)                      |     ✅     | Named/Positional Parameters                              |
-| `@Query` (Native)                    |     ✅     | Read-only, countQuery required                           |
+| `@Query` (Native)                    |     ✅     | Read-only; Page requires `countQuery`                    |
 | `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE                                       |
 | Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
+
+HQL/JPQL `@Query` methods returning `Page` derive COUNT automatically only for simple entity
+`SELECT`/`FROM` queries. Projections, joins, grouping, set operations, trailing selects,
+query-level pagination, and parameterized ordering require an explicit `countQuery`.
 
 ### Transactions
 

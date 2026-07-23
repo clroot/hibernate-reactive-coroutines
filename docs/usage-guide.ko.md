@@ -153,6 +153,28 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+`Page`를 반환하는 `@Query` 메서드는 `SELECT u FROM User u ...` 또는 `FROM User u ...`와 같은
+단순 엔티티 쿼리만 COUNT 쿼리를 자동 생성합니다. 프로젝션, 조인(암시적 조인 포함),
+`GROUP BY`, `HAVING`, 집합 연산, 후행 `SELECT`, 쿼리 자체 페이지 제한, 파라미터가 있는
+`ORDER BY`를 사용하면 `countQuery`를 명시해야 합니다. 자동 생성 시에는
+`ORDER BY u.id DESC` 같은 단순 루트 속성 정렬만 허용됩니다. 함수, 컬렉션 인덱스,
+경로 탐색이 포함된 정렬식은 `countQuery`를 명시해야 합니다. Native Page 쿼리도 항상
+`countQuery`가 필요합니다. `Slice`는 COUNT 쿼리를 실행하지 않습니다.
+
+Hibernate의 요구사항에 따라 각 어노테이션 쿼리 안의 위치 파라미터는 `?1`부터 시작해
+연속되어야 하며 이름표 없는 `?` 파라미터는 지원하지 않습니다. `countQuery`의 모든
+파라미터는 본문 쿼리에도 있어야 합니다. PostgreSQL 달러 인용 리터럴, 한 줄 주석, 중첩
+블록 주석은 Hibernate의 HQL 파서와 Native 쿼리 파라미터 파서에서 일관되게 처리되지
+않으므로 거부됩니다.
+
+```kotlin
+@Query(
+    value = "SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.status = :status",
+    countQuery = "SELECT COUNT(u) FROM User u WHERE u.status = :status",
+)
+suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
+```
+
 **사용 예시:**
 
 ```kotlin

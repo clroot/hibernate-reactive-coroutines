@@ -164,19 +164,40 @@ internal class QueryOperations<T : Any>(
     ) {
         when (prepared.parameterStyle) {
             ParameterStyle.NAMED -> {
-                prepared.parameterNames.forEachIndexed { index, name ->
-                    query.setParameter(name, args[index])
+                prepared.annotatedParameters.names.forEach { name ->
+                    query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
                 }
             }
 
             ParameterStyle.POSITIONAL -> {
-                args.forEachIndexed { index, arg ->
-                    query.setParameter(index + 1, arg)
+                prepared.annotatedParameters.positions.forEach { position ->
+                    query.setParameter(position, args[position - 1])
                 }
             }
 
-            ParameterStyle.NONE -> { /* 파라미터 없음 */
+            ParameterStyle.NONE -> Unit
+        }
+    }
+
+    internal fun <R> bindAnnotatedCountParameters(
+        query: Mutiny.SelectionQuery<R>,
+        prepared: PreparedQueryMethod,
+        args: List<Any?>,
+    ) {
+        when (prepared.countAnnotatedParameters.style) {
+            ParameterStyle.NAMED -> {
+                prepared.countAnnotatedParameters.names.forEach { name ->
+                    query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
+                }
             }
+
+            ParameterStyle.POSITIONAL -> {
+                prepared.countAnnotatedParameters.positions.forEach { position ->
+                    query.setParameter(position, args[position - 1])
+                }
+            }
+
+            ParameterStyle.NONE -> Unit
         }
     }
 
@@ -187,14 +208,14 @@ internal class QueryOperations<T : Any>(
     ) {
         when (prepared.parameterStyle) {
             ParameterStyle.NAMED -> {
-                prepared.parameterNames.forEachIndexed { index, name ->
-                    query.setParameter(name, args[index])
+                prepared.annotatedParameters.names.forEach { name ->
+                    query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
                 }
             }
 
             ParameterStyle.POSITIONAL -> {
-                args.forEachIndexed { index, arg ->
-                    query.setParameter(index + 1, arg)
+                prepared.annotatedParameters.positions.forEach { position ->
+                    query.setParameter(position, args[position - 1])
                 }
             }
 
