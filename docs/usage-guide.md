@@ -88,7 +88,8 @@ interface UserRepository : CoroutineCrudRepository<User, Long>
 
 `save` persists a new entity as the same managed instance, so a generated identifier is visible
 on both the argument and the returned value. Existing or detached entities are merged; keep using
-the instance returned by `save` for subsequent work.
+the instance returned by `save` for subsequent work. Entities with assigned identifiers can
+implement Spring Data's `Persistable` to declare their new-state explicitly.
 
 ### Query Method Derivation
 

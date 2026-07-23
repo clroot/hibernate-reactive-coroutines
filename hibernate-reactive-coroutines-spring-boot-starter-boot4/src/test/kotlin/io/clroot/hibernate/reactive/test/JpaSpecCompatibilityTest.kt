@@ -135,6 +135,18 @@ class JpaSpecCompatibilityTest : IntegrationTestBase() {
                     // Then: 버전 증가
                     updated.version shouldBe 1L
                 }
+
+                it("초기 버전 0인 detached 엔티티는 merge하여 업데이트한다") {
+                    val detached = jpaSpecTestService.saveVersionedEntity("detached-version-zero", 100)
+                    detached.version shouldBe 0L
+                    detached.name = "detached-updated"
+
+                    val updated = jpaSpecTestService.saveVersionedEntity(detached)
+
+                    updated.id shouldBe detached.id
+                    updated.name shouldBe "detached-updated"
+                    updated.version shouldBe 1L
+                }
             }
 
             context("동시에 같은 엔티티를 수정하면") {
