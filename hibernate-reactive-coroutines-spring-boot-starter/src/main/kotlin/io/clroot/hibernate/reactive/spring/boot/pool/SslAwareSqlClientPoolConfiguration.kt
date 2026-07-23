@@ -16,8 +16,10 @@ class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
 
     companion object {
         private const val SSL_MODE_PROPERTY = "hibernate.vertx.pool.ssl.mode"
+        private const val TRUST_CERTIFICATE_PROPERTY = "hibernate.vertx.pool.ssl.trust-certificate"
         private const val PG_CONNECT_OPTIONS_CLASS = "io.vertx.pgclient.PgConnectOptions"
         private const val SSL_MODE_CLASS = "io.vertx.pgclient.SslMode"
+        private const val PEM_TRUST_OPTIONS_CLASS = "io.vertx.core.net.PemTrustOptions"
 
         private val logger = LoggerFactory.getLogger(SslAwareSqlClientPoolConfiguration::class.java)
 
@@ -29,34 +31,52 @@ class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
                 Class.forName(PG_CONNECT_OPTIONS_CLASS)
                 true
             } catch (e: ClassNotFoundException) {
-                logger.debug("vertx-pg-client not found in classpath, SSL mode configuration will be skipped")
                 false
             }
         }
     }
 
     private var sslMode: String? = null
+    private var trustCertificate: String? = null
 
     override fun configure(configuration: MutableMap<Any?, Any?>?) {
         super.configure(configuration)
-        sslMode = ConfigurationHelper.getString(SSL_MODE_PROPERTY, configuration)
-        logger.info("SslAwareSqlClientPoolConfiguration configured with sslMode: {}", sslMode)
+        sslMode = ConfigurationHelper.getString(SSL_MODE_PROPERTY, configuration)?.trim()?.lowercase()
+        trustCertificate = ConfigurationHelper.getString(TRUST_CERTIFICATE_PROPERTY, configuration)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        logger.info(
+            "SslAwareSqlClientPoolConfiguration configured with sslMode: {}, trustCertificate: {}",
+            sslMode,
+            trustCertificate?.let { "configured" } ?: "default trust store",
+        )
     }
 
     override fun connectOptions(uri: URI): SqlConnectOptions {
         val baseOptions = super.connectOptions(uri)
 
         // SSL 모드가 설정되지 않았거나 disable이면 기본 옵션 반환
-        if (sslMode.isNullOrBlank() || sslMode == "disable") {
+        if (sslMode == null || sslMode == "disable") {
             return baseOptions
         }
 
-        // PostgreSQL이고 vertx-pg-client가 있으면 PgConnectOptions로 변환
-        if (isPostgresUri(uri) && pgClientAvailable) {
-            return createPgConnectOptionsWithSsl(baseOptions)
+        if (sslMode.isNullOrBlank()) {
+            throw IllegalStateException("PostgreSQL SSL mode must not be blank")
         }
 
-        return baseOptions
+        if (!isPostgresUri(uri)) {
+            throw IllegalStateException(
+                "PostgreSQL SSL mode '$sslMode' was configured for unsupported database URI '$uri'",
+            )
+        }
+
+        if (!pgClientAvailable) {
+            throw IllegalStateException(
+                "PostgreSQL SSL mode '$sslMode' requires vertx-pg-client on the runtime classpath",
+            )
+        }
+
+        return createPgConnectOptionsWithSsl(baseOptions)
     }
 
     /**
@@ -72,6 +92,14 @@ class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
      * Reflection을 사용하여 vertx-pg-client 의존성 없이 동작합니다.
      */
     private fun createPgConnectOptionsWithSsl(baseOptions: SqlConnectOptions): SqlConnectOptions {
+        val configuredSslMode = requireNotNull(sslMode)
+        if (configuredSslMode in setOf("verify-ca", "verify-full") && trustCertificate == null) {
+            throw IllegalStateException(
+                "SSL mode '$configuredSslMode' requires " +
+                    "spring.jpa.properties.hibernate.reactive.trust-certificate",
+            )
+        }
+
         try {
             val pgConnectOptionsClass = Class.forName(PG_CONNECT_OPTIONS_CLASS)
             val sslModeClass = Class.forName(SSL_MODE_CLASS)
@@ -84,26 +112,54 @@ class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
 
             // SSL 모드 설정
             val sslModeOfMethod = sslModeClass.getMethod("of", String::class.java)
-            val sslModeValue = sslModeOfMethod.invoke(null, sslMode)
+            val sslModeValue = sslModeOfMethod.invoke(null, configuredSslMode)
             val setSslModeMethod = pgConnectOptionsClass.getMethod("setSslMode", sslModeClass)
             setSslModeMethod.invoke(pgOptions, sslModeValue)
 
-            // require 모드에서는 인증서 검증 없이 암호화만 사용 (AWS RDS 등)
-            // verify-ca, verify-full 모드에서는 trustAll을 false로 유지
-            if (sslMode == "require" || sslMode == "prefer" || sslMode == "allow") {
-                val setTrustAllMethod = pgConnectOptionsClass.getMethod("setTrustAll", Boolean::class.java)
-                setTrustAllMethod.invoke(pgOptions, true)
-                logger.debug("Set trustAll=true for SSL mode '{}'", sslMode)
+            // 어떤 SSL 모드에서도 인증서 검증을 우회하지 않음
+            val setTrustAllMethod = pgConnectOptionsClass.getMethod("setTrustAll", Boolean::class.java)
+            setTrustAllMethod.invoke(pgOptions, false)
+
+            trustCertificate?.let { certificatePath ->
+                applyTrustCertificate(pgOptions, pgConnectOptionsClass, certificatePath)
             }
 
-            logger.info("Created PgConnectOptions with SSL mode '{}' for PostgreSQL connection", sslMode)
+            if (configuredSslMode == "verify-full") {
+                val setHostnameVerificationMethod = pgConnectOptionsClass.getMethod(
+                    "setHostnameVerificationAlgorithm",
+                    String::class.java,
+                )
+                setHostnameVerificationMethod.invoke(pgOptions, "HTTPS")
+            }
+
+            logger.info(
+                "Created PgConnectOptions with verified SSL mode '{}' for PostgreSQL connection",
+                configuredSslMode,
+            )
 
             return pgOptions as SqlConnectOptions
         } catch (e: Exception) {
-            logger.warn("Failed to create PgConnectOptions with SSL mode '{}': {}", sslMode, e.message)
-            logger.debug("SSL mode configuration error details", e)
-            return baseOptions
+            throw IllegalStateException(
+                "Failed to configure PostgreSQL SSL mode '$configuredSslMode'; " +
+                    "refusing to continue without the requested TLS settings",
+                e,
+            )
         }
+    }
+
+    private fun applyTrustCertificate(
+        pgOptions: Any,
+        pgConnectOptionsClass: Class<*>,
+        certificatePath: String,
+    ) {
+        val pemTrustOptionsClass = Class.forName(PEM_TRUST_OPTIONS_CLASS)
+        val pemTrustOptions = pemTrustOptionsClass.getDeclaredConstructor().newInstance()
+        pemTrustOptionsClass
+            .getMethod("addCertPath", String::class.java)
+            .invoke(pemTrustOptions, certificatePath)
+        pgConnectOptionsClass
+            .getMethod("setPemTrustOptions", pemTrustOptionsClass)
+            .invoke(pgOptions, pemTrustOptions)
     }
 
     /**
@@ -122,31 +178,23 @@ class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
         )
 
         for ((methodName, valueProvider) in setters) {
-            try {
-                val value = valueProvider()
-                if (value != null) {
-                    val paramType = when (value) {
-                        is Int -> Int::class.java
-                        is Boolean -> Boolean::class.java
-                        else -> String::class.java
-                    }
-                    val method = targetClass.getMethod(methodName, paramType)
-                    method.invoke(target, value)
+            val value = valueProvider()
+            if (value != null) {
+                val paramType = when (value) {
+                    is Int -> Int::class.java
+                    is Boolean -> Boolean::class.java
+                    else -> String::class.java
                 }
-            } catch (e: Exception) {
-                logger.trace("Could not copy option via {}: {}", methodName, e.message)
+                val method = targetClass.getMethod(methodName, paramType)
+                method.invoke(target, value)
             }
         }
 
         // Properties 복사
-        try {
-            val properties = source.properties
-            if (properties != null && properties.isNotEmpty()) {
-                val setPropertiesMethod = targetClass.getMethod("setProperties", Map::class.java)
-                setPropertiesMethod.invoke(target, properties)
-            }
-        } catch (e: Exception) {
-            logger.trace("Could not copy properties: {}", e.message)
+        val properties = source.properties
+        if (properties != null && properties.isNotEmpty()) {
+            val setPropertiesMethod = targetClass.getMethod("setProperties", Map::class.java)
+            setPropertiesMethod.invoke(target, properties)
         }
     }
 }
