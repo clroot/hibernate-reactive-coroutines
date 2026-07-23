@@ -68,7 +68,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     // ============================================
 
     suspend fun findById(id: ID): T? = sessionProvider.read { session ->
-        session.find(entityClass, id)
+        session.find(entityClass, RepositoryIdAdapter.unwrap(id))
     }
 
     fun findAll(): Flow<T> = flow {
@@ -79,7 +79,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     }
 
     fun findAllById(ids: Iterable<ID>): Flow<T> = flow {
-        val idList = ids.toList()
+        val idList = ids.map(RepositoryIdAdapter::unwrap)
         if (idList.isEmpty()) return@flow
 
         val list = sessionProvider.read { session ->
@@ -102,7 +102,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     suspend fun existsById(id: ID): Boolean {
         val count = sessionProvider.read { session ->
             session.createQuery("SELECT COUNT(e) FROM $entityName e WHERE e.id = :id", Long::class.javaObjectType)
-                .setParameter("id", id)
+                .setParameter("id", RepositoryIdAdapter.unwrap(id))
                 .singleResult
         }
         return (count ?: 0L) > 0
@@ -120,7 +120,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     suspend fun deleteById(id: ID) {
         sessionProvider.write<Unit> { session ->
             session.createMutationQuery("DELETE FROM $entityName e WHERE e.id = :id")
-                .setParameter("id", id)
+                .setParameter("id", RepositoryIdAdapter.unwrap(id))
                 .executeUpdate()
                 .replaceWith(Unit)
         }
@@ -134,7 +134,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     }
 
     suspend fun deleteAllById(ids: Iterable<ID>) {
-        val idList = ids.toList()
+        val idList = ids.map(RepositoryIdAdapter::unwrap)
         if (idList.isEmpty()) return
 
         sessionProvider.write<Unit> { session ->

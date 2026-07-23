@@ -91,6 +91,9 @@ on both the argument and the returned value. Existing or detached entities are m
 the instance returned by `save` for subsequent work. Entities with assigned identifiers can
 implement Spring Data's `Persistable` to declare their new-state explicitly.
 
+Repository ID methods also accept Kotlin `@JvmInline` value classes and unwrap them to the
+underlying Hibernate identifier type.
+
 ### Query Method Derivation
 
 Queries are automatically generated based on method names.
