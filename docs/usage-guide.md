@@ -261,6 +261,8 @@ class OrderService(
 
 `transactional` and `readOnly` preserve caller coroutine context elements such as MDC/tracing
 adapters and Reactor context while moving database work onto the required Vert.x dispatcher.
+For a newly opened `readOnly` session, Hibernate dirty checking and automatic flush are disabled,
+so changes made to loaded entities are not written implicitly.
 
 ## Lazy Loading
 

@@ -6,6 +6,7 @@ import io.smallrye.mutiny.coroutines.awaitSuspending
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.*
+import org.hibernate.FlushMode
 import org.hibernate.reactive.mutiny.Mutiny
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.INFINITE
@@ -69,6 +70,7 @@ class ReactiveTransactionExecutor(
      * 읽기 전용 세션을 시작합니다.
      *
      * 블록 내 모든 Port 호출이 동일한 세션을 공유하며,
+     * 새 세션은 기본 read-only 및 수동 flush 모드로 설정되어 로드된 엔티티의 변경이 자동 반영되지 않습니다.
      * 이미 세션 컨텍스트 안에 있으면 기존 세션을 재사용합니다 (중첩 안전).
      *
      * @param timeout 세션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
@@ -79,7 +81,14 @@ class ReactiveTransactionExecutor(
     ): T = executeInSession(
         mode = TransactionMode.READ_ONLY,
         timeout = timeout,
-        sessionStarter = { callback -> sessionFactory.withSession(callback) },
+        sessionStarter = { callback ->
+            sessionFactory.withSession { session ->
+                session
+                    .setDefaultReadOnly(true)
+                    .setFlushMode(FlushMode.MANUAL)
+                callback.apply(session)
+            }
+        },
         block = block,
     )
 
