@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
+import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
@@ -96,10 +97,19 @@ internal class QueryOperations<T : Any>(
             )
         }
 
+        val clearAutomatically = prepared.method
+            .getAnnotation(Modifying::class.java)
+            ?.clearAutomatically == true
+
         return sessionProvider.write { session ->
             val query = session.createMutationQuery(prepared.hql)
             bindAnnotatedParameters(query, prepared, args)
-            query.executeUpdate()
+            query.executeUpdate().map { affectedRows ->
+                if (clearAutomatically) {
+                    session.clear()
+                }
+                affectedRows
+            }
         }
     }
 

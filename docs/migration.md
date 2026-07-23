@@ -21,7 +21,7 @@ A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
 | Comparison operators                 |     ✅     | GreaterThan, LessThan, Between, etc.                     |
 | `@Query` (JPQL)                      |     ✅     | Named/Positional Parameters                              |
 | `@Query` (Native)                    |     ✅     | Read-only; Page requires `countQuery`                    |
-| `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE                                       |
+| `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE; `Int`/`Unit`, optional auto-clear    |
 | Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
 
 HQL/JPQL `@Query` methods returning `Page` derive COUNT automatically only for simple entity

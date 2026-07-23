@@ -137,11 +137,26 @@ internal class QueryMethodParser(
 
     private fun determineAnnotatedReturnType(method: Method, isModifying: Boolean): QueryReturnType {
         return when {
-            isModifying -> QueryReturnType.MODIFYING
+            isModifying -> determineModifyingReturnType(method)
             isPageReturnType(method) -> QueryReturnType.PAGE
             isSliceReturnType(method) -> QueryReturnType.SLICE
             isListReturnType(method) -> QueryReturnType.LIST
             else -> QueryReturnType.SINGLE
+        }
+    }
+
+    private fun determineModifyingReturnType(method: Method): QueryReturnType {
+        val actualReturnType = extractActualReturnType(method)
+        return when {
+            actualReturnType != null &&
+                    isAssignableToRawType(actualReturnType, Int::class.javaObjectType) -> QueryReturnType.MODIFYING
+
+            actualReturnType != null &&
+                    isAssignableToRawType(actualReturnType, Unit::class.java) -> QueryReturnType.VOID
+
+            else -> throw IllegalStateException(
+                "@Modifying method '${method.name}' must return Int or Unit",
+            )
         }
     }
 

@@ -78,6 +78,14 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
     @Query("UPDATE TestEntity e SET e.value = :newValue WHERE e.value = :oldValue")
     suspend fun updateValue(@Param("oldValue") oldValue: Int, @Param("newValue") newValue: Int): Int
 
+    @Modifying
+    @Query("UPDATE TestEntity e SET e.value = :newValue WHERE e.value = :oldValue")
+    suspend fun updateValueWithoutCount(@Param("oldValue") oldValue: Int, @Param("newValue") newValue: Int)
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE TestEntity e SET e.name = :name WHERE e.id = :id")
+    suspend fun updateNameAndClear(@Param("id") id: Long, @Param("name") name: String): Int
+
     // @Modifying DELETE
     @Modifying
     @Query("DELETE FROM TestEntity e WHERE e.value = :value")

@@ -131,6 +131,33 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
                     }
                     updated shouldHaveSize 2
                 }
+
+                it("Unit 반환 메서드는 영향받은 행 수를 노출하지 않고 정상 완료한다") {
+                    val uniqueValue = valueCounter.incrementAndGet()
+                    val newValue = uniqueValue + 50
+
+                    tx.transactional {
+                        testEntityRepository.save(TestEntity(name = "unit_update", value = uniqueValue))
+                        testEntityRepository.updateValueWithoutCount(uniqueValue, newValue)
+                    }
+
+                    val updated = tx.readOnly {
+                        testEntityRepository.findByValueWithQuery(newValue)
+                    }
+                    updated shouldHaveSize 1
+                }
+
+                it("clearAutomatically는 벌크 업데이트 뒤 같은 트랜잭션의 stale 엔티티를 제거한다") {
+                    tx.transactional {
+                        val saved = testEntityRepository.save(TestEntity(name = "before_clear", value = 1))
+                        val id = saved.id!!
+                        testEntityRepository.findById(id)!!.name shouldBe "before_clear"
+
+                        testEntityRepository.updateNameAndClear(id, "after_clear") shouldBe 1
+
+                        testEntityRepository.findById(id)!!.name shouldBe "after_clear"
+                    }
+                }
             }
 
             context("@Modifying DELETE") {
