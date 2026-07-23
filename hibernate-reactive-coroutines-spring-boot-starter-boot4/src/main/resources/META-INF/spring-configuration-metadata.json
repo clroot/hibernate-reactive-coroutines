@@ -200,9 +200,15 @@
     {
       "name": "spring.jpa.properties.hibernate.reactive.ssl-mode",
       "type": "java.lang.String",
-      "description": "Vert.x PG Client SSL mode. For AWS RDS, use 'require'.",
+      "description": "Vert.x PG Client SSL mode. TLS configuration failures stop startup instead of falling back to plaintext.",
       "defaultValue": "disable",
       "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveProperties"
+    },
+    {
+      "name": "spring.jpa.properties.hibernate.reactive.trust-certificate",
+      "type": "java.lang.String",
+      "description": "Path to a PEM CA certificate. Required for verify-ca and verify-full; optional for require.",
+      "sourceType": "io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration"
     },
     {
       "name": "spring.jpa.properties.hibernate.reactive.connect-timeout",
@@ -249,9 +255,9 @@
         {"value": "disable", "description": "No SSL"},
         {"value": "allow", "description": "Use SSL if server requires it"},
         {"value": "prefer", "description": "Try SSL first, fall back to non-encrypted"},
-        {"value": "require", "description": "SSL required (no certificate verification)"},
-        {"value": "verify-ca", "description": "SSL + CA certificate verification"},
-        {"value": "verify-full", "description": "SSL + CA + hostname verification"}
+        {"value": "require", "description": "SSL required with default trust store validation"},
+        {"value": "verify-ca", "description": "SSL + configured CA certificate verification"},
+        {"value": "verify-full", "description": "SSL + configured CA + hostname verification"}
       ]
     },
     {

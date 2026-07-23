@@ -37,14 +37,15 @@ import org.springframework.core.type.filter.AnnotationTypeFilter
  * - `spring.jpa.show-sql`, `spring.jpa.properties.hibernate.format_sql`
  *
  * Hibernate Reactive 전용 프로퍼티:
- * - `kotlin.hibernate.reactive.pool-size`: 커넥션 풀 사이즈 (기본값: 10)
- * - `kotlin.hibernate.reactive.ssl-mode`: SSL 모드 (기본값: disable)
- * - `kotlin.hibernate.reactive.connect-timeout`: 커넥션 요청 타임아웃 (밀리초)
- * - `kotlin.hibernate.reactive.idle-timeout`: 유휴 커넥션 타임아웃 (밀리초)
- * - `kotlin.hibernate.reactive.max-wait-queue-size`: 대기 큐 최대 크기
+ * - `spring.jpa.properties.hibernate.reactive.pool-size`: 커넥션 풀 사이즈 (기본값: 10)
+ * - `spring.jpa.properties.hibernate.reactive.ssl-mode`: SSL 모드 (기본값: disable)
+ * - `spring.jpa.properties.hibernate.reactive.trust-certificate`: PEM CA 인증서 경로
+ * - `spring.jpa.properties.hibernate.reactive.connect-timeout`: 커넥션 요청 타임아웃 (밀리초)
+ * - `spring.jpa.properties.hibernate.reactive.idle-timeout`: 유휴 커넥션 타임아웃 (밀리초)
+ * - `spring.jpa.properties.hibernate.reactive.max-wait-queue-size`: 대기 큐 최대 크기
  *
  * SSL 모드는 다음 우선순위로 적용됩니다:
- * 1. `kotlin.hibernate.reactive.ssl-mode` 프로퍼티 (disable이 아닌 경우)
+ * 1. `spring.jpa.properties.hibernate.reactive.ssl-mode` 프로퍼티 (disable이 아닌 경우)
  * 2. JDBC URL의 `sslmode` 파라미터 (예: `?sslmode=require`)
  */
 @AutoConfiguration
@@ -190,6 +191,12 @@ class HibernateReactiveAutoConfiguration(
                 SslAwareSqlClientPoolConfiguration::class.java.name
             )
             configuration.setProperty("hibernate.vertx.pool.ssl.mode", sslMode)
+            applicationContext.environment
+                .getProperty("spring.jpa.properties.hibernate.reactive.trust-certificate")
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    configuration.setProperty("hibernate.vertx.pool.ssl.trust-certificate", it)
+                }
         }
 
         val serviceRegistry =
@@ -204,7 +211,7 @@ class HibernateReactiveAutoConfiguration(
      * SSL 모드를 결정합니다.
      *
      * 우선순위:
-     * 1. `kotlin.hibernate.reactive.ssl-mode` 프로퍼티 (disable이 아닌 경우)
+     * 1. `spring.jpa.properties.hibernate.reactive.ssl-mode` 프로퍼티 (disable이 아닌 경우)
      * 2. JDBC URL의 `sslmode` 파라미터
      *
      * @return SSL 모드 문자열 또는 null

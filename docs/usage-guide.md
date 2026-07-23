@@ -22,7 +22,8 @@ spring:
         format_sql: true
         reactive:
           pool-size: 10
-          ssl-mode: disable
+          ssl-mode: verify-full
+          trust-certificate: /run/secrets/postgres-ca.pem
 ```
 
 ### Connection Pool
@@ -41,9 +42,14 @@ spring:
 | `disable`     | No SSL (default)                         |
 | `allow`       | Use SSL if server requires it            |
 | `prefer`      | Try SSL, fall back to unencrypted        |
-| `require`     | SSL required (no certificate validation) |
-| `verify-ca`   | SSL + CA certificate validation          |
-| `verify-full` | SSL + CA + hostname validation           |
+| `require`     | SSL required + default trust store validation |
+| `verify-ca`   | SSL + configured CA certificate validation    |
+| `verify-full` | SSL + configured CA + hostname validation     |
+
+`verify-ca` and `verify-full` require `trust-certificate`, which must point to a PEM CA certificate.
+`require` uses the JVM default trust store when no custom certificate is configured. Invalid modes,
+missing required certificates, unavailable PostgreSQL client classes, and TLS reflection failures
+stop startup instead of silently falling back to plaintext.
 
 ### Repository Scanning
 

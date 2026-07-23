@@ -20,7 +20,8 @@ spring:
         format_sql: true
         reactive:
           pool-size: 10
-          ssl-mode: disable
+          ssl-mode: verify-full
+          trust-certificate: /run/secrets/postgres-ca.pem
 ```
 
 ### 커넥션 풀
@@ -39,9 +40,14 @@ spring:
 | `disable`     | SSL 사용 안함 (기본값)      |
 | `allow`       | 서버가 요구하면 SSL 사용    |
 | `prefer`      | SSL 시도, 실패 시 비암호화  |
-| `require`     | SSL 필수 (인증서 검증 안함) |
-| `verify-ca`   | SSL + CA 인증서 검증        |
-| `verify-full` | SSL + CA + 호스트명 검증    |
+| `require`     | SSL 필수 + 기본 trust store 인증서 검증 |
+| `verify-ca`   | SSL + 지정한 CA 인증서 검증             |
+| `verify-full` | SSL + 지정한 CA + 호스트명 검증         |
+
+`verify-ca`와 `verify-full`에서는 PEM CA 인증서 경로인 `trust-certificate`를 반드시 지정해야
+합니다. `require`에서 별도 인증서를 지정하지 않으면 JVM 기본 trust store를 사용합니다.
+잘못된 모드, 필수 인증서 누락, PostgreSQL 클라이언트 클래스 부재, TLS 리플렉션 실패가 있으면
+평문 연결로 조용히 전환하지 않고 애플리케이션 시작을 중단합니다.
 
 ### Repository 스캔
 

@@ -37,11 +37,11 @@ data class HibernateReactiveProperties(
      * - `disable`: SSL 사용 안함
      * - `allow`: 서버가 요구하면 SSL 사용
      * - `prefer`: SSL 시도, 실패 시 비암호화
-     * - `require`: SSL 필수 (인증서 검증 안함)
-     * - `verify-ca`: SSL + CA 인증서 검증
-     * - `verify-full`: SSL + CA + 호스트명 검증
+     * - `require`: SSL 필수 (기본 trust store로 인증서 검증)
+     * - `verify-ca`: SSL + 지정한 CA 인증서 검증
+     * - `verify-full`: SSL + 지정한 CA + 호스트명 검증
      *
-     * AWS RDS 연결 시 `require` 권장
+     * 프로덕션에서는 CA 인증서를 지정한 `verify-full` 권장
      */
     val sslMode: String = "disable",
 
