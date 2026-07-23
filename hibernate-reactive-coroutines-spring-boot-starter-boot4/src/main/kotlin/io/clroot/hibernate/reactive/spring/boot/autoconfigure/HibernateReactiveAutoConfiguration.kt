@@ -95,7 +95,7 @@ class HibernateReactiveAutoConfiguration(
     @Bean
     @ConditionalOnMissingBean(name = ["hibernateSessionFactory"])
     fun hibernateSessionFactory(): org.hibernate.SessionFactory {
-        val reactiveUrl = jdbcUrl.replace("jdbc:", "")
+        val reactiveUrl = ReactiveConnectionUrl.fromJdbc(jdbcUrl)
 
         val configuration =
             Configuration().apply {
