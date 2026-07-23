@@ -89,6 +89,9 @@ interface UserRepository : CoroutineCrudRepository<User, Long>
 인스턴스를 사용하세요. 할당형 ID를 쓰는 엔티티는 Spring Data의 `Persistable`을 구현해
 신규 상태를 명시할 수 있습니다.
 
+리포지토리 ID 메서드는 Kotlin `@JvmInline` value class도 지원하며 Hibernate에 전달할 때
+내부 ID 타입으로 변환합니다.
+
 ### 쿼리 메서드 자동 생성
 
 메서드 이름 기반으로 쿼리가 자동 생성됩니다.
