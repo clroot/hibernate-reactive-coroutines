@@ -10,10 +10,18 @@ plugins {
 val releaseVersion = providers.gradleProperty("releaseVersion")
 val releaseTag = providers.gradleProperty("releaseTag")
 val effectiveVersion = releaseVersion.orElse("1.0.0-SNAPSHOT")
+val signingKey = providers.gradleProperty("signingKey")
+    .orElse(providers.environmentVariable("GPG_SIGNING_KEY"))
+val signingPassword = providers.gradleProperty("signingPassword")
+    .orElse(providers.environmentVariable("GPG_SIGNING_PASSWORD"))
+val hasSigningKey = signingKey.orNull?.isNotBlank() == true
+val hasSigningPassword = signingPassword.orNull?.isNotBlank() == true
+val hasSigningCredentials = hasSigningKey && hasSigningPassword
 val releaseVersionPattern = Regex("""^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z][0-9A-Za-z.-]*)?$""")
 val centralReleaseTaskNames = setOf(
     "publishAllPublicationsToCentralPortal",
     "publishAllPublicationsToNmcpRepository",
+    "publishMavenPublicationToNmcpRepository",
     "nmcpPublishAllPublicationsToCentralPortal",
     "nmcpPublishAggregationToCentralPortal",
     "publishAggregationToCentralPortal",
@@ -47,6 +55,32 @@ val validateReleaseVersion by tasks.registering {
     }
 }
 
+val validateReleaseSigning by tasks.registering {
+    group = "verification"
+    description = "Validates that a Central release has complete in-memory PGP credentials."
+    inputs.property("hasSigningKey", hasSigningKey)
+    inputs.property("hasSigningPassword", hasSigningPassword)
+
+    doLast(Action<Task> {
+        val taskHasSigningKey = inputs.properties["hasSigningKey"] as Boolean
+        val taskHasSigningPassword = inputs.properties["hasSigningPassword"] as Boolean
+        val missingCredentials = buildList {
+            if (!taskHasSigningKey) {
+                add("signingKey or GPG_SIGNING_KEY")
+            }
+            if (!taskHasSigningPassword) {
+                add("signingPassword or GPG_SIGNING_PASSWORD")
+            }
+        }
+        if (missingCredentials.isNotEmpty()) {
+            throw GradleException(
+                "Central release signing credentials are incomplete. Missing: " +
+                    missingCredentials.joinToString() + ".",
+            )
+        }
+    })
+}
+
 allprojects {
     apply(plugin = "maven-publish")
 
@@ -58,7 +92,10 @@ allprojects {
     }
 
     tasks.matching { it.name in centralReleaseTaskNames }.configureEach {
-        dependsOn(rootProject.tasks.named("validateReleaseVersion"))
+        dependsOn(
+            rootProject.tasks.named("validateReleaseVersion"),
+            rootProject.tasks.named("validateReleaseSigning"),
+        )
     }
 }
 
@@ -154,20 +191,16 @@ subprojects {
     }
 
     configure<SigningExtension> {
-        val signingKey = findProperty("signingKey") as String? ?: System.getenv("GPG_SIGNING_KEY")
-        val signingPassword = findProperty("signingPassword") as String? ?: System.getenv("GPG_SIGNING_PASSWORD")
-
-        if (signingKey != null && signingPassword != null) {
-            useInMemoryPgpKeys(signingKey, signingPassword)
+        if (hasSigningCredentials) {
+            useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
         }
 
         sign(extensions.getByType<PublishingExtension>().publications["maven"])
     }
 
     tasks.withType<Sign>().configureEach {
-        onlyIf {
-            val signingKey = findProperty("signingKey") as String? ?: System.getenv("GPG_SIGNING_KEY")
-            signingKey != null
+        onlyIf("complete in-memory PGP credentials are configured") {
+            hasSigningCredentials
         }
     }
 }
