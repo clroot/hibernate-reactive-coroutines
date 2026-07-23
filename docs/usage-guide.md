@@ -51,6 +51,10 @@ spring:
 missing required certificates, unavailable PostgreSQL client classes, and TLS reflection failures
 stop startup instead of silently falling back to plaintext.
 
+Legacy JDBC URL parameters `sslmode` and `currentSchema` are still recognized. After they are
+translated to Hibernate settings, they are removed from the Reactive connection URL so PostgreSQL
+does not receive them as startup parameters. Other URL parameters are preserved.
+
 ### Repository Scanning
 
 ```kotlin

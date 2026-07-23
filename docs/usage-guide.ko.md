@@ -49,6 +49,10 @@ spring:
 잘못된 모드, 필수 인증서 누락, PostgreSQL 클라이언트 클래스 부재, TLS 리플렉션 실패가 있으면
 평문 연결로 조용히 전환하지 않고 애플리케이션 시작을 중단합니다.
 
+기존 JDBC URL의 `sslmode`와 `currentSchema` 파라미터도 계속 인식합니다. 두 값을 Hibernate
+설정으로 옮긴 뒤 Reactive 연결 URL에서는 제거하므로 PostgreSQL startup 파라미터로 잘못
+전달되지 않습니다. 그 밖의 URL 파라미터는 그대로 유지합니다.
+
 ### Repository 스캔
 
 ```kotlin
