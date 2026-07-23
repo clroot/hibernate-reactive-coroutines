@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
+import org.hibernate.FlushMode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
@@ -175,6 +176,36 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                             }
                         }
                     }
+                }
+
+                it("dirty checking과 auto-flush를 비활성화한다") {
+                    val entity = TestEntity(name = "readOnlyDirtyChecking", value = 100)
+                    val saved = tx.transactional {
+                        sessions.write { session ->
+                            session.persist(entity).replaceWith(entity)
+                        }
+                    }
+
+                    tx.readOnly {
+                        sessions.read { session ->
+                            session.isDefaultReadOnly shouldBe true
+                            session.flushMode shouldBe FlushMode.MANUAL
+
+                            session.find(TestEntity::class.java, saved.id)
+                                .invoke { found -> found.value = 999 }
+                                .chain { _: TestEntity ->
+                                    session.createQuery("SELECT e FROM TestEntity e", TestEntity::class.java)
+                                        .resultList
+                                }
+                                .replaceWith(Unit)
+                        }
+                    }
+
+                    val found = sessions.read { session ->
+                        session.find(TestEntity::class.java, saved.id)
+                    }
+                    found.shouldNotBeNull()
+                    found.value shouldBe 100
                 }
             }
         }

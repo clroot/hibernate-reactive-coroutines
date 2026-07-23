@@ -258,6 +258,8 @@ class OrderService(
 
 `transactional`과 `readOnly`는 DB 작업을 필수 Vert.x dispatcher로 옮기면서도 MDC/트레이싱
 어댑터와 Reactor context 같은 호출자 코루틴 컨텍스트 요소를 유지합니다.
+새로 여는 `readOnly` 세션에서는 Hibernate의 dirty checking과 자동 flush를 비활성화하므로,
+조회한 엔티티의 변경이 암묵적으로 DB에 반영되지 않습니다.
 
 ## Lazy Loading
 
