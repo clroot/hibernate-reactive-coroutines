@@ -84,6 +84,10 @@ interface UserRepository : CoroutineCrudRepository<User, Long>
 | `deleteAllById(ids)` | `Unit`    | 여러 ID로 삭제   |
 | `deleteAll()`        | `Unit`    | 전체 삭제        |
 
+`save`는 신규 엔티티를 전달받은 동일 인스턴스로 persist하므로 생성된 ID가 인자와 반환값에
+모두 반영됩니다. 기존 또는 detached 엔티티는 merge하므로 이후 작업에서는 `save`가 반환한
+인스턴스를 사용하세요.
+
 ### 쿼리 메서드 자동 생성
 
 메서드 이름 기반으로 쿼리가 자동 생성됩니다.

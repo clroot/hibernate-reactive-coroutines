@@ -31,8 +31,8 @@ internal class CrudOperations<T : Any, ID : Any>(
     // ============================================
 
     suspend fun save(entity: T): T {
+        val isNew = AuditMetadata.isNew(entity)
         if (auditingHandler != null) {
-            val isNew = AuditMetadata.isNew(entity)
             if (isNew) {
                 auditingHandler.markCreated(entity)
             } else {
@@ -41,7 +41,11 @@ internal class CrudOperations<T : Any, ID : Any>(
         }
 
         return sessionProvider.write { session ->
-            session.merge(entity)
+            if (isNew) {
+                session.persist(entity).replaceWith(entity)
+            } else {
+                session.merge(entity)
+            }
         }
     }
 
