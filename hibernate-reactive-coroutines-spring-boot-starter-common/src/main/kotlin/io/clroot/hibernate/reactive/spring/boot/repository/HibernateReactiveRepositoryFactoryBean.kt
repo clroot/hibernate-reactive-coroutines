@@ -20,18 +20,18 @@ import java.lang.reflect.Proxy
  * @param T Repository 인터페이스 타입
  * @param repositoryInterface Repository 인터페이스 클래스
  */
-class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<*, *>>(
+public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<*, *>>(
     private val repositoryInterface: Class<T>,
 ) : FactoryBean<T> {
 
     @Autowired
-    lateinit var sessionProvider: TransactionalAwareSessionProvider
+    public lateinit var sessionProvider: TransactionalAwareSessionProvider
 
     @Autowired
-    lateinit var transactionExecutor: ReactiveTransactionExecutor
+    public lateinit var transactionExecutor: ReactiveTransactionExecutor
 
     @Autowired(required = false)
-    var auditingHandler: ReactiveAuditingHandler<*>? = null
+    public var auditingHandler: ReactiveAuditingHandler<*>? = null
 
     @Suppress("UNCHECKED_CAST")
     override fun getObject(): T {

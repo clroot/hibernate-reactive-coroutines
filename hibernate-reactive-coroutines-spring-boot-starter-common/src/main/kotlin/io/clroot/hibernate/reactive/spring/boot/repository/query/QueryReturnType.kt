@@ -3,7 +3,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
 /**
  * 쿼리 메서드의 반환 타입.
  */
-enum class QueryReturnType {
+public enum class QueryReturnType {
     /** 단일 엔티티 (nullable) */
     SINGLE,
 

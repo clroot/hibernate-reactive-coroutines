@@ -1,0 +1,259 @@
+public final class io/clroot/hibernate/reactive/spring/boot/auditing/AuditingEntityListener {
+	public fun <init> ()V
+	public final fun onPrePersist (Ljava/lang/Object;)V
+	public final fun onPreUpdate (Ljava/lang/Object;)V
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler {
+	public fun <init> (Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditorAware;)V
+	public final fun hasAuditorAware ()Z
+	public final fun markCreated (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun markModified (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class io/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditorAware {
+	public abstract fun getCurrentAuditor (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/AuditingAutoConfiguration {
+	public fun <init> ()V
+	public fun reactiveAuditingHandler (Lorg/springframework/beans/factory/ObjectProvider;)Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler;
+}
+
+public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveAutoConfiguration {
+	public fun <init> (Lorg/springframework/context/ApplicationContext;Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZZZLjava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ZZZLjava/lang/Integer;ZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZZ)V
+	public fun hibernateReactiveTransactionManager (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/spring/boot/transaction/HibernateReactiveTransactionManager;
+	public fun hibernateSessionFactory ()Lorg/hibernate/SessionFactory;
+	public fun reactiveSessionFactory (Lorg/hibernate/SessionFactory;)Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;
+	public fun reactiveSessionProvider (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/ReactiveSessionProvider;
+	public fun reactiveTransactionExecutor (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
+	public fun transactionalAwareSessionProvider (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties {
+	public fun <init> ()V
+	public fun <init> (ILjava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (ILjava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (ILjava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties;ILjava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConnectTimeout ()Ljava/lang/Integer;
+	public final fun getIdleTimeout ()Ljava/lang/Integer;
+	public final fun getMaxWaitQueueSize ()Ljava/lang/Integer;
+	public final fun getPoolSize ()I
+	public final fun getSslMode ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveRepositoryAutoConfiguration {
+	public static final field Companion Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveRepositoryAutoConfiguration$Companion;
+	public fun <init> ()V
+	public static final fun hibernateReactiveRepositoryRegistrar ()Lio/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoryRegistrar;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveRepositoryAutoConfiguration$Companion {
+	public final fun hibernateReactiveRepositoryRegistrar ()Lio/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoryRegistrar;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/pool/SslAwareSqlClientPoolConfiguration : org/hibernate/reactive/pool/impl/DefaultSqlClientPoolConfiguration {
+	public static final field Companion Lio/clroot/hibernate/reactive/spring/boot/pool/SslAwareSqlClientPoolConfiguration$Companion;
+	public fun <init> ()V
+	public fun configure (Ljava/util/Map;)V
+	public fun connectOptions (Ljava/net/URI;)Lio/vertx/sqlclient/SqlConnectOptions;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/pool/SslAwareSqlClientPoolConfiguration$Companion {
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/EnableHibernateReactiveRepositories : java/lang/annotation/Annotation {
+	public abstract fun basePackageClasses ()[Ljava/lang/Class;
+	public abstract fun basePackages ()[Ljava/lang/String;
+	public abstract fun value ()[Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoriesRegistrarSelector : org/springframework/context/annotation/ImportBeanDefinitionRegistrar {
+	public fun <init> ()V
+	public fun registerBeanDefinitions (Lorg/springframework/core/type/AnnotationMetadata;Lorg/springframework/beans/factory/support/BeanDefinitionRegistry;)V
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoryFactoryBean : org/springframework/beans/factory/FactoryBean {
+	public field sessionProvider Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;
+	public field transactionExecutor Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
+	public fun <init> (Ljava/lang/Class;)V
+	public final fun getAuditingHandler ()Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler;
+	public synthetic fun getObject ()Ljava/lang/Object;
+	public fun getObject ()Lorg/springframework/data/repository/kotlin/CoroutineCrudRepository;
+	public fun getObjectType ()Ljava/lang/Class;
+	public final fun getSessionProvider ()Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;
+	public final fun getTransactionExecutor ()Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
+	public fun isSingleton ()Z
+	public final fun setAuditingHandler (Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler;)V
+	public final fun setSessionProvider (Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;)V
+	public final fun setTransactionExecutor (Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;)V
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoryRegistrar : org/springframework/beans/factory/support/BeanDefinitionRegistryPostProcessor, org/springframework/context/ApplicationContextAware {
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun postProcessBeanDefinitionRegistry (Lorg/springframework/beans/factory/support/BeanDefinitionRegistry;)V
+	public fun postProcessBeanFactory (Lorg/springframework/beans/factory/config/ConfigurableListableBeanFactory;)V
+	public fun setApplicationContext (Lorg/springframework/context/ApplicationContext;)V
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/SimpleHibernateReactiveRepository : java/lang/reflect/InvocationHandler {
+	public static final field Companion Lio/clroot/hibernate/reactive/spring/boot/repository/SimpleHibernateReactiveRepository$Companion;
+	public fun <init> (Ljava/lang/Class;Ljava/lang/Class;Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;Ljava/util/Map;Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler;)V
+	public synthetic fun <init> (Ljava/lang/Class;Ljava/lang/Class;Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;Ljava/util/Map;Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun invoke (Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/SimpleHibernateReactiveRepository$Companion {
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Modifying : java/lang/annotation/Annotation {
+	public abstract fun clearAutomatically ()Z
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Param : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
+	public static final field Companion Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Companion;
+	public abstract fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Companion {
+	public final fun forType (Lorg/springframework/data/repository/query/parser/Part$Type;)Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Containing : io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Containing;
+	public fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Direct : io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Direct;
+	public fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$EndingWith : io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$EndingWith;
+	public fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$StartingWith : io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$StartingWith;
+	public fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle : java/lang/Enum {
+	public static final field NAMED Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public static final field NONE Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public static final field POSITIONAL Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public static fun values ()[Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/PreparedQueryMethod {
+	public fun <init> (Ljava/lang/reflect/Method;Lorg/springframework/data/repository/query/parser/PartTree;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;ZZZLio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/reflect/Method;Lorg/springframework/data/repository/query/parser/PartTree;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;ZZZLio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/reflect/Method;
+	public final fun component10 ()Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public final fun component11 ()Ljava/util/List;
+	public final fun component2 ()Lorg/springframework/data/repository/query/parser/PartTree;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public final fun component7 ()Z
+	public final fun component8 ()Z
+	public final fun component9 ()Z
+	public final fun copy (Ljava/lang/reflect/Method;Lorg/springframework/data/repository/query/parser/PartTree;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;ZZZLio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;Ljava/util/List;)Lio/clroot/hibernate/reactive/spring/boot/repository/query/PreparedQueryMethod;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/spring/boot/repository/query/PreparedQueryMethod;Ljava/lang/reflect/Method;Lorg/springframework/data/repository/query/parser/PartTree;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;ZZZLio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/spring/boot/repository/query/PreparedQueryMethod;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCountHql ()Ljava/lang/String;
+	public final fun getHql ()Ljava/lang/String;
+	public final fun getMethod ()Ljava/lang/reflect/Method;
+	public final fun getParameterBinders ()Ljava/util/List;
+	public final fun getParameterNames ()Ljava/util/List;
+	public final fun getParameterStyle ()Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterStyle;
+	public final fun getPartTree ()Lorg/springframework/data/repository/query/parser/PartTree;
+	public final fun getReturnType ()Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public fun hashCode ()I
+	public final fun isAnnotatedQuery ()Z
+	public final fun isModifying ()Z
+	public final fun isNativeQuery ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Query : java/lang/annotation/Annotation {
+	public abstract fun countQuery ()Ljava/lang/String;
+	public abstract fun nativeQuery ()Z
+	public abstract fun value ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType : java/lang/Enum {
+	public static final field BOOLEAN Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field LIST Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field LONG Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field MODIFYING Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field PAGE Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field SINGLE Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field SLICE Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static final field VOID Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+	public static fun values ()[Lio/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/transaction/HibernateReactiveTransactionManager : org/springframework/transaction/reactive/AbstractReactiveTransactionManager, org/springframework/beans/factory/InitializingBean {
+	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public fun afterPropertiesSet ()V
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/transaction/MutinySessionHolder : org/springframework/transaction/support/ResourceHolderSupport {
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun clear ()V
+	public final fun getDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public final fun getSession ()Lorg/hibernate/reactive/mutiny/Mutiny$Session;
+	public final fun getVertxContext ()Lio/vertx/core/Context;
+	public final fun hasSession ()Z
+	public final fun isTransactionActive ()Z
+	public fun released ()V
+	public final fun setSession (Lorg/hibernate/reactive/mutiny/Mutiny$Session;)V
+	public final fun setTransactionActive (Z)V
+	public final fun setVertxContext (Lio/vertx/core/Context;)V
+	public final fun toReactiveSessionContext ()Lio/clroot/hibernate/reactive/ReactiveSessionContext;
+}
+
+public class io/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider {
+	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public fun fetch (Ljava/lang/Object;Lkotlin/reflect/KProperty1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun fetchAll (Ljava/lang/Object;[Lkotlin/reflect/KProperty1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun fetchFromDetached (Ljava/lang/Object;Ljava/lang/Class;Lkotlin/reflect/KProperty1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun read (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+

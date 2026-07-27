@@ -177,6 +177,18 @@ subprojects {
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
 
+    configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+        explicitApi()
+
+        @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
+        extensions.configure<org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationExtension> {
+            enabled.set(true)
+        }
+    }
+    tasks.named("check") {
+        dependsOn("checkLegacyAbi")
+    }
+
     if (name in starterProjectNames) {
         configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
             sourceSets.named("main") {

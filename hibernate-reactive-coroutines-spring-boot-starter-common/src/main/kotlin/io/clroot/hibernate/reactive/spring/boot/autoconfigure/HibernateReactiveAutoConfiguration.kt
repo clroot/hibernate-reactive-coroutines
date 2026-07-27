@@ -51,7 +51,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter
 @AutoConfiguration
 @ConditionalOnClass(Mutiny.SessionFactory::class)
 @EnableConfigurationProperties(HibernateReactiveProperties::class)
-class HibernateReactiveAutoConfiguration(
+public class HibernateReactiveAutoConfiguration(
     private val applicationContext: ApplicationContext,
     private val properties: HibernateReactiveProperties,
     // === 데이터소스 설정 ===
@@ -92,7 +92,7 @@ class HibernateReactiveAutoConfiguration(
 ) {
     @Bean
     @ConditionalOnMissingBean(name = ["hibernateSessionFactory"])
-    fun hibernateSessionFactory(): org.hibernate.SessionFactory {
+    public fun hibernateSessionFactory(): org.hibernate.SessionFactory {
         val reactiveUrl = ReactiveConnectionUrl.fromJdbc(jdbcUrl)
 
         val configuration =
@@ -251,27 +251,31 @@ class HibernateReactiveAutoConfiguration(
 
     @Bean
     @ConditionalOnMissingBean
-    fun reactiveSessionFactory(hibernateSessionFactory: org.hibernate.SessionFactory): Mutiny.SessionFactory =
+    public fun reactiveSessionFactory(hibernateSessionFactory: org.hibernate.SessionFactory): Mutiny.SessionFactory =
         hibernateSessionFactory.unwrap(Mutiny.SessionFactory::class.java)
 
     @Bean
     @ConditionalOnMissingBean
-    fun reactiveSessionProvider(sessionFactory: Mutiny.SessionFactory): ReactiveSessionProvider =
+    public fun reactiveSessionProvider(sessionFactory: Mutiny.SessionFactory): ReactiveSessionProvider =
         ReactiveSessionProvider(sessionFactory)
 
     @Bean
     @ConditionalOnMissingBean
-    fun reactiveTransactionExecutor(sessionFactory: Mutiny.SessionFactory): ReactiveTransactionExecutor =
+    public fun reactiveTransactionExecutor(sessionFactory: Mutiny.SessionFactory): ReactiveTransactionExecutor =
         ReactiveTransactionExecutor(sessionFactory)
 
     @Bean
     @ConditionalOnMissingBean
-    fun hibernateReactiveTransactionManager(reactiveSessionFactory: Mutiny.SessionFactory): HibernateReactiveTransactionManager =
+    public fun hibernateReactiveTransactionManager(
+        reactiveSessionFactory: Mutiny.SessionFactory,
+    ): HibernateReactiveTransactionManager =
         HibernateReactiveTransactionManager(reactiveSessionFactory)
 
     @Bean
     @ConditionalOnMissingBean
-    fun transactionalAwareSessionProvider(sessionFactory: Mutiny.SessionFactory): TransactionalAwareSessionProvider =
+    public fun transactionalAwareSessionProvider(
+        sessionFactory: Mutiny.SessionFactory,
+    ): TransactionalAwareSessionProvider =
         TransactionalAwareSessionProvider(sessionFactory)
 
     private fun findEntityClasses(basePackages: List<String>): List<Class<*>> {

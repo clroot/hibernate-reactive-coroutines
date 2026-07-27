@@ -9,7 +9,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Query(
+public annotation class Query(
     val value: String,
     val nativeQuery: Boolean = false,
     val countQuery: String = "",

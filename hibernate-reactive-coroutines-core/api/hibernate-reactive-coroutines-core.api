@@ -1,0 +1,51 @@
+public final class io/clroot/hibernate/reactive/ReactiveSessionContext : kotlin/coroutines/AbstractCoroutineContextElement {
+	public static final field Key Lio/clroot/hibernate/reactive/ReactiveSessionContext$Key;
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMode ()Lio/clroot/hibernate/reactive/TransactionMode;
+	public final fun getSession ()Lorg/hibernate/reactive/mutiny/Mutiny$Session;
+	public final fun getStartTimeNanos ()J
+	public final fun getTimeout-UwyO8pc ()J
+	public final fun isReadOnly ()Z
+	public final fun remainingTimeout-UwyO8pc ()J
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveSessionContext$Key : kotlin/coroutines/CoroutineContext$Key {
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveSessionContextKt {
+	public static final fun currentContextOrNull (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun currentSessionOrNull (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveSessionProvider {
+	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public final fun read (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun write (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveTransactionExecutor {
+	public static final field Companion Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor$Companion;
+	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public final fun readOnly-KLykuaI (JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun readOnly-KLykuaI$default (Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun transactional-KLykuaI (JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun transactional-KLykuaI$default (Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveTransactionExecutor$Companion {
+	public final fun getDEFAULT_TIMEOUT-UwyO8pc ()J
+}
+
+public final class io/clroot/hibernate/reactive/ReadOnlyTransactionException : java/lang/IllegalStateException {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class io/clroot/hibernate/reactive/TransactionMode : java/lang/Enum {
+	public static final field READ_ONLY Lio/clroot/hibernate/reactive/TransactionMode;
+	public static final field READ_WRITE Lio/clroot/hibernate/reactive/TransactionMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/TransactionMode;
+	public static fun values ()[Lio/clroot/hibernate/reactive/TransactionMode;
+}
+

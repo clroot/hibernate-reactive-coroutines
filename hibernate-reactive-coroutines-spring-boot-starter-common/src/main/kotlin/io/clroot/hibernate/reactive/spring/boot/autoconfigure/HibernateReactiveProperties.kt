@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
  * ```
  */
 @ConfigurationProperties(prefix = "spring.jpa.properties.hibernate.reactive")
-data class HibernateReactiveProperties(
+public data class HibernateReactiveProperties(
     /**
      * Hibernate Reactive 커넥션 풀 사이즈 (기본값: 10)
      *

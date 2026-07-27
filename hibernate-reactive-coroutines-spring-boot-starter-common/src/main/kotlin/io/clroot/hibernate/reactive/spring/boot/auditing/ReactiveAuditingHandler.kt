@@ -12,7 +12,7 @@ package io.clroot.hibernate.reactive.spring.boot.auditing
  * @param T 감사자 타입
  * @param auditorAware 현재 감사자를 제공하는 인터페이스 (선택적)
  */
-class ReactiveAuditingHandler<T : Any>(
+public class ReactiveAuditingHandler<T : Any>(
     private val auditorAware: ReactiveAuditorAware<T>?,
 ) {
     /**
@@ -22,7 +22,7 @@ class ReactiveAuditingHandler<T : Any>(
      *
      * @param entity 감사자 정보를 설정할 엔티티
      */
-    suspend fun markCreated(entity: Any) {
+    public suspend fun markCreated(entity: Any) {
         auditorAware?.getCurrentAuditor()?.let { auditor ->
             AuditMetadata.setCreatedBy(entity, auditor)
             AuditMetadata.setLastModifiedBy(entity, auditor)
@@ -36,7 +36,7 @@ class ReactiveAuditingHandler<T : Any>(
      *
      * @param entity 감사자 정보를 설정할 엔티티
      */
-    suspend fun markModified(entity: Any) {
+    public suspend fun markModified(entity: Any) {
         auditorAware?.getCurrentAuditor()?.let { auditor ->
             AuditMetadata.setLastModifiedBy(entity, auditor)
         }
@@ -45,5 +45,5 @@ class ReactiveAuditingHandler<T : Any>(
     /**
      * AuditorAware가 설정되어 있는지 확인합니다.
      */
-    fun hasAuditorAware(): Boolean = auditorAware != null
+    public fun hasAuditorAware(): Boolean = auditorAware != null
 }

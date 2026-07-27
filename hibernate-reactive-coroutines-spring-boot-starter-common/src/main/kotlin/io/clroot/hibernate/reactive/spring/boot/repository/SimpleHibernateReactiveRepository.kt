@@ -33,7 +33,7 @@ import kotlin.coroutines.startCoroutine
  * @param sessionProvider ReactiveSessionProvider 인스턴스
  * @param queryMethods 미리 파싱된 쿼리 메서드 맵
  */
-class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
+public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     private val entityClass: Class<T>,
     private val idClass: Class<ID>,
     private val sessionProvider: TransactionalAwareSessionProvider,
@@ -42,7 +42,7 @@ class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     auditingHandler: ReactiveAuditingHandler<*>? = null,
 ) : InvocationHandler {
 
-    companion object {
+    public companion object {
         /** CoroutineCrudRepository의 기본 메서드 이름들 */
         private val BASE_METHODS = setOf(
             "save", "saveAll",

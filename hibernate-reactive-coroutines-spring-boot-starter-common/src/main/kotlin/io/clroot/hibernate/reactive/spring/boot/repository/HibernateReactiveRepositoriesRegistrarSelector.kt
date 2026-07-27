@@ -8,7 +8,7 @@ import org.springframework.core.type.AnnotationMetadata
 /**
  * @EnableHibernateReactiveRepositories 어노테이션을 처리하여 적절한 Registrar를 선택합니다.
  */
-class HibernateReactiveRepositoriesRegistrarSelector : ImportBeanDefinitionRegistrar {
+public class HibernateReactiveRepositoriesRegistrarSelector : ImportBeanDefinitionRegistrar {
 
     override fun registerBeanDefinitions(
         importingClassMetadata: AnnotationMetadata,
