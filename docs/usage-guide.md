@@ -249,6 +249,37 @@ class UserService(private val userRepository: UserRepository) {
 }
 ```
 
+### Transactional Events
+
+The starter auto-configures Spring's reactive `TransactionalEventPublisher`. Use it instead of
+`ApplicationEventPublisher` inside reactive transactions so the event carries the Reactor
+transaction context required by `@TransactionalEventListener`.
+
+```kotlin
+@Service
+class OrderService(
+    private val events: TransactionalEventPublisher,
+) {
+    @Transactional
+    suspend fun placeOrder(command: PlaceOrderCommand) {
+        // Persist the order first...
+        events.publishEvent(OrderPlaced(command.orderId)).awaitSingleOrNull()
+    }
+}
+
+@Component
+class OrderPlacedHandler {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun afterCommit(event: OrderPlaced) {
+        // Runs only after a successful commit.
+    }
+}
+```
+
+The returned `Mono` must be awaited inside the transactional suspend function. Publishing through
+the regular `ApplicationEventPublisher`, or subscribing to the reactive publisher separately,
+loses the reactive transaction context and does not register the after-commit callback.
+
 ### ReactiveTransactionExecutor
 
 Manage transactions programmatically.

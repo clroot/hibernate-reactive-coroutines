@@ -28,6 +28,7 @@ public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateRea
 	public fun reactiveSessionProvider (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/ReactiveSessionProvider;
 	public fun reactiveTransactionExecutor (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
 	public fun transactionalAwareSessionProvider (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)Lio/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider;
+	public fun transactionalEventPublisher (Lorg/springframework/context/ApplicationEventPublisher;)Lorg/springframework/transaction/reactive/TransactionalEventPublisher;
 }
 
 public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties {
