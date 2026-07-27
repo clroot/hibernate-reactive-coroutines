@@ -16,12 +16,13 @@ import kotlin.time.Duration
 public class MutinySessionHolder(
     private var session: Mutiny.Session?,
     private var vertxContext: Context? = null,
-    private val mode: TransactionMode = TransactionMode.READ_WRITE,
-    private val timeout: Duration = Duration.INFINITE,
-    private val startTimeNanos: Long = System.nanoTime(),
+    private var mode: TransactionMode = TransactionMode.READ_WRITE,
+    private var timeout: Duration = Duration.INFINITE,
+    private var startTimeNanos: Long = System.nanoTime(),
 ) : ResourceHolderSupport() {
 
     private var transactionActive: Boolean = false
+    private var transactionTimedOut: Boolean = false
 
     public fun getSession(): Mutiny.Session {
         return session ?: throw IllegalStateException("No Mutiny.Session available")
@@ -53,6 +54,20 @@ public class MutinySessionHolder(
 
     public fun isTransactionActive(): Boolean = transactionActive
 
+    internal fun configureTransaction(mode: TransactionMode, timeout: Duration) {
+        this.mode = mode
+        this.timeout = timeout
+        this.startTimeNanos = System.nanoTime()
+        this.transactionTimedOut = false
+    }
+
+    internal fun markTransactionTimedOut() {
+        transactionTimedOut = true
+        setRollbackOnly()
+    }
+
+    internal fun isTransactionTimedOut(): Boolean = transactionTimedOut
+
     /**
      * 현재 세션 홀더에서 ReactiveSessionContext를 생성합니다.
      * 코루틴 컨텍스트에 세션을 전파할 때 사용합니다.
@@ -69,6 +84,7 @@ public class MutinySessionHolder(
     override fun clear() {
         super.clear()
         transactionActive = false
+        transactionTimedOut = false
     }
 
     override fun released() {

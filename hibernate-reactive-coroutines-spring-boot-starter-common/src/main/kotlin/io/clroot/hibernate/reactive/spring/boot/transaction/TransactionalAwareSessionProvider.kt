@@ -1,6 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.transaction
 
 import io.clroot.hibernate.reactive.ReadOnlyTransactionException
+import io.clroot.hibernate.reactive.ReactiveSessionContext
 import io.clroot.hibernate.reactive.currentContextOrNull
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.coroutines.awaitSuspending
@@ -10,8 +11,10 @@ import kotlinx.coroutines.reactor.ReactorContext
 import kotlinx.coroutines.withContext
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.transaction.NoTransactionException
+import org.springframework.transaction.TransactionTimedOutException
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
 import kotlin.reflect.KProperty1
+import kotlin.time.Duration
 
 /**
  * @Transactional 컨텍스트를 인식하는 세션 제공자.
@@ -49,9 +52,7 @@ public open class TransactionalAwareSessionProvider(
         // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
-            return withContext(transactionalContext.dispatcher ?: currentCoroutineContext()) {
-                block(transactionalContext.session).awaitSuspending()
-            }
+            return executeWithTransactionTimeout(transactionalContext, block)
         }
 
         // 2. ReactiveSessionContext 확인 (기존 tx.transactional 방식)
@@ -86,9 +87,7 @@ public open class TransactionalAwareSessionProvider(
                             "Remove readOnly=true from @Transactional annotation.",
                 )
             }
-            return withContext(transactionalContext.dispatcher ?: currentCoroutineContext()) {
-                block(transactionalContext.session).awaitSuspending()
-            }
+            return executeWithTransactionTimeout(transactionalContext, block)
         }
 
         // 2. ReactiveSessionContext 확인 (기존 tx.transactional 방식)
@@ -135,7 +134,8 @@ public open class TransactionalAwareSessionProvider(
                     }
                     TransactionalSessionInfo(
                         session = holder.getSession(),
-                        isReadOnly = holder.toReactiveSessionContext().isReadOnly,
+                        sessionContext = holder.toReactiveSessionContext(),
+                        holder = holder,
                         dispatcher = holder.getDispatcher(),
                     )
                 }
@@ -148,9 +148,35 @@ public open class TransactionalAwareSessionProvider(
 
     private data class TransactionalSessionInfo(
         val session: Mutiny.Session,
-        val isReadOnly: Boolean,
+        val sessionContext: ReactiveSessionContext,
+        val holder: MutinySessionHolder,
         val dispatcher: kotlinx.coroutines.CoroutineDispatcher?,
-    )
+    ) {
+        val isReadOnly: Boolean
+            get() = sessionContext.isReadOnly
+    }
+
+    private suspend fun <T> executeWithTransactionTimeout(
+        transaction: TransactionalSessionInfo,
+        block: (Mutiny.Session) -> Uni<T>,
+    ): T {
+        checkTransactionTimeout(transaction)
+        val result = withContext(transaction.dispatcher ?: currentCoroutineContext()) {
+            checkTransactionTimeout(transaction)
+            block(transaction.session).awaitSuspending()
+        }
+        checkTransactionTimeout(transaction)
+        return result
+    }
+
+    private fun checkTransactionTimeout(transaction: TransactionalSessionInfo) {
+        if (transaction.sessionContext.remainingTimeout() == Duration.ZERO) {
+            transaction.holder.markTransactionTimedOut()
+            throw TransactionTimedOutException(
+                "Hibernate Reactive transaction exceeded its configured timeout",
+            )
+        }
+    }
 
     // ==================== Lazy Loading 편의 메서드 ====================
 

@@ -12,14 +12,13 @@ import org.hibernate.reactive.session.ReactiveConnectionSupplier
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.TransactionTimedOutException
 import org.springframework.transaction.UnexpectedRollbackException
 import org.springframework.transaction.reactive.AbstractReactiveTransactionManager
 import org.springframework.transaction.reactive.GenericReactiveTransaction
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
 import reactor.core.publisher.Mono
-import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toKotlinDuration
 
 /**
  * Hibernate Reactive (Mutiny API)를 위한 Spring ReactiveTransactionManager 구현체.
@@ -63,8 +62,10 @@ public class HibernateReactiveTransactionManager(
                 openSessionAndBeginTransaction(txObject, definition, synchronizationManager)
             } else {
                 txObject.getSessionHolder().isSynchronizedWithTransaction = true
-                val session = txObject.getSessionHolder().getSession()
-                val vertxContext = txObject.getSessionHolder().getVertxContext()
+                val sessionHolder = txObject.getSessionHolder()
+                val session = sessionHolder.getSession()
+                val vertxContext = sessionHolder.getVertxContext()
+                sessionHolder.configureTransaction(transactionMode(definition), transactionTimeout(definition))
 
                 runOnVertxContext(vertxContext) {
                     val reactiveConnection = getReactiveConnection(session)
@@ -72,8 +73,7 @@ public class HibernateReactiveTransactionManager(
                         .convert().with(UniReactorConverters.toMono())
                         .doOnSuccess {
                             session.isDefaultReadOnly = definition.isReadOnly
-                            txObject.getSessionHolder().setTransactionActive(true)
-                            applyTimeout(txObject, definition)
+                            sessionHolder.setTransactionActive(true)
                         }
                 }
             }
@@ -96,14 +96,12 @@ public class HibernateReactiveTransactionManager(
 
                 // 세션이 생성된 후, 현재 스레드는 Hibernate Reactive의 Vert.x EventLoop 스레드
                 val vertxContext = Vertx.currentContext()
-                val timeout = if (definition.timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
-                    definition.timeout.seconds
-                } else {
-                    kotlin.time.Duration.INFINITE
-                }
-                val mode = if (definition.isReadOnly) TransactionMode.READ_ONLY else TransactionMode.READ_WRITE
-
-                val holder = MutinySessionHolder(session, vertxContext, mode, timeout)
+                val holder = MutinySessionHolder(
+                    session,
+                    vertxContext,
+                    transactionMode(definition),
+                    transactionTimeout(definition),
+                )
                 txObject.setSessionHolder(holder, true)
             }
             .chain { session ->
@@ -130,13 +128,6 @@ public class HibernateReactiveTransactionManager(
             .then()
     }
 
-    private fun applyTimeout(txObject: HibernateTransactionObject, definition: TransactionDefinition) {
-        if (definition.timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
-            val timeout = Duration.ofSeconds(definition.timeout.toLong())
-            txObject.getSessionHolder().setTimeoutInMillis(timeout.toMillis())
-        }
-    }
-
     override fun doCommit(
         synchronizationManager: TransactionSynchronizationManager,
         status: GenericReactiveTransaction,
@@ -149,7 +140,7 @@ public class HibernateReactiveTransactionManager(
 
         // 참여 트랜잭션에서 rollback-only가 설정되었으면 UnexpectedRollbackException 발생
         // Spring 표준 동작: 내부 트랜잭션이 rollback-only로 마킹되면 외부 커밋 시 예외 발생
-        if (sessionHolder.isRollbackOnly) {
+        if (sessionHolder.isRollbackOnly && !hasTransactionTimedOut(sessionHolder)) {
             return runOnVertxContext(sessionHolder.getVertxContext()) {
                 val reactiveConnection = getReactiveConnection(session)
                 Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
@@ -164,14 +155,50 @@ public class HibernateReactiveTransactionManager(
         }
 
         return runOnVertxContext(sessionHolder.getVertxContext()) {
-            // 커밋 전에 영속성 컨텍스트의 변경사항을 DB에 반영
-            session.flush()
-                .chain { _ ->
-                    val reactiveConnection = getReactiveConnection(session)
-                    Uni.createFrom().completionStage(reactiveConnection.commitTransaction())
-                }
+            val reactiveConnection = getReactiveConnection(session)
+            completeTransaction(sessionHolder, session, reactiveConnection)
                 .convert().with(UniReactorConverters.toMono())
         }
+    }
+
+    internal fun completeTransaction(
+        sessionHolder: MutinySessionHolder,
+        session: Mutiny.Session,
+        reactiveConnection: ReactiveConnection,
+    ): Uni<Void> {
+        if (hasTransactionTimedOut(sessionHolder)) {
+            return rollbackTimedOutTransaction(sessionHolder, reactiveConnection)
+        }
+
+        // 커밋 전에 영속성 컨텍스트의 변경사항을 DB에 반영
+        return session.flush()
+            .chain { _: Void? ->
+                if (hasTransactionTimedOut(sessionHolder)) {
+                    rollbackTimedOutTransaction(sessionHolder, reactiveConnection)
+                } else {
+                    Uni.createFrom().completionStage(reactiveConnection.commitTransaction())
+                }
+            }
+    }
+
+    private fun hasTransactionTimedOut(sessionHolder: MutinySessionHolder): Boolean =
+        sessionHolder.isTransactionTimedOut() ||
+                sessionHolder.toReactiveSessionContext().remainingTimeout() == kotlin.time.Duration.ZERO
+
+    private fun rollbackTimedOutTransaction(
+        sessionHolder: MutinySessionHolder,
+        reactiveConnection: ReactiveConnection,
+    ): Uni<Void> {
+        sessionHolder.markTransactionTimedOut()
+        val timeout = TransactionTimedOutException(
+            "Hibernate Reactive transaction exceeded its configured timeout",
+        )
+        val error = UnexpectedRollbackException(
+            "Hibernate Reactive transaction rolled back because its timeout expired",
+            timeout,
+        )
+        return Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
+            .chain { _: Void? -> Uni.createFrom().failure(error) }
     }
 
     override fun doRollback(
@@ -317,6 +344,16 @@ public class HibernateReactiveTransactionManager(
             )
         }
     }
+
+    private fun transactionMode(definition: TransactionDefinition): TransactionMode =
+        if (definition.isReadOnly) TransactionMode.READ_ONLY else TransactionMode.READ_WRITE
+
+    private fun transactionTimeout(definition: TransactionDefinition): kotlin.time.Duration =
+        if (definition.timeout == TransactionDefinition.TIMEOUT_DEFAULT) {
+            kotlin.time.Duration.INFINITE
+        } else {
+            definition.timeout.seconds
+        }
 
     /**
      * 트랜잭션 객체 - 내부 상태 관리
