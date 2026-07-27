@@ -17,9 +17,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationContext
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.core.type.filter.AnnotationTypeFilter
+import org.springframework.transaction.reactive.TransactionalEventPublisher
 
 /**
  * Hibernate Reactive Auto-configuration.
@@ -28,6 +30,7 @@ import org.springframework.core.type.filter.AnnotationTypeFilter
  * - [Mutiny.SessionFactory]: Hibernate Reactive 세션 팩토리
  * - [ReactiveSessionProvider]: Adapter에서 사용하는 세션 헬퍼
  * - [ReactiveTransactionExecutor]: Service에서 사용하는 트랜잭션 래퍼
+ * - [TransactionalEventPublisher]: reactive 트랜잭션 이벤트 발행기
  *
  * @Entity 클래스는 @SpringBootApplication 패키지 기준으로 자동 스캔됩니다.
  *
@@ -270,6 +273,13 @@ public class HibernateReactiveAutoConfiguration(
         reactiveSessionFactory: Mutiny.SessionFactory,
     ): HibernateReactiveTransactionManager =
         HibernateReactiveTransactionManager(reactiveSessionFactory)
+
+    @Bean
+    @ConditionalOnMissingBean
+    public fun transactionalEventPublisher(
+        applicationEventPublisher: ApplicationEventPublisher,
+    ): TransactionalEventPublisher =
+        TransactionalEventPublisher(applicationEventPublisher)
 
     @Bean
     @ConditionalOnMissingBean

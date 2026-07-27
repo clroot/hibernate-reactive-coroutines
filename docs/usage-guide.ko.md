@@ -246,6 +246,37 @@ class UserService(private val userRepository: UserRepository) {
 }
 ```
 
+### 트랜잭션 이벤트
+
+starter는 Spring의 reactive `TransactionalEventPublisher`를 자동 구성합니다. Reactive
+트랜잭션 안에서는 `ApplicationEventPublisher` 대신 이 publisher를 사용해야
+`@TransactionalEventListener`가 요구하는 Reactor 트랜잭션 컨텍스트가 이벤트에 포함됩니다.
+
+```kotlin
+@Service
+class OrderService(
+    private val events: TransactionalEventPublisher,
+) {
+    @Transactional
+    suspend fun placeOrder(command: PlaceOrderCommand) {
+        // 주문을 먼저 저장한 뒤...
+        events.publishEvent(OrderPlaced(command.orderId)).awaitSingleOrNull()
+    }
+}
+
+@Component
+class OrderPlacedHandler {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun afterCommit(event: OrderPlaced) {
+        // 커밋에 성공한 뒤에만 실행됩니다.
+    }
+}
+```
+
+반환되는 `Mono`는 트랜잭션 suspend 함수 안에서 반드시 await해야 합니다. 일반
+`ApplicationEventPublisher`로 발행하거나 reactive publisher를 별도로 subscribe하면
+reactive 트랜잭션 컨텍스트가 끊겨 after-commit 콜백이 등록되지 않습니다.
+
 ### ReactiveTransactionExecutor
 
 프로그래매틱하게 트랜잭션을 관리할 수도 있습니다.
