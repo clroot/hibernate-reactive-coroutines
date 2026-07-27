@@ -113,6 +113,52 @@ subprojects {
         withJavadocJar()
     }
 
+    pluginManager.withPlugin("java-test-fixtures") {
+        val javaComponent = components["java"] as org.gradle.api.component.AdhocComponentWithVariants
+        javaComponent.withVariantsFromConfiguration(configurations["testFixturesApiElements"]) {
+            skip()
+        }
+        javaComponent.withVariantsFromConfiguration(configurations["testFixturesRuntimeElements"]) {
+            skip()
+        }
+
+        val verifyPublicationMetadata by tasks.registering {
+            group = "verification"
+            description = "Verifies that test fixtures do not leak into published metadata."
+            dependsOn(
+                "generatePomFileForMavenPublication",
+                "generateMetadataFileForMavenPublication",
+            )
+            inputs.files(
+                layout.buildDirectory.file("publications/maven/pom-default.xml"),
+                layout.buildDirectory.file("publications/maven/module.json"),
+            )
+
+            doLast(Action<Task> {
+                val leakedMarkers = listOf(
+                    "testFixturesApiElements",
+                    "testFixturesRuntimeElements",
+                    "-test-fixtures.jar",
+                    "spring-boot-starter-test",
+                    "io.kotest",
+                    "org.testcontainers",
+                )
+                inputs.files.forEach { metadataFile ->
+                    val metadata = metadataFile.readText()
+                    leakedMarkers.firstOrNull(metadata::contains)?.let { marker ->
+                        throw GradleException(
+                            "${metadataFile.name} exposes test-fixture marker '$marker'.",
+                        )
+                    }
+                }
+            })
+        }
+
+        tasks.named("check") {
+            dependsOn(verifyPublicationMetadata)
+        }
+    }
+
     val dokkaHtml = tasks.named("dokkaGeneratePublicationHtml")
     val javadocJar = tasks.named<Jar>("javadocJar") {
         dependsOn(dokkaHtml)
