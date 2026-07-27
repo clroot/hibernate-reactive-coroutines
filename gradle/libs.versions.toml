@@ -7,8 +7,7 @@ mutiny = "2.6.0"
 vertx = "4.5.23"
 kotest = "6.0.7"
 mockk = "1.14.7"
-testcontainers = "1.20.4"
-testcontainers-core = "2.0.2"
+testcontainers = "2.0.5"
 
 [libraries]
 # Hibernate Reactive
@@ -36,9 +35,7 @@ kotest-extensions-spring = { module = "io.kotest:kotest-extensions-spring", vers
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 # Testcontainers
-testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers-core" }
-testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
 
 # Database
 vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx" }
