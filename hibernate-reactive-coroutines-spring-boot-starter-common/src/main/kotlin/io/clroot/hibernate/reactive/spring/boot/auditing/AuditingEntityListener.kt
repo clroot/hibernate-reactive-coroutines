@@ -38,7 +38,7 @@ import jakarta.persistence.PreUpdate
  *
  * @see ReactiveAuditingHandler
  */
-class AuditingEntityListener {
+public class AuditingEntityListener {
 
     /**
      * 엔티티가 처음 저장되기 전에 호출됩니다.
@@ -46,7 +46,7 @@ class AuditingEntityListener {
      * `@CreatedDate`와 `@LastModifiedDate` 필드에 현재 시간을 설정합니다.
      */
     @PrePersist
-    fun onPrePersist(entity: Any) {
+    public fun onPrePersist(entity: Any) {
         AuditMetadata.setCreatedDate(entity)
         AuditMetadata.setLastModifiedDate(entity)
     }
@@ -57,7 +57,7 @@ class AuditingEntityListener {
      * `@LastModifiedDate` 필드에 현재 시간을 설정합니다.
      */
     @PreUpdate
-    fun onPreUpdate(entity: Any) {
+    public fun onPreUpdate(entity: Any) {
         AuditMetadata.setLastModifiedDate(entity)
     }
 }

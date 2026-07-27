@@ -29,11 +29,11 @@ import org.springframework.context.annotation.Bean
  * 통해 처리됩니다. 엔티티에 `@EntityListeners(AuditingEntityListener::class)`를 추가해야 합니다.
  */
 @AutoConfiguration
-class AuditingAutoConfiguration {
+public class AuditingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    fun reactiveAuditingHandler(
+    public fun reactiveAuditingHandler(
         auditorAware: ObjectProvider<ReactiveAuditorAware<*>>,
     ): ReactiveAuditingHandler<*> {
         return ReactiveAuditingHandler(auditorAware.getIfAvailable())

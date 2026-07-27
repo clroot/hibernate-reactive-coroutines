@@ -18,7 +18,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
  *
  * @param basePackages 스캔할 베이스 패키지 (비어있으면 @SpringBootApplication 패키지 사용)
  */
-class HibernateReactiveRepositoryRegistrar(
+public class HibernateReactiveRepositoryRegistrar(
     private val basePackages: List<String> = emptyList(),
 ) : BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
 

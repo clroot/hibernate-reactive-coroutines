@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.nanoseconds
 /**
  * 트랜잭션 모드
  */
-enum class TransactionMode {
+public enum class TransactionMode {
     READ_ONLY,
     READ_WRITE,
 }
@@ -27,15 +27,15 @@ enum class TransactionMode {
  * @param timeout 타임아웃 (기본값: 무제한)
  * @param startTimeNanos 시작 시간 (System.nanoTime() 기반, 시스템 시간 변경에 영향받지 않음)
  */
-class ReactiveSessionContext(
-    val session: Mutiny.Session,
-    val mode: TransactionMode,
-    val timeout: Duration = INFINITE,
-    val startTimeNanos: Long = System.nanoTime(),
+public class ReactiveSessionContext(
+    public val session: Mutiny.Session,
+    public val mode: TransactionMode,
+    public val timeout: Duration = INFINITE,
+    public val startTimeNanos: Long = System.nanoTime(),
 ) : AbstractCoroutineContextElement(ReactiveSessionContext) {
-    companion object Key : CoroutineContext.Key<ReactiveSessionContext>
+    public companion object Key : CoroutineContext.Key<ReactiveSessionContext>
 
-    val isReadOnly: Boolean get() = mode == TransactionMode.READ_ONLY
+    public val isReadOnly: Boolean get() = mode == TransactionMode.READ_ONLY
 
     /**
      * 남은 타임아웃 시간 계산.
@@ -44,7 +44,7 @@ class ReactiveSessionContext(
      * System.nanoTime()을 사용하여 시스템 시간 변경(NTP 동기화 등)에
      * 영향받지 않고 정확한 경과 시간을 측정합니다.
      */
-    fun remainingTimeout(): Duration {
+    public fun remainingTimeout(): Duration {
         if (timeout == INFINITE) return INFINITE
         val elapsedNanos = System.nanoTime() - startTimeNanos
         val remainingNanos = timeout.inWholeNanoseconds - elapsedNanos
@@ -56,12 +56,12 @@ class ReactiveSessionContext(
  * 현재 CoroutineContext에서 Session을 가져옵니다.
  * 컨텍스트가 없으면 null 반환.
  */
-suspend fun currentSessionOrNull(): Mutiny.Session? =
+public suspend fun currentSessionOrNull(): Mutiny.Session? =
     currentCoroutineContext()[ReactiveSessionContext]?.session
 
 /**
  * 현재 CoroutineContext에서 ReactiveSessionContext를 가져옵니다.
  * 컨텍스트가 없으면 null 반환.
  */
-suspend fun currentContextOrNull(): ReactiveSessionContext? =
+public suspend fun currentContextOrNull(): ReactiveSessionContext? =
     currentCoroutineContext()[ReactiveSessionContext]

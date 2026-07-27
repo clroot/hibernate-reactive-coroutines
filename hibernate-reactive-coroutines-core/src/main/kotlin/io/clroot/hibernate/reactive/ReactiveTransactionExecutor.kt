@@ -41,11 +41,11 @@ import kotlin.time.Duration.Companion.seconds
  * - 트랜잭션 내에서 외부 I/O(HTTP 호출 등)를 수행하면 DB 커넥션이 오래 점유됨
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ReactiveTransactionExecutor(
+public class ReactiveTransactionExecutor(
     private val sessionFactory: Mutiny.SessionFactory,
 ) {
-    companion object {
-        val DEFAULT_TIMEOUT: Duration = 30.seconds
+    public companion object {
+        public val DEFAULT_TIMEOUT: Duration = 30.seconds
     }
 
     /**
@@ -56,7 +56,7 @@ class ReactiveTransactionExecutor(
      *
      * @param timeout 트랜잭션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
      */
-    suspend fun <T> transactional(
+    public suspend fun <T> transactional(
         timeout: Duration = DEFAULT_TIMEOUT,
         block: suspend () -> T,
     ): T = executeInSession(
@@ -75,7 +75,7 @@ class ReactiveTransactionExecutor(
      *
      * @param timeout 세션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
      */
-    suspend fun <T> readOnly(
+    public suspend fun <T> readOnly(
         timeout: Duration = DEFAULT_TIMEOUT,
         block: suspend () -> T,
     ): T = executeInSession(

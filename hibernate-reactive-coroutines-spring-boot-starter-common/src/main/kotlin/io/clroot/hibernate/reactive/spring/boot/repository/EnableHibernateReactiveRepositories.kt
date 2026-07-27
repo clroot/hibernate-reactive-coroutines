@@ -31,7 +31,7 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @MustBeDocumented
 @Import(HibernateReactiveRepositoriesRegistrarSelector::class)
-annotation class EnableHibernateReactiveRepositories(
+public annotation class EnableHibernateReactiveRepositories(
     /**
      * 스캔할 베이스 패키지 (basePackages의 별칭)
      */

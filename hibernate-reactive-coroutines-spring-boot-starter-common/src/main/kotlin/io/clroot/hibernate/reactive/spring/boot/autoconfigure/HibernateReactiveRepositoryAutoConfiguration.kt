@@ -14,9 +14,9 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
  */
 @AutoConfiguration(after = [HibernateReactiveAutoConfiguration::class])
 @ConditionalOnClass(CoroutineCrudRepository::class)
-class HibernateReactiveRepositoryAutoConfiguration {
+public class HibernateReactiveRepositoryAutoConfiguration {
 
-    companion object {
+    public companion object {
         /**
          * static 메서드로 BeanDefinitionRegistryPostProcessor를 등록해야
          * Spring이 이른 시점에 처리할 수 있습니다.
@@ -24,7 +24,7 @@ class HibernateReactiveRepositoryAutoConfiguration {
         @Bean
         @ConditionalOnMissingBean
         @JvmStatic
-        fun hibernateReactiveRepositoryRegistrar(): HibernateReactiveRepositoryRegistrar {
+        public fun hibernateReactiveRepositoryRegistrar(): HibernateReactiveRepositoryRegistrar {
             return HibernateReactiveRepositoryRegistrar()
         }
     }

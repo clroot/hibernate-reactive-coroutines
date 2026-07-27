@@ -12,9 +12,9 @@ import java.net.URI
  * PostgreSQL 연결 시 SSL 모드를 적용합니다.
  * `vertx-pg-client` 의존성이 없어도 동작하도록 Reflection을 사용합니다.
  */
-class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
+public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
 
-    companion object {
+    public companion object {
         private const val SSL_MODE_PROPERTY = "hibernate.vertx.pool.ssl.mode"
         private const val TRUST_CERTIFICATE_PROPERTY = "hibernate.vertx.pool.ssl.trust-certificate"
         private const val PG_CONNECT_OPTIONS_CLASS = "io.vertx.pgclient.PgConnectOptions"

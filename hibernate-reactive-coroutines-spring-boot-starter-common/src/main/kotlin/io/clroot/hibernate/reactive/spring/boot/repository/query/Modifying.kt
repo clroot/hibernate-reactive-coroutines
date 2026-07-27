@@ -8,6 +8,6 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Modifying(
+public annotation class Modifying(
     val clearAutomatically: Boolean = false,
 )

@@ -7,7 +7,7 @@ import org.hibernate.reactive.mutiny.Mutiny
 /**
  * ReadOnly 컨텍스트에서 쓰기 시도 시 발생하는 예외
  */
-class ReadOnlyTransactionException(
+public class ReadOnlyTransactionException(
     message: String,
 ) : IllegalStateException(message)
 
@@ -36,7 +36,7 @@ class ReadOnlyTransactionException(
  * }
  * ```
  */
-class ReactiveSessionProvider(
+public class ReactiveSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
 ) {
     /**
@@ -45,7 +45,7 @@ class ReactiveSessionProvider(
      * - 컨텍스트에 세션이 있으면 재사용
      * - 없으면 `withSession`으로 새 세션 생성
      */
-    suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
+    public suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
         val context = currentContextOrNull()
         return if (context != null) {
             block(context.session).awaitSuspending()
@@ -65,7 +65,7 @@ class ReactiveSessionProvider(
      *
      * @throws io.clroot.hibernate.reactive.ReadOnlyTransactionException readOnly 컨텍스트 내에서 호출 시
      */
-    suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
+    public suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
         val context = currentContextOrNull()
         return when {
             context?.isReadOnly == true -> {

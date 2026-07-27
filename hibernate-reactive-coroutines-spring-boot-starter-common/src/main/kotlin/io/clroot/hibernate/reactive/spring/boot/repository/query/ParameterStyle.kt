@@ -3,7 +3,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
 /**
  * 파라미터 바인딩 스타일.
  */
-enum class ParameterStyle {
+public enum class ParameterStyle {
     /** Named Parameter (:name) */
     NAMED,
 

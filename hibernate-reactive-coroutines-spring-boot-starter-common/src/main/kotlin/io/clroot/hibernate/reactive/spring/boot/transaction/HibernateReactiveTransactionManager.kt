@@ -29,7 +29,7 @@ import kotlin.time.toKotlinDuration
  * 이 트랜잭션 매니저는 [ReactiveSessionContext]와 통합되어,
  * @Transactional 컨텍스트 내에서 Repository가 자동으로 현재 세션을 인식합니다.
  */
-class HibernateReactiveTransactionManager(
+public class HibernateReactiveTransactionManager(
     private val sessionFactory: Mutiny.SessionFactory,
 ) : AbstractReactiveTransactionManager(), InitializingBean {
 

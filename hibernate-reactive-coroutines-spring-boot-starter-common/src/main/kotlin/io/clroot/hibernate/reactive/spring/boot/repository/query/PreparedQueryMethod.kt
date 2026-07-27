@@ -20,7 +20,7 @@ import java.lang.reflect.Method
  * @param parameterStyle 파라미터 바인딩 스타일 (NAMED, POSITIONAL, NONE)
  * @param parameterNames Named Parameter 사용 시 파라미터 이름 목록
  */
-data class PreparedQueryMethod(
+public data class PreparedQueryMethod(
     val method: Method,
     val partTree: PartTree?,
     val hql: String,

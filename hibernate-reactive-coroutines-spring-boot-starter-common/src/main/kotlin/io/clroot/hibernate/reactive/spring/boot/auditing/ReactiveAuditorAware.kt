@@ -21,11 +21,11 @@ package io.clroot.hibernate.reactive.spring.boot.auditing
  *
  * @param T 감사자 타입 (일반적으로 String 또는 사용자 ID 타입)
  */
-fun interface ReactiveAuditorAware<T : Any> {
+public fun interface ReactiveAuditorAware<T : Any> {
     /**
      * 현재 감사자를 반환합니다.
      *
      * @return 현재 감사자 또는 null (익명 사용자인 경우)
      */
-    suspend fun getCurrentAuditor(): T?
+    public suspend fun getCurrentAuditor(): T?
 }

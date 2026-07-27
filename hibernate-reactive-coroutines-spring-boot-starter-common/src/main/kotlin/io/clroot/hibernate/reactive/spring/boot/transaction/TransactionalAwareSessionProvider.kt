@@ -32,7 +32,7 @@ import kotlin.reflect.KProperty1
  * }
  * ```
  */
-open class TransactionalAwareSessionProvider(
+public open class TransactionalAwareSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
 ) {
     internal val metamodel
@@ -45,7 +45,7 @@ open class TransactionalAwareSessionProvider(
      * - ReactiveSessionContext에 세션이 있으면 재사용
      * - 없으면 withSession으로 새 세션 생성
      */
-    open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
+    public open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
         // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
@@ -76,7 +76,7 @@ open class TransactionalAwareSessionProvider(
      *
      * @throws ReadOnlyTransactionException readOnly 컨텍스트 내에서 호출 시
      */
-    open suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
+    public open suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
         // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
@@ -174,7 +174,7 @@ open class TransactionalAwareSessionProvider(
      * @param property fetch할 연관관계 프로퍼티
      * @return fetch된 연관관계 컬렉션/엔티티
      */
-    open suspend fun <E : Any, T> fetch(entity: E, property: KProperty1<E, T>): T {
+    public open suspend fun <E : Any, T> fetch(entity: E, property: KProperty1<E, T>): T {
         return read { session ->
             val association = property.get(entity)
             session.fetch(association)
@@ -202,7 +202,7 @@ open class TransactionalAwareSessionProvider(
      * @param entity fetch할 연관관계들을 가진 엔티티
      * @param properties fetch할 연관관계 프로퍼티들
      */
-    open suspend fun <E : Any> fetchAll(entity: E, vararg properties: KProperty1<E, *>) {
+    public open suspend fun <E : Any> fetchAll(entity: E, vararg properties: KProperty1<E, *>) {
         read { session ->
             var chain: Uni<*> = Uni.createFrom().voidItem()
             for (property in properties) {
@@ -236,7 +236,7 @@ open class TransactionalAwareSessionProvider(
      * @param property fetch할 연관관계 프로퍼티
      * @return fetch된 연관관계 컬렉션/엔티티
      */
-    open suspend fun <E : Any, T> fetchFromDetached(
+    public open suspend fun <E : Any, T> fetchFromDetached(
         entity: E,
         entityClass: Class<E>,
         property: KProperty1<E, T>,
