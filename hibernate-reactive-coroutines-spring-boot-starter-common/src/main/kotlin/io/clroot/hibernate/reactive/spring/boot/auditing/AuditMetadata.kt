@@ -40,7 +40,10 @@ internal object AuditMetadata {
     fun setCreatedDate(entity: Any) {
         val auditInfo = getAuditInfo(entity.javaClass)
         auditInfo.createdDateField?.let { field ->
-            if (getFieldValueSafely(entity, field) == null) {
+            val currentValue = getFieldValueSafely(entity, field)
+            val isUnsetPrimitiveLong =
+                field.type == Long::class.javaPrimitiveType && currentValue == 0L
+            if (currentValue == null || isUnsetPrimitiveLong) {
                 setTemporalValue(entity, field)
             }
         }
@@ -120,7 +123,7 @@ internal object AuditMetadata {
             LocalDateTime::class.java -> LocalDateTime.now()
             ZonedDateTime::class.java -> ZonedDateTime.now()
             Date::class.java -> Date()
-            Long::class.java, Long::class.javaPrimitiveType -> System.currentTimeMillis()
+            Long::class.javaObjectType, Long::class.javaPrimitiveType -> System.currentTimeMillis()
             else -> return // 지원하지 않는 타입
         }
         setFieldValueSafely(entity, field, value)
@@ -211,7 +214,7 @@ internal object AuditMetadata {
                 type == LocalDateTime::class.java ||
                 type == ZonedDateTime::class.java ||
                 type == Date::class.java ||
-                type == Long::class.java ||
+                type == Long::class.javaObjectType ||
                 type == Long::class.javaPrimitiveType
     }
 }
