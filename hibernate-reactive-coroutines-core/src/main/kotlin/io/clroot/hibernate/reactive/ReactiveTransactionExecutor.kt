@@ -53,8 +53,10 @@ public class ReactiveTransactionExecutor(
      *
      * 블록 내 모든 Port 호출이 동일한 세션을 공유하며,
      * 이미 트랜잭션 컨텍스트 안에 있으면 기존 세션을 재사용합니다 (중첩 안전).
+     * 단, 읽기 전용 컨텍스트는 쓰기 트랜잭션으로 승격할 수 없습니다.
      *
      * @param timeout 트랜잭션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
+     * @throws ReadOnlyTransactionException 읽기 전용 컨텍스트 안에서 호출한 경우
      */
     public suspend fun <T> transactional(
         timeout: Duration = DEFAULT_TIMEOUT,
@@ -110,6 +112,13 @@ public class ReactiveTransactionExecutor(
         block: suspend () -> T,
     ): T {
         val parentContext = currentContextOrNull()
+        if (mode == TransactionMode.READ_WRITE && parentContext?.isReadOnly == true) {
+            throw ReadOnlyTransactionException(
+                "Cannot start a write transaction within a read-only context. " +
+                        "Move tx.transactional {} outside tx.readOnly {}",
+            )
+        }
+
         val effectiveTimeout = calculateEffectiveTimeout(parentContext, timeout)
         val callerContext = currentCoroutineContext().minusKey(Job)
 
