@@ -34,9 +34,12 @@ public class HibernateReactiveRepositoryRegistrar(
         }
 
         val repositoryInterfaces = findRepositoryInterfaces(packagesToScan)
+        val beanNames = HibernateReactiveRepositoryBeanNameGenerator.generate(repositoryInterfaces) { beanName ->
+            !registry.isBeanNameInUse(beanName)
+        }
 
         repositoryInterfaces.forEach { repositoryInterface ->
-            val beanName = generateBeanName(repositoryInterface)
+            val beanName = beanNames.getValue(repositoryInterface)
             val beanDefinition = createBeanDefinition(repositoryInterface)
 
             registry.registerBeanDefinition(beanName, beanDefinition)
@@ -83,11 +86,34 @@ public class HibernateReactiveRepositoryRegistrar(
             .beanDefinition
     }
 
-    /**
-     * Bean 이름을 생성합니다. (예: UserRepository → userRepository)
-     */
-    private fun generateBeanName(repositoryInterface: Class<*>): String {
-        val simpleName = repositoryInterface.simpleName
-        return simpleName.replaceFirstChar { it.lowercase() }
+}
+
+internal object HibernateReactiveRepositoryBeanNameGenerator {
+    fun generate(
+        repositoryInterfaces: List<Class<*>>,
+        isNameAvailable: (String) -> Boolean,
+    ): Map<Class<*>, String> {
+        val conventionalNames = repositoryInterfaces.associateWith { repositoryInterface ->
+            repositoryInterface.simpleName.replaceFirstChar { it.lowercase() }
+        }
+        val duplicateNames = conventionalNames.values
+            .groupingBy { it }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+
+        return repositoryInterfaces.associateWith { repositoryInterface ->
+            val conventionalName = conventionalNames.getValue(repositoryInterface)
+            val beanName = if (conventionalName in duplicateNames || !isNameAvailable(conventionalName)) {
+                repositoryInterface.name
+            } else {
+                conventionalName
+            }
+
+            check(isNameAvailable(beanName)) {
+                "Cannot register repository '${repositoryInterface.name}': bean name '$beanName' is already in use"
+            }
+            beanName
+        }
     }
 }
