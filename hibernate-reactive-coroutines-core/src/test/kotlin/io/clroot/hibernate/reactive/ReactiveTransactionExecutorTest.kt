@@ -1,6 +1,7 @@
 package io.clroot.hibernate.reactive
 
 import io.kotest.core.spec.style.DescribeSpec
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
 import kotlinx.coroutines.withContext
@@ -87,30 +88,41 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
         context("컨텍스트 재사용 (REQUIRED 동작)") {
             it("기존 READ_WRITE 컨텍스트가 있으면 새 트랜잭션을 생성하지 않는다") {
                 val session = mockk<org.hibernate.reactive.mutiny.Mutiny.Session>()
+                val sessionFactory = mockk<org.hibernate.reactive.mutiny.Mutiny.SessionFactory>()
+                val executor = ReactiveTransactionExecutor(sessionFactory)
                 val existingContext = ReactiveSessionContext(
                     session = session,
                     mode = TransactionMode.READ_WRITE,
                 )
 
-                withContext(existingContext) {
-                    // transactional 블록 진입 시 parentContext가 null이 아니면
-                    // 새 트랜잭션 없이 기존 세션 재사용
-                    currentContextOrNull() shouldBe existingContext
-                    currentSessionOrNull() shouldBe session
+                val actualSession = withContext(existingContext) {
+                    executor.transactional {
+                        currentSessionOrNull()
+                    }
                 }
+
+                actualSession shouldBe session
             }
 
-            it("기존 READ_ONLY 컨텍스트도 재사용한다") {
+            it("READ_ONLY 컨텍스트를 쓰기 트랜잭션으로 승격하지 않는다") {
                 val session = mockk<org.hibernate.reactive.mutiny.Mutiny.Session>()
+                val sessionFactory = mockk<org.hibernate.reactive.mutiny.Mutiny.SessionFactory>()
+                val executor = ReactiveTransactionExecutor(sessionFactory)
                 val existingContext = ReactiveSessionContext(
                     session = session,
                     mode = TransactionMode.READ_ONLY,
                 )
+                var blockExecuted = false
 
                 withContext(existingContext) {
-                    currentContextOrNull() shouldBe existingContext
-                    currentContextOrNull()?.isReadOnly shouldBe true
+                    shouldThrow<ReadOnlyTransactionException> {
+                        executor.transactional {
+                            blockExecuted = true
+                        }
+                    }
                 }
+
+                blockExecuted shouldBe false
             }
         }
 
