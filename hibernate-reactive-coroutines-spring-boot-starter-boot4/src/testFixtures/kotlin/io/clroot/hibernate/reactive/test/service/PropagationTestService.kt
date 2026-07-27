@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.test.service
 
+import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
 import org.springframework.stereotype.Service
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class PropagationTestService(
     private val testEntityRepository: TestEntityRepository,
+    private val sessionProvider: TransactionalAwareSessionProvider,
 ) {
 
     // ============================================
@@ -136,19 +138,29 @@ class PropagationTestService(
     // ============================================
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    suspend fun isolationReadCommitted(name: String): TestEntity {
-        return testEntityRepository.save(TestEntity(name = "isolation-rc-$name", value = 80))
+    suspend fun isolationReadCommitted(name: String): Pair<TestEntity, String> {
+        val entity = testEntityRepository.save(TestEntity(name = "isolation-rc-$name", value = 80))
+        return entity to currentIsolationLevel()
     }
 
     @Transactional(isolation = Isolation.REPEATABLE_READ)
-    suspend fun isolationRepeatableRead(name: String): TestEntity {
-        return testEntityRepository.save(TestEntity(name = "isolation-rr-$name", value = 81))
+    suspend fun isolationRepeatableRead(name: String): Pair<TestEntity, String> {
+        val entity = testEntityRepository.save(TestEntity(name = "isolation-rr-$name", value = 81))
+        return entity to currentIsolationLevel()
     }
 
     @Transactional(isolation = Isolation.SERIALIZABLE)
-    suspend fun isolationSerializable(name: String): TestEntity {
-        return testEntityRepository.save(TestEntity(name = "isolation-s-$name", value = 82))
+    suspend fun isolationSerializable(name: String): Pair<TestEntity, String> {
+        val entity = testEntityRepository.save(TestEntity(name = "isolation-s-$name", value = 82))
+        return entity to currentIsolationLevel()
     }
+
+    private suspend fun currentIsolationLevel(): String =
+        sessionProvider.read { session ->
+            session
+                .createNativeQuery("show transaction_isolation", String::class.java)
+                .singleResult
+        }
 
     // ============================================
     // 헬퍼 메서드

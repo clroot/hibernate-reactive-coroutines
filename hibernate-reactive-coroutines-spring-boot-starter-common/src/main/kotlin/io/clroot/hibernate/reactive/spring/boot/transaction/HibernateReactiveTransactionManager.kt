@@ -68,7 +68,7 @@ public class HibernateReactiveTransactionManager(
 
                 runOnVertxContext(vertxContext) {
                     val reactiveConnection = getReactiveConnection(session)
-                    Uni.createFrom().completionStage(reactiveConnection.beginTransaction())
+                    TransactionIsolationConfigurer.begin(reactiveConnection, definition.isolationLevel)
                         .convert().with(UniReactorConverters.toMono())
                         .doOnSuccess {
                             session.isDefaultReadOnly = definition.isReadOnly
@@ -108,7 +108,7 @@ public class HibernateReactiveTransactionManager(
             }
             .chain { session ->
                 val reactiveConnection = getReactiveConnection(session)
-                Uni.createFrom().completionStage(reactiveConnection.beginTransaction())
+                TransactionIsolationConfigurer.begin(reactiveConnection, definition.isolationLevel)
                     .replaceWith(session)
             }
             .invoke { session ->
