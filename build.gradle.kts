@@ -26,6 +26,78 @@ val centralReleaseTaskNames = setOf(
     "nmcpPublishAggregationToCentralPortal",
     "publishAggregationToCentralPortal",
 )
+val starterProjectNames = setOf(
+    "hibernate-reactive-coroutines-spring-boot-starter",
+    "hibernate-reactive-coroutines-spring-boot-starter-boot4",
+)
+val sharedStarterMainDirectory = layout.projectDirectory.dir(
+    "hibernate-reactive-coroutines-spring-boot-starter-common/src/main",
+)
+val versionSpecificStarterPaths = setOf(
+    "resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports",
+)
+
+val verifyStarterSourceLayout by tasks.registering {
+    group = "verification"
+    description = "Verifies that Boot starter production sources have a single owner."
+
+    val starterSourceDirectories = starterProjectNames.map { projectName ->
+        layout.projectDirectory.dir("$projectName/src/main")
+    }
+    inputs.dir(sharedStarterMainDirectory)
+    inputs.files(starterSourceDirectories)
+    inputs.property(
+        "sharedStarterMainDirectoryPath",
+        sharedStarterMainDirectory.asFile.absolutePath,
+    )
+    inputs.property(
+        "starterSourceDirectoryPaths",
+        starterSourceDirectories.map { it.asFile.absolutePath },
+    )
+    inputs.property(
+        "versionSpecificStarterPaths",
+        versionSpecificStarterPaths.sorted(),
+    )
+
+    doLast {
+        val sharedSourceDirectory = File(
+            inputs.properties.getValue("sharedStarterMainDirectoryPath") as String,
+        )
+        val starterSourceDirectoryFiles =
+            (inputs.properties.getValue("starterSourceDirectoryPaths") as List<*>)
+                .map { File(it as String) }
+        val allowedVersionSpecificPaths =
+            (inputs.properties.getValue("versionSpecificStarterPaths") as List<*>)
+                .map { it as String }
+                .toSet()
+
+        if (!sharedSourceDirectory.isDirectory) {
+            throw GradleException(
+                "Shared starter source directory does not exist: " +
+                    sharedSourceDirectory,
+            )
+        }
+
+        val relativePathsByProject = starterSourceDirectoryFiles.associate { sourceRoot ->
+            sourceRoot.parentFile.parentFile.name to sourceRoot
+                .walkTopDown()
+                .filter(File::isFile)
+                .map { it.relativeTo(sourceRoot).invariantSeparatorsPath }
+                .toSet()
+        }
+        val duplicatedPaths = relativePathsByProject.values
+            .reduce(Set<String>::intersect)
+            .minus(allowedVersionSpecificPaths)
+            .sorted()
+
+        if (duplicatedPaths.isNotEmpty()) {
+            throw GradleException(
+                "Boot starter production sources must not be copied between modules:\n" +
+                    duplicatedPaths.joinToString(separator = "\n") { " - $it" },
+            )
+        }
+    }
+}
 
 val validateReleaseVersion by tasks.registering {
     group = "verification"
@@ -104,6 +176,22 @@ subprojects {
     apply(plugin = "org.jetbrains.dokka")
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
+
+    if (name in starterProjectNames) {
+        configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+            sourceSets.named("main") {
+                kotlin.srcDir(sharedStarterMainDirectory.dir("kotlin"))
+            }
+        }
+        configure<SourceSetContainer> {
+            named("main") {
+                resources.srcDir(sharedStarterMainDirectory.dir("resources"))
+            }
+        }
+        tasks.named("check") {
+            dependsOn(rootProject.tasks.named("verifyStarterSourceLayout"))
+        }
+    }
 
     configure<JavaPluginExtension> {
         toolchain {
