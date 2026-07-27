@@ -3,11 +3,14 @@ package io.clroot.hibernate.reactive.spring.boot.repository
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import io.smallrye.mutiny.Multi
+import io.smallrye.mutiny.Uni
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
+import org.hibernate.reactive.mutiny.Mutiny
 
 /**
  * 기본 CRUD 작업을 담당하는 내부 헬퍼 클래스.
@@ -25,11 +28,7 @@ internal class CrudOperations<T : Any, ID : Any>(
 ) {
     private val entityName: String = entityClass.simpleName
 
-    // ============================================
-    // Save 작업
-    // ============================================
-
-    suspend fun save(entity: T): T {
+    private suspend fun prepareEntity(entity: T): Boolean {
         val isNew = EntityStateDetector.isNew(entity)
         if (auditingHandler != null) {
             if (isNew) {
@@ -38,22 +37,46 @@ internal class CrudOperations<T : Any, ID : Any>(
                 auditingHandler.markModified(entity)
             }
         }
+        return isNew
+    }
 
-        return sessionProvider.write { session ->
-            if (isNew) {
-                session.persist(entity).replaceWith(entity)
-            } else {
-                session.merge(entity)
-            }
+    private fun save(
+        session: Mutiny.Session,
+        entity: T,
+        isNew: Boolean,
+    ): Uni<T> =
+        if (isNew) {
+            session.persist(entity).replaceWith(entity)
+        } else {
+            session.merge(entity)
         }
+
+    // ============================================
+    // Save 작업
+    // ============================================
+
+    suspend fun save(entity: T): T {
+        val isNew = prepareEntity(entity)
+
+        return sessionProvider.write { session -> save(session, entity, isNew) }
     }
 
     fun saveAll(entities: Iterable<T>): Flow<T> = flow {
         val entityList = entities.toList()
         if (entityList.isEmpty()) return@flow
 
-        val savedEntities = transactionExecutor.transactional {
-            entityList.map { save(it) }
+        val preparedEntities = entityList.map { entity ->
+            entity to prepareEntity(entity)
+        }
+        val savedEntities = sessionProvider.write { session ->
+            Multi.createFrom()
+                .iterable(preparedEntities)
+                .onItem()
+                .transformToUniAndConcatenate { (entity, isNew) ->
+                    save(session, entity, isNew)
+                }
+                .collect()
+                .asList()
         }
         emitAll(savedEntities.asFlow())
     }
