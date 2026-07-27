@@ -133,6 +133,22 @@ class PropagationTestService(
         return testEntityRepository.save(TestEntity(name = name, value = 71))
     }
 
+    @Transactional(timeout = 1)
+    suspend fun repositoryCallAfterTimeout(name: String, delayMillis: Long): TestEntity {
+        kotlinx.coroutines.delay(delayMillis)
+        return testEntityRepository.save(TestEntity(name = name, value = 72))
+    }
+
+    @Transactional(timeout = 1)
+    suspend fun catchRepositoryTimeout(name: String, delayMillis: Long) {
+        kotlinx.coroutines.delay(delayMillis)
+        try {
+            testEntityRepository.save(TestEntity(name = name, value = 73))
+        } catch (_: org.springframework.transaction.TransactionTimedOutException) {
+            // The transaction must remain rollback-only even if application code catches the operation error.
+        }
+    }
+
     // ============================================
     // isolation 테스트
     // ============================================
