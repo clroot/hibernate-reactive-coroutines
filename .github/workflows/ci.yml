@@ -16,10 +16,10 @@ jobs:
       - name: Test release version resolver
         run: bash .github/scripts/test-resolve-release-version.sh
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: "21"
+          java-version: "17"
           distribution: "temurin"
 
       - name: Setup Gradle

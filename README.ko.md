@@ -19,6 +19,11 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 
 **Spring Data JPA 기능 커버리지: ~85-90%** - 자세한 내용은 [마이그레이션 가이드](docs/migration.ko.md)를 참고하세요.
 
+## 요구사항
+
+- Java 17 이상
+- Spring Boot 3.4.x 또는 4.x
+
 ## 설치
 
 ### Gradle (Kotlin DSL)
