@@ -1,6 +1,6 @@
 package io.clroot.hibernate.reactive.test.container
 
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 
@@ -18,7 +18,7 @@ object PostgreSQLTestContainer {
     private const val USERNAME = "test"
     private const val PASSWORD = "test"
 
-    val instance: PostgreSQLContainer<*> by lazy {
+    val instance: PostgreSQLContainer by lazy {
         PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE))
             .apply {
                 withDatabaseName(DATABASE_NAME)
