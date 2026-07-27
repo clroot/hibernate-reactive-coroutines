@@ -32,6 +32,11 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 
 **Spring Data JPA feature coverage: ~85-90%** — See [Migration Guide](docs/migration.md) for details.
 
+## Requirements
+
+- Java 17 or later
+- Spring Boot 3.4.x or 4.x
+
 ## Installation
 
 ### Gradle (Kotlin DSL)
