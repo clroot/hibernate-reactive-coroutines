@@ -111,7 +111,7 @@ Spring 트랜잭션이 있으면 새 세션을 열지 않고 그 트랜잭션에
 implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
 // 추가
-implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
+implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.1.0")
 implementation("io.vertx:vertx-pg-client:4.5.16")  // 또는 MySQL
 ```
 
