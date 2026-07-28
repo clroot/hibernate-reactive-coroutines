@@ -37,6 +37,13 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 - Java 17 or later
 - Spring Boot 3.4.x or 4.x
 
+> **Hibernate ORM 7 is required.** Hibernate Reactive 3.1 runs on Hibernate ORM 7.1, and this starter
+> publishes that as a dependency constraint. Because Spring Framework 6.x (Spring Boot 3.x) does not
+> support Hibernate ORM 7, **do not combine this starter with `spring-boot-starter-data-jpa` in a
+> Spring Boot 3 application** — the blocking JPA half will fail to start. On Spring Boot 4 the two can
+> coexist. Run the reactive and blocking persistence layers in separate modules if you need both on
+> Boot 3.
+
 ## Installation
 
 ### Gradle (Kotlin DSL)

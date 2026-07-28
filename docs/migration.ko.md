@@ -49,13 +49,56 @@ Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입
 
 ### 미지원 기능
 
-| 기능                         | 대체 방안                        |
-| ---------------------------- | -------------------------------- |
-| Specification (동적 쿼리)    | `@Query`로 직접 작성             |
-| QueryByExample               | 조건별 메서드 조합               |
-| Projection (인터페이스 기반) | `SELECT new DTO(...)` 사용       |
-| `@EntityGraph`               | FETCH JOIN 또는 `fetch()` 메서드 |
-| Native @Modifying            | JPQL 사용                        |
+아래 항목들은 첫 호출 시점이 아니라 **애플리케이션 기동 시점에** 원인을 설명하는 메시지와 함께 거부됩니다.
+
+| 기능                                 | 대체 방안                                                   |
+| ------------------------------------ | ----------------------------------------------------------- |
+| Specification (동적 쿼리)            | `@Query`로 직접 작성                                        |
+| QueryByExample                       | 조건별 메서드 조합                                          |
+| Projection (인터페이스 기반)         | FETCH JOIN 후 Kotlin에서 매핑                               |
+| `@EntityGraph`                       | FETCH JOIN 또는 `fetch()` 메서드                            |
+| Native `@Modifying`                  | JPQL 사용                                                   |
+| `@Query`의 스칼라/집계/DTO 반환      | 엔티티 타입 반환, 또는 `count…`/`exists…` 파생 메서드 사용  |
+| suspend가 아닌(`Flow` 포함) 쿼리 메서드 | `suspend fun … : List<T>` 로 선언                        |
+| 이름과 인자 개수가 같은 오버로드     | 서로 다른 이름 사용                                         |
+| `Top`/`First` + `Pageable` 조합      | 둘 중 하나만 사용                                           |
+| 네이티브 `@Query` 정렬               | 쿼리 안에 `ORDER BY` 작성                                   |
+
+---
+
+## 동작 상 주의점
+
+위 기능 표 외에, 마이그레이션 전에 알아둘 동작 차이입니다.
+
+**삭제는 조회 후 제거합니다.** `deleteById`, `delete`, `deleteAll`, `deleteAllById`와 파생
+`deleteBy…` 메서드는 대상 엔티티를 조회한 뒤 하나씩 제거합니다(`SimpleJpaRepository`와 동일).
+따라서 cascade, `@Version` 검사, `@PreRemove` 콜백이 모두 동작하고 영속성 컨텍스트도 일관되게
+유지됩니다. 대신 `DELETE` 전에 `SELECT`가 한 번 실행됩니다. cascade 없이 대량 삭제가 필요하면
+`@Modifying @Query("DELETE …")`를 명시적으로 작성하세요.
+
+**파생 `deleteBy…`는 삭제 건수를 반환할 수 있습니다.** 반환 타입을 `Unit`, `Int`, `Long` 중 하나로
+선언하면 됩니다.
+
+**`LIKE` 값은 이스케이프됩니다.** `Containing`, `StartingWith`, `EndingWith`는 바인딩되는 값의
+`%`, `_`, `\`를 이스케이프하므로 `findByNameContaining("%")`는 전체 행이 아니라 퍼센트 문자를
+포함한 행만 매칭합니다. 명시적 `Like` 키워드는 사용자가 직접 패턴을 넘기는 것이므로
+이스케이프하지 않습니다.
+
+**`IgnoreCase`는 양쪽을 소문자로 비교합니다.** String이 아닌 프로퍼티에 `IgnoreCase`를 쓰면 기동
+시점에 거부되고, `AllIgnoreCase`는 String 프로퍼티에만 적용됩니다.
+
+**`Sort`가 `@Query` 메서드에도 적용됩니다.** `Sort` 파라미터나 정렬이 담긴 `Pageable`은 쿼리에
+이미 있는 `ORDER BY` 뒤에 덧붙습니다. 즉 쿼리에 작성한 정렬이 우선합니다.
+
+**엔티티 이름은 JPA 메타모델에서 가져옵니다.** `@Entity(name = "…")`으로 이름을 바꾼 엔티티나
+패키지가 다른 동명 엔티티도 정상 동작합니다.
+
+**`Flow`는 스트리밍이 아닙니다.** `findAll()` 등 `Flow`를 반환하는 메서드는 전체 결과를 메모리에
+적재한 뒤 방출합니다. 큰 테이블에는 `Pageable`을 사용하세요.
+
+**`@Transactional`과 `tx.transactional {}`을 섞어 써도 안전합니다.** `tx.transactional {}`은 활성
+Spring 트랜잭션이 있으면 새 세션을 열지 않고 그 트랜잭션에 참여하며,
+`@Transactional(readOnly = true)` 트랜잭션을 쓰기로 승격하려 하면 예외를 던집니다.
 
 ---
 

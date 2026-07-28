@@ -16,6 +16,7 @@ import org.springframework.data.domain.Slice
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.query.parser.PartTree
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
@@ -32,8 +33,8 @@ import kotlin.reflect.jvm.kotlinFunction
  */
 internal class QueryMethodParser(
     private val entityClass: Class<*>,
+    private val entityName: String = entityClass.simpleName,
 ) {
-    private val entityName: String = entityClass.simpleName
 
     companion object {
         /** CoroutineCrudRepository의 기본 메서드 이름들 */
@@ -65,17 +66,27 @@ internal class QueryMethodParser(
     /**
      * 커스텀 쿼리 메서드인지 확인합니다.
      */
-    fun isCustomQueryMethod(method: Method): Boolean {
-        // 기본 메서드는 제외
+    fun isCustomQueryMethod(method: Method): Boolean =
+        isDeclaredRepositoryMethod(method) && isSuspendMethod(method)
+
+    /**
+     * 사용자가 Repository 인터페이스에 직접 선언한 메서드인지 확인합니다.
+     *
+     * 기본 CRUD 메서드, `Object` 메서드, default/static/bridge 메서드는 제외합니다.
+     */
+    fun isDeclaredRepositoryMethod(method: Method): Boolean {
         if (method.name in BASE_METHODS) return false
-
-        // Object 클래스의 메서드는 제외
         if (method.declaringClass == Any::class.java) return false
-
-        // Default 메서드는 제외
         if (method.isDefault) return false
+        if (method.isSynthetic || method.isBridge) return false
+        if (Modifier.isStatic(method.modifiers)) return false
+        return true
+    }
 
-        // suspend 함수인지 확인 (마지막 파라미터가 Continuation)
+    /**
+     * suspend 함수인지 확인합니다 (마지막 파라미터가 Continuation).
+     */
+    fun isSuspendMethod(method: Method): Boolean {
         val params = method.parameterTypes
         return params.isNotEmpty() && Continuation::class.java.isAssignableFrom(params.last())
     }
@@ -119,6 +130,7 @@ internal class QueryMethodParser(
             ?: QueryParameters(ParameterStyle.NONE)
         val argumentNames = extractParameterNames(method)
         validateQueryParameters(method, queryParameters, countParameters, argumentNames)
+        validateAnnotatedResultType(method, returnType)
 
         return PreparedQueryMethod(
             method = method,
@@ -216,11 +228,27 @@ internal class QueryMethodParser(
             )
         }
 
+        val maxResults = partTree.maxResults
+        if (maxResults != null && hasPageable) {
+            throw IllegalStateException(
+                "Method '${method.name}' combines a Top/First limit with a Pageable parameter, " +
+                        "which is ambiguous. Use either the limit keyword or Pageable, not both.",
+            )
+        }
+
         val builder = PartTreeHqlBuilder(entityName, partTree)
         val buildResult = if (hasPageable || hasSort) {
             builder.buildWithSort(null)
         } else {
             builder.build()
+        }
+
+        val declaredArgumentCount = queryArgumentCount(method)
+        if (buildResult.parameterBinders.size != declaredArgumentCount) {
+            throw IllegalStateException(
+                "Method '${method.name}' derives ${buildResult.parameterBinders.size} query parameter(s) " +
+                        "from its name but declares $declaredArgumentCount argument(s)",
+            )
         }
 
         val countHql = if (returnType == QueryReturnType.PAGE) {
@@ -241,6 +269,7 @@ internal class QueryMethodParser(
             isModifying = false,
             parameterStyle = ParameterStyle.NONE,
             parameterNames = emptyList(),
+            maxResults = maxResults,
         )
     }
 
@@ -248,11 +277,28 @@ internal class QueryMethodParser(
         return when {
             partTree.isExistsProjection -> QueryReturnType.BOOLEAN
             partTree.isCountProjection -> QueryReturnType.LONG
-            partTree.isDelete -> QueryReturnType.VOID
+            partTree.isDelete -> determineDeleteReturnType(method)
             isPageReturnType(method) -> QueryReturnType.PAGE
             isSliceReturnType(method) -> QueryReturnType.SLICE
             isListReturnType(method) -> QueryReturnType.LIST
             else -> QueryReturnType.SINGLE
+        }
+    }
+
+    /**
+     * 파생 `deleteBy...` 메서드의 반환 타입을 결정합니다.
+     *
+     * Spring Data와 동일하게 `Unit`, `Int`, `Long` 반환을 지원합니다.
+     */
+    private fun determineDeleteReturnType(method: Method): QueryReturnType {
+        val actualReturnType = extractActualReturnType(method) ?: return QueryReturnType.VOID
+        return when {
+            isAssignableToRawType(actualReturnType, Int::class.javaObjectType) -> QueryReturnType.MODIFYING
+            isAssignableToRawType(actualReturnType, Long::class.javaObjectType) -> QueryReturnType.LONG
+            isAssignableToRawType(actualReturnType, Unit::class.java) -> QueryReturnType.VOID
+            else -> throw IllegalStateException(
+                "Derived delete method '${method.name}' must return Unit, Int or Long",
+            )
         }
     }
 
@@ -317,6 +363,50 @@ internal class QueryMethodParser(
                         "but has only $argumentCount query arguments",
             )
         }
+    }
+
+    /**
+     * 쿼리 인자 개수를 셉니다. Continuation과 Pageable/Sort는 쿼리 인자가 아닙니다.
+     */
+    private fun queryArgumentCount(method: Method): Int =
+        method.parameters.count { param ->
+            param.type != Continuation::class.java &&
+                    !Pageable::class.java.isAssignableFrom(param.type) &&
+                    !Sort::class.java.isAssignableFrom(param.type)
+        }
+
+    /**
+     * `@Query` 메서드가 엔티티 결과를 반환하는지 검증합니다.
+     *
+     * 현재 실행 경로는 결과 타입을 엔티티 클래스로 고정하므로, 스칼라/집계/DTO 프로젝션은
+     * 런타임에 Hibernate 내부 오류로 실패합니다. 시작 시점에 명확히 거부합니다.
+     */
+    private fun validateAnnotatedResultType(method: Method, returnType: QueryReturnType) {
+        if (returnType == QueryReturnType.MODIFYING || returnType == QueryReturnType.VOID) return
+
+        val actualReturnType = extractActualReturnType(method) ?: return
+        val resultType = when (returnType) {
+            QueryReturnType.SINGLE -> actualReturnType
+            else -> firstTypeArgument(actualReturnType) ?: return
+        }
+        val rawResultType = rawClassOf(resultType) ?: return
+
+        if (!rawResultType.isAssignableFrom(entityClass)) {
+            throw IllegalStateException(
+                "@Query method '${method.name}' declares result type ${rawResultType.simpleName} " +
+                        "but only the entity type ${entityClass.simpleName} (or a List/Page/Slice of it) " +
+                        "is supported. Scalar, aggregate and DTO projections are not supported yet.",
+            )
+        }
+    }
+
+    private fun firstTypeArgument(type: Type): Type? =
+        (type as? ParameterizedType)?.actualTypeArguments?.firstOrNull()?.let(::unwrapWildcard)
+
+    private fun rawClassOf(type: Type): Class<*>? = when (type) {
+        is Class<*> -> type
+        is ParameterizedType -> type.rawType as? Class<*>
+        else -> null
     }
 
     private fun extractParameterNames(method: Method): List<String> {

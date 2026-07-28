@@ -175,6 +175,14 @@ internal object CountQueryDeriver {
         )
     }
 
+    /**
+     * 최상위 `ORDER BY` 절이 있는지 확인합니다.
+     *
+     * 문자열 리터럴과 주석 안의 키워드는 [scan]이 걸러내므로 오탐이 없습니다.
+     */
+    fun hasOrderBy(query: String): Boolean =
+        scan(query).tokens.findSequence(query, "ORDER", "BY") != null
+
     private fun unsupported(feature: String): Nothing {
         throw IllegalStateException(
             "Automatic count query derivation does not support $feature; declare countQuery explicitly",

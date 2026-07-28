@@ -2,6 +2,7 @@ package io.clroot.hibernate.reactive.spring.boot.auditing
 
 import jakarta.persistence.PrePersist
 import jakarta.persistence.PreUpdate
+import java.time.Instant
 
 /**
  * JPA 엔티티 라이프사이클 콜백을 통해 Auditing 타임스탬프를 자동으로 설정하는 리스너.
@@ -47,8 +48,11 @@ public class AuditingEntityListener {
      */
     @PrePersist
     public fun onPrePersist(entity: Any) {
-        AuditMetadata.setCreatedDate(entity)
-        AuditMetadata.setLastModifiedDate(entity)
+        // 두 필드가 같은 시각을 갖도록 한 번만 읽는다.
+        // 값이 미세하게 다르면 createdAt == updatedAt 으로 "수정된 적 없음"을 판별할 수 없다.
+        val now = Instant.now()
+        AuditMetadata.setCreatedDate(entity, now)
+        AuditMetadata.setLastModifiedDate(entity, now)
     }
 
     /**

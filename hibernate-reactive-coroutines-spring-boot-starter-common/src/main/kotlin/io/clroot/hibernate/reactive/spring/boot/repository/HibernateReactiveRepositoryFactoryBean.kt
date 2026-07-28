@@ -8,6 +8,7 @@ import org.springframework.beans.factory.FactoryBean
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.GenericTypeResolver
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
 /**
@@ -36,9 +37,10 @@ public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<
     @Suppress("UNCHECKED_CAST")
     override fun getObject(): T {
         val (entityClass, idClass) = extractGenericTypes(repositoryInterface)
+        val entityName = resolveEntityName(entityClass)
 
         // 커스텀 쿼리 메서드 파싱
-        val queryMethods = parseQueryMethods(entityClass)
+        val queryMethods = parseQueryMethods(entityClass, entityName)
 
         val handler = SimpleHibernateReactiveRepository(
             entityClass = entityClass as Class<Any>,
@@ -47,6 +49,7 @@ public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<
             transactionExecutor = transactionExecutor,
             queryMethods = queryMethods,
             auditingHandler = auditingHandler,
+            entityName = entityName,
         )
 
         return Proxy.newProxyInstance(
@@ -83,14 +86,75 @@ public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<
 
     /**
      * Repository 인터페이스의 커스텀 쿼리 메서드들을 파싱합니다.
+     *
+     * 런타임 라우팅은 메서드명과 인자 개수만으로 이루어지므로, 실행 불가능한 선언은
+     * 여기서 모두 거부합니다.
      */
-    private fun parseQueryMethods(entityClass: Class<*>): Map<String, PreparedQueryMethod> {
-        val parser = QueryMethodParser(entityClass)
+    /**
+     * HQL에 사용할 엔티티 이름을 JPA 메타모델에서 조회합니다.
+     *
+     * `@Entity(name = "...")`로 이름을 바꿨거나 서로 다른 패키지에 같은 단순 이름의 엔티티가
+     * 있으면 클래스의 단순 이름은 올바른 HQL을 만들지 못합니다.
+     */
+    private fun resolveEntityName(entityClass: Class<*>): String =
+        try {
+            sessionProvider.metamodel.entity(entityClass).name
+        } catch (e: IllegalArgumentException) {
+            throw IllegalStateException(
+                "${entityClass.name} is not a managed entity. " +
+                        "Repository '${repositoryInterface.name}' requires its entity type to be registered " +
+                        "with the Hibernate Reactive session factory.",
+                e,
+            )
+        }
 
-        return repositoryInterface.methods
-            .filter { parser.isCustomQueryMethod(it) }
-            .associate { method ->
-                parser.createMethodKey(method) to parser.parse(method)
+    private fun parseQueryMethods(
+        entityClass: Class<*>,
+        entityName: String,
+    ): Map<String, PreparedQueryMethod> {
+        val parser = QueryMethodParser(entityClass, entityName)
+        val declaredMethods = repositoryInterface.methods
+            .filter { parser.isDeclaredRepositoryMethod(it) }
+
+        rejectNonSuspendMethods(parser, declaredMethods)
+
+        val queryMethods = declaredMethods.filter { parser.isSuspendMethod(it) }
+        rejectAmbiguousOverloads(parser, queryMethods)
+
+        return queryMethods.associate { method ->
+            parser.createMethodKey(method) to parser.parse(method)
+        }
+    }
+
+    private fun rejectNonSuspendMethods(parser: QueryMethodParser, methods: List<Method>) {
+        val offender = methods.firstOrNull { !parser.isSuspendMethod(it) } ?: return
+
+        throw IllegalStateException(
+            "Repository method '${repositoryInterface.name}.${offender.name}' must be a suspend function. " +
+                    "Non-suspend query methods (including Flow-returning ones) are not supported; " +
+                    "declare it as 'suspend fun ${offender.name}(...): List<T>' instead.",
+        )
+    }
+
+    /**
+     * 런타임 조회 키가 `이름#인자수`이므로, 같은 이름과 인자 개수를 가진 오버로드는
+     * 어느 쪽이 선택될지 결정되지 않습니다.
+     */
+    private fun rejectAmbiguousOverloads(parser: QueryMethodParser, methods: List<Method>) {
+        methods
+            .groupBy { parser.createMethodKey(it) }
+            .forEach { (key, overloads) ->
+                val distinctSignatures = overloads.distinctBy { it.parameterTypes.toList() }
+                if (distinctSignatures.size > 1) {
+                    val signatures = distinctSignatures.joinToString(", ") { method ->
+                        method.parameterTypes.dropLast(1).joinToString(", ") { it.simpleName }
+                    }
+                    throw IllegalStateException(
+                        "Repository '${repositoryInterface.name}' declares ambiguous overloads for '$key': " +
+                                "[$signatures]. Query methods are resolved by name and argument count, " +
+                                "so overloads with the same argument count are not supported.",
+                    )
+                }
             }
     }
 }

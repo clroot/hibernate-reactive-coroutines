@@ -19,6 +19,7 @@ import java.lang.reflect.Method
  * @param isModifying @Modifying 어노테이션 사용 여부
  * @param parameterStyle 파라미터 바인딩 스타일 (NAMED, POSITIONAL, NONE)
  * @param parameterNames Named Parameter 사용 시 파라미터 이름 목록
+ * @param maxResults `Top`/`First` 키워드로 지정된 최대 결과 개수 (제한이 없으면 null)
  */
 public data class PreparedQueryMethod(
     val method: Method,
@@ -32,6 +33,7 @@ public data class PreparedQueryMethod(
     val isModifying: Boolean = false,
     val parameterStyle: ParameterStyle = ParameterStyle.NONE,
     val parameterNames: List<String> = emptyList(),
+    val maxResults: Int? = null,
 ) {
     internal val annotatedParameters: QueryParameters by lazy(LazyThreadSafetyMode.PUBLICATION) {
         QueryParameterParser.parse(hql)

@@ -10,6 +10,8 @@ import org.springframework.data.annotation.LastModifiedDate
 import java.lang.reflect.Field
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
@@ -36,26 +38,31 @@ internal object AuditMetadata {
 
     /**
      * @CreatedDate 필드에 현재 시간을 설정합니다.
+     *
+     * @param now 기준 시각. 생략하면 현재 시각을 사용합니다.
      */
-    fun setCreatedDate(entity: Any) {
+    fun setCreatedDate(entity: Any, now: Instant = Instant.now()) {
         val auditInfo = getAuditInfo(entity.javaClass)
         auditInfo.createdDateField?.let { field ->
             val currentValue = getFieldValueSafely(entity, field)
             val isUnsetPrimitiveLong =
                 field.type == Long::class.javaPrimitiveType && currentValue == 0L
             if (currentValue == null || isUnsetPrimitiveLong) {
-                setTemporalValue(entity, field)
+                setTemporalValue(entity, field, now)
             }
         }
     }
 
     /**
      * @LastModifiedDate 필드에 현재 시간을 설정합니다.
+     *
+     * @param now 기준 시각. 생성 시점에는 createdDate와 같은 값을 넘겨야
+     *   `createdAt == updatedAt`으로 "한 번도 수정되지 않음"을 판별할 수 있습니다.
      */
-    fun setLastModifiedDate(entity: Any) {
+    fun setLastModifiedDate(entity: Any, now: Instant = Instant.now()) {
         val auditInfo = getAuditInfo(entity.javaClass)
         auditInfo.lastModifiedDateField?.let { field ->
-            setTemporalValue(entity, field)
+            setTemporalValue(entity, field, now)
         }
     }
 
@@ -115,16 +122,19 @@ internal object AuditMetadata {
     }
 
     /**
-     * 필드 타입에 맞는 현재 시간 값을 설정합니다.
+     * 필드 타입에 맞는 시간 값을 설정합니다.
+     *
+     * @param now 기준 시각. 같은 저장에서 생성/수정 시각을 동일하게 맞추기 위해 호출자가 전달합니다.
      */
-    private fun setTemporalValue(entity: Any, field: Field) {
+    private fun setTemporalValue(entity: Any, field: Field, now: Instant) {
         val value: Any = when (field.type) {
-            Instant::class.java -> Instant.now()
-            LocalDateTime::class.java -> LocalDateTime.now()
-            ZonedDateTime::class.java -> ZonedDateTime.now()
-            Date::class.java -> Date()
-            Long::class.javaObjectType, Long::class.javaPrimitiveType -> System.currentTimeMillis()
-            else -> return // 지원하지 않는 타입
+            Instant::class.java -> now
+            LocalDateTime::class.java -> LocalDateTime.ofInstant(now, ZoneId.systemDefault())
+            OffsetDateTime::class.java -> OffsetDateTime.ofInstant(now, ZoneId.systemDefault())
+            ZonedDateTime::class.java -> ZonedDateTime.ofInstant(now, ZoneId.systemDefault())
+            Date::class.java -> Date.from(now)
+            Long::class.javaObjectType, Long::class.javaPrimitiveType -> now.toEpochMilli()
+            else -> return // isSupportedTemporalType이 걸러내므로 도달하지 않음
         }
         setFieldValueSafely(entity, field, value)
     }
@@ -160,12 +170,16 @@ internal object AuditMetadata {
                     field.isAnnotationPresent(CreatedDate::class.java) && createdDateField == null -> {
                         if (isSupportedTemporalType(field.type)) {
                             createdDateField = field
+                        } else {
+                            warnUnsupportedTemporalType(cls, field, "@CreatedDate")
                         }
                     }
 
                     field.isAnnotationPresent(LastModifiedDate::class.java) && lastModifiedDateField == null -> {
                         if (isSupportedTemporalType(field.type)) {
                             lastModifiedDateField = field
+                        } else {
+                            warnUnsupportedTemporalType(cls, field, "@LastModifiedDate")
                         }
                     }
 
@@ -198,10 +212,13 @@ internal object AuditMetadata {
      */
     private fun tryMakeAccessible(field: Field): Boolean {
         return try {
-            field.isAccessible = true
-            true
+            // 모듈 경로에서 열리지 않은 패키지는 InaccessibleObjectException을 던진다.
+            field.trySetAccessible()
         } catch (e: SecurityException) {
             logger.debug("Cannot make field '${field.name}' accessible due to security restrictions", e)
+            false
+        } catch (e: RuntimeException) {
+            logger.debug("Cannot make field '${field.name}' accessible", e)
             false
         }
     }
@@ -212,9 +229,27 @@ internal object AuditMetadata {
     private fun isSupportedTemporalType(type: Class<*>): Boolean {
         return type == Instant::class.java ||
                 type == LocalDateTime::class.java ||
+                type == OffsetDateTime::class.java ||
                 type == ZonedDateTime::class.java ||
                 type == Date::class.java ||
                 type == Long::class.javaObjectType ||
                 type == Long::class.javaPrimitiveType
+    }
+
+    /**
+     * 지원하지 않는 타입에 auditing 어노테이션이 붙으면 조용히 넘어가지 않고 경고합니다.
+     *
+     * 경고가 없으면 필드가 계속 null로 남아 NOT NULL 제약 위반으로만 문제가 드러납니다.
+     */
+    private fun warnUnsupportedTemporalType(cls: Class<*>, field: Field, annotation: String) {
+        logger.warn(
+            "{}.{} is annotated with {} but its type {} is not supported; " +
+                    "the field will not be populated. Supported types: " +
+                    "Instant, LocalDateTime, OffsetDateTime, ZonedDateTime, java.util.Date, Long.",
+            cls.name,
+            field.name,
+            annotation,
+            field.type.name,
+        )
     }
 }

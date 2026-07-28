@@ -26,24 +26,39 @@ public sealed class ParameterBinder {
      * LIKE 패턴 바인더 - 값 양쪽에 % 추가
      */
     public data object Containing : ParameterBinder() {
-        override fun bind(value: Any?): Any? = value?.let { "%$it%" }
+        override fun bind(value: Any?): Any? = value?.let { "%${escapeLikeWildcards(it)}%" }
     }
 
     /**
      * StartingWith 패턴 바인더 - 값 뒤에 % 추가
      */
     public data object StartingWith : ParameterBinder() {
-        override fun bind(value: Any?): Any? = value?.let { "$it%" }
+        override fun bind(value: Any?): Any? = value?.let { "${escapeLikeWildcards(it)}%" }
     }
 
     /**
      * EndingWith 패턴 바인더 - 값 앞에 % 추가
      */
     public data object EndingWith : ParameterBinder() {
-        override fun bind(value: Any?): Any? = value?.let { "%$it" }
+        override fun bind(value: Any?): Any? = value?.let { "%${escapeLikeWildcards(it)}" }
     }
 
     public companion object {
+        /**
+         * LIKE 패턴에서 특별한 의미를 갖는 문자를 이스케이프합니다.
+         *
+         * 이스케이프하지 않으면 `findByNameContaining("%")` 같은 호출이 전체 행을 매칭하여
+         * 의도한 필터를 우회합니다. [LIKE_ESCAPE_CHARACTER]와 짝을 이룹니다.
+         */
+        internal fun escapeLikeWildcards(value: Any): String =
+            value.toString()
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+
+        /** 이스케이프된 LIKE 패턴에 사용할 HQL `ESCAPE` 절. */
+        internal const val LIKE_ESCAPE_CLAUSE: String = " ESCAPE '\\'"
+
         /**
          * Part.Type에 맞는 ParameterBinder를 반환합니다.
          */

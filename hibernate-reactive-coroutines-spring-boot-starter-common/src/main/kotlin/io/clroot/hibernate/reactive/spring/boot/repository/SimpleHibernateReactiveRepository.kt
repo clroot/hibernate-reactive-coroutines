@@ -40,6 +40,7 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     private val transactionExecutor: ReactiveTransactionExecutor,
     private val queryMethods: Map<String, PreparedQueryMethod> = emptyMap(),
     auditingHandler: ReactiveAuditingHandler<*>? = null,
+    entityName: String = entityClass.simpleName,
 ) : InvocationHandler {
 
     public companion object {
@@ -56,9 +57,10 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     }
 
     // 내부 헬퍼 클래스들
-    private val crud = CrudOperations<T, ID>(entityClass, sessionProvider, transactionExecutor, auditingHandler)
+    private val crud =
+        CrudOperations<T, ID>(entityClass, entityName, sessionProvider, transactionExecutor, auditingHandler)
     private val query = QueryOperations<T>(entityClass, sessionProvider)
-    private val pagination = PaginationOperations<T>(entityClass, sessionProvider, query)
+    private val pagination = PaginationOperations<T>(entityClass, entityName, sessionProvider, query)
 
     // ============================================
     // InvocationHandler 구현
@@ -197,7 +199,7 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
 
         // @Query 어노테이션 메서드 처리
         if (prepared.isAnnotatedQuery) {
-            return executeAnnotatedQuery(prepared, queryArgs, pageable)
+            return executeAnnotatedQuery(prepared, queryArgs, pageable, sort)
         }
 
         // PartTree 기반 쿼리 처리
@@ -205,19 +207,31 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
             prepared.parameterBinders.getOrNull(index)?.bind(arg) ?: arg
         }
 
+        // 파생 deleteBy는 대상을 로드한 뒤 제거하므로 삭제 건수를 선언된 반환 타입으로 변환합니다.
+        if (prepared.partTree?.isDelete == true) {
+            val deletedCount = query.executeDeleteQuery(prepared.hql, boundArgs)
+            return when (prepared.returnType) {
+                QueryReturnType.MODIFYING -> deletedCount.toInt()
+                QueryReturnType.LONG -> deletedCount
+                else -> Unit
+            }
+        }
+
         return when (prepared.returnType) {
-            QueryReturnType.SINGLE -> query.executeSingleQuery(prepared.hql, boundArgs)
+            QueryReturnType.SINGLE -> query.executeSingleQuery(prepared.hql, boundArgs, prepared.maxResults)
             QueryReturnType.LIST -> {
                 if (sort != null) {
                     query.executeListQueryWithSort(prepared, boundArgs, sort)
                 } else {
-                    query.executeListQuery(prepared.hql, boundArgs)
+                    query.executeListQuery(prepared.hql, boundArgs, prepared.maxResults)
                 }
             }
 
             QueryReturnType.BOOLEAN -> query.executeExistsQuery(prepared.hql, boundArgs)
             QueryReturnType.LONG -> query.executeCountQuery(prepared.hql, boundArgs)
-            QueryReturnType.VOID -> query.executeDeleteQuery(prepared.hql, boundArgs)
+            QueryReturnType.VOID -> throw IllegalStateException(
+                "VOID return type is only produced by derived delete methods",
+            )
             QueryReturnType.PAGE -> pagination.executePageQuery(prepared, boundArgs, pageable!!)
             QueryReturnType.SLICE -> pagination.executeSliceQuery(prepared, boundArgs, pageable!!)
             QueryReturnType.MODIFYING -> throw IllegalStateException("MODIFYING should be handled by executeAnnotatedQuery")
@@ -228,6 +242,7 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
         pageable: Pageable?,
+        sort: Sort?,
     ): Any? {
         return when (prepared.returnType) {
             QueryReturnType.MODIFYING -> query.executeModifyingAnnotatedQuery(prepared, args)
@@ -237,7 +252,7 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
             }
             QueryReturnType.PAGE -> pagination.executePageAnnotatedQuery(prepared, args, pageable!!)
             QueryReturnType.SLICE -> pagination.executeSliceAnnotatedQuery(prepared, args, pageable!!)
-            QueryReturnType.LIST -> query.executeListAnnotatedQuery(prepared, args)
+            QueryReturnType.LIST -> query.executeListAnnotatedQuery(prepared, args, sort ?: Sort.unsorted())
             QueryReturnType.SINGLE -> query.executeSingleAnnotatedQuery(prepared, args)
             else -> throw IllegalStateException("Unsupported return type for @Query: ${prepared.returnType}")
         }

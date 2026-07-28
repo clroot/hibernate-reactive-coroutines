@@ -51,6 +51,10 @@ public data class HibernateReactiveProperties(
      * 이 시간 내에 커넥션을 획득하지 못하면 타임아웃 예외가 발생합니다.
      * null이면 Vert.x 기본값 사용
      *
+     * **프로덕션 권장**: [maxWaitQueueSize]와 함께 반드시 설정하세요.
+     * 둘 다 설정하지 않으면 대기 큐가 무제한이라, DB가 느려질 때 요청이 빠르게 실패하지 않고
+     * 계속 쌓여 애플리케이션 전체가 멈추는 브라운아웃으로 이어집니다.
+     *
      * @see org.hibernate.reactive.provider.Settings.POOL_CONNECT_TIMEOUT
      */
     val connectTimeout: Int? = null,
@@ -70,7 +74,10 @@ public data class HibernateReactiveProperties(
      *
      * 모든 커넥션이 사용 중일 때 대기할 수 있는 최대 요청 수입니다.
      * 대기 큐가 가득 차면 즉시 예외가 발생합니다.
-     * null이면 Vert.x 기본값 사용
+     * null이면 Vert.x 기본값(무제한) 사용
+     *
+     * **프로덕션 권장**: 무제한 대기 큐는 DB 지연 시 요청이 무한정 쌓이게 하므로
+     * [connectTimeout]과 함께 명시적으로 설정하세요.
      *
      * @see org.hibernate.reactive.provider.Settings.POOL_MAX_WAIT_QUEUE_SIZE
      */

@@ -18,6 +18,9 @@ internal class PartTreeHqlBuilder(
 
     companion object {
         private val SAFE_PROPERTY_PATH = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
+
+        /** 이 빌더가 직접 생성하는 파라미터 플레이스홀더. 사용자 입력이 아니므로 치환이 안전합니다. */
+        private val PARAMETER_PLACEHOLDER = Regex(":p\\d+")
     }
 
     private var parameterIndex = 0
@@ -81,6 +84,7 @@ internal class PartTreeHqlBuilder(
         val orderBy = buildOrderByClause(effectiveSort)
 
         return buildString {
+            if (partTree.isDistinct) append("SELECT DISTINCT e ")
             append("FROM $entityName e")
             if (where.isNotEmpty()) append(" WHERE $where")
             if (orderBy.isNotEmpty()) append(" ORDER BY $orderBy")
@@ -89,18 +93,25 @@ internal class PartTreeHqlBuilder(
 
     private fun buildCountQuery(): String {
         val where = buildWhereClause()
+        val countExpression = if (partTree.isDistinct) "COUNT(DISTINCT e)" else "COUNT(e)"
         return buildString {
-            append("SELECT COUNT(e) FROM $entityName e")
+            append("SELECT $countExpression FROM $entityName e")
             if (where.isNotEmpty()) append(" WHERE $where")
         }
     }
 
     private fun buildExistsQuery(): String = buildCountQuery()
 
+    /**
+     * 파생 `deleteBy...` 메서드가 삭제할 엔티티를 조회하는 SELECT를 생성합니다.
+     *
+     * bulk `DELETE` 문은 cascade와 `@Version`을 건너뛰므로, Spring Data JPA와 동일하게
+     * 대상을 로드한 뒤 하나씩 제거합니다.
+     */
     private fun buildDeleteQuery(): String {
         val where = buildWhereClause()
         return buildString {
-            append("DELETE FROM $entityName e")
+            append("FROM $entityName e")
             if (where.isNotEmpty()) append(" WHERE $where")
         }
     }
@@ -128,14 +139,44 @@ internal class PartTreeHqlBuilder(
      * [ConditionBuilderRegistry]를 통해 적절한 빌더를 조회하여 위임합니다.
      */
     private fun buildCondition(part: Part): String {
-        val property = "e.${part.property.toDotPath()}"
+        val propertyPath = "e.${part.property.toDotPath()}"
+        val ignoreCase = shouldIgnoreCase(part)
         val builder = ConditionBuilderRegistry.get(part.type)
+        val property = if (ignoreCase) "LOWER($propertyPath)" else propertyPath
         val result = builder.build(property, parameterIndex)
 
         parameterBinders.addAll(result.binders)
         parameterIndex += result.paramCount
 
-        return result.condition
+        // 파라미터가 없는 조건(IS NULL 등)은 대소문자 구분이 의미 없습니다.
+        if (!ignoreCase || result.paramCount == 0) return result.condition
+
+        return result.condition.replace(PARAMETER_PLACEHOLDER) { "LOWER(${it.value})" }
+    }
+
+    /**
+     * `IgnoreCase` 키워드를 적용할지 결정합니다.
+     *
+     * `IgnoreCase`(ALWAYS)를 String이 아닌 프로퍼티에 쓰면 시작 시점에 실패시키고,
+     * `AllIgnoreCase`(WHEN_POSSIBLE)는 String 프로퍼티에만 적용합니다.
+     */
+    private fun shouldIgnoreCase(part: Part): Boolean {
+        val isStringProperty = part.property.leafProperty.type == String::class.java
+
+        return when (part.shouldIgnoreCase()) {
+            Part.IgnoreCaseType.ALWAYS -> {
+                if (!isStringProperty) {
+                    throw IllegalStateException(
+                        "IgnoreCase cannot be applied to non-String property " +
+                                "'${part.property.toDotPath()}' of type ${part.property.leafProperty.type.name}",
+                    )
+                }
+                true
+            }
+
+            Part.IgnoreCaseType.WHEN_POSSIBLE -> isStringProperty
+            else -> false
+        }
     }
 
     // ============================================

@@ -41,8 +41,9 @@ import kotlin.time.Duration.Companion.seconds
  * - 트랜잭션 내에서 외부 I/O(HTTP 호출 등)를 수행하면 DB 커넥션이 오래 점유됨
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-public class ReactiveTransactionExecutor(
+public class ReactiveTransactionExecutor @JvmOverloads constructor(
     private val sessionFactory: Mutiny.SessionFactory,
+    private val ambientTransactionProbe: AmbientTransactionProbe? = null,
 ) {
     public companion object {
         public val DEFAULT_TIMEOUT: Duration = 30.seconds
@@ -119,11 +120,25 @@ public class ReactiveTransactionExecutor(
             )
         }
 
-        val effectiveTimeout = calculateEffectiveTimeout(parentContext, timeout)
+        // Spring @Transactional 등 바깥에서 시작된 트랜잭션은 코루틴 컨텍스트에 보이지 않는다.
+        // 감지하지 못하면 실제로는 쓰이지 않는 세션과 트랜잭션을 하나 더 열게 된다.
+        val ambientTransaction = if (parentContext == null) {
+            ambientTransactionProbe?.currentTransaction()
+        } else {
+            null
+        }
+        if (mode == TransactionMode.READ_WRITE && ambientTransaction?.isReadOnly == true) {
+            throw ReadOnlyTransactionException(
+                "Cannot start a write transaction within a read-only transaction. " +
+                        "Remove readOnly = true from the surrounding @Transactional annotation.",
+            )
+        }
+
+        val effectiveTimeout = calculateEffectiveTimeout(parentContext, ambientTransaction, timeout)
         val callerContext = currentCoroutineContext().minusKey(Job)
 
-        return if (parentContext != null) {
-            // 기존 세션 재사용 (REQUIRED 동작)
+        return if (parentContext != null || ambientTransaction != null) {
+            // 기존 트랜잭션에 참여 (REQUIRED 동작)
             executeWithTimeout(effectiveTimeout) { block() }
         } else {
             // 새 세션 생성 - Vert.x EventLoop에서 실행
@@ -161,11 +176,13 @@ public class ReactiveTransactionExecutor(
 
     private fun calculateEffectiveTimeout(
         parentContext: ReactiveSessionContext?,
+        ambientTransaction: AmbientTransaction?,
         timeout: Duration,
     ): Duration {
-        if (parentContext == null) return timeout
+        val remaining = parentContext?.remainingTimeout()
+            ?: ambientTransaction?.remainingTimeout
+            ?: return timeout
 
-        val remaining = parentContext.remainingTimeout()
         return when {
             remaining == INFINITE -> timeout
             timeout == INFINITE -> remaining

@@ -17,6 +17,7 @@ import org.springframework.transaction.UnexpectedRollbackException
 import org.springframework.transaction.reactive.AbstractReactiveTransactionManager
 import org.springframework.transaction.reactive.GenericReactiveTransaction
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
+import reactor.core.Disposables
 import reactor.core.publisher.Mono
 import kotlin.time.Duration.Companion.seconds
 
@@ -287,17 +288,35 @@ public class HibernateReactiveTransactionManager(
      */
     private fun <T : Any> runOnVertxContext(vertxContext: Context?, block: () -> Mono<T>): Mono<T> {
         if (vertxContext == null) {
-            return block()
+            return try {
+                block()
+            } catch (error: Throwable) {
+                Mono.error(error)
+            }
         }
 
         return Mono.create { sink ->
-            vertxContext.runOnContext {
-                block()
-                    .subscribe(
-                        { value -> sink.success(value) },
-                        { error -> sink.error(error) },
-                        { sink.success() },
-                    )
+            val subscription = Disposables.swap()
+            sink.onCancel(subscription)
+
+            // block()이 동기적으로 던지면 sink가 종료되지 않아 커밋/롤백이 영원히 대기하게 된다.
+            // 세션에서 ReactiveConnection을 꺼내는 리플렉션이 대표적인 동기 실패 지점이다.
+            try {
+                vertxContext.runOnContext {
+                    try {
+                        subscription.update(
+                            block().subscribe(
+                                { value -> sink.success(value) },
+                                { error -> sink.error(error) },
+                                { sink.success() },
+                            ),
+                        )
+                    } catch (error: Throwable) {
+                        sink.error(error)
+                    }
+                }
+            } catch (error: Throwable) {
+                sink.error(error)
             }
         }
     }
