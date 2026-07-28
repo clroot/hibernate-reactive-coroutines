@@ -1,5 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.pool
 
+import io.vertx.core.net.ClientSSLOptions
+import io.vertx.core.net.PemTrustOptions
 import io.vertx.sqlclient.SqlConnectOptions
 import org.hibernate.internal.util.config.ConfigurationHelper
 import org.hibernate.reactive.pool.impl.DefaultSqlClientPoolConfiguration
@@ -19,7 +21,6 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
         private const val TRUST_CERTIFICATE_PROPERTY = "hibernate.vertx.pool.ssl.trust-certificate"
         private const val PG_CONNECT_OPTIONS_CLASS = "io.vertx.pgclient.PgConnectOptions"
         private const val SSL_MODE_CLASS = "io.vertx.pgclient.SslMode"
-        private const val PEM_TRUST_OPTIONS_CLASS = "io.vertx.core.net.PemTrustOptions"
 
         private val logger = LoggerFactory.getLogger(SslAwareSqlClientPoolConfiguration::class.java)
 
@@ -39,7 +40,7 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
     private var sslMode: String? = null
     private var trustCertificate: String? = null
 
-    override fun configure(configuration: MutableMap<Any?, Any?>?) {
+    override fun configure(configuration: Map<*, *>) {
         super.configure(configuration)
         sslMode = ConfigurationHelper.getString(SSL_MODE_PROPERTY, configuration)?.trim()?.lowercase()
         trustCertificate = ConfigurationHelper.getString(TRUST_CERTIFICATE_PROPERTY, configuration)
@@ -116,21 +117,8 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
             val setSslModeMethod = pgConnectOptionsClass.getMethod("setSslMode", sslModeClass)
             setSslModeMethod.invoke(pgOptions, sslModeValue)
 
-            // 어떤 SSL 모드에서도 인증서 검증을 우회하지 않음
-            val setTrustAllMethod = pgConnectOptionsClass.getMethod("setTrustAll", Boolean::class.java)
-            setTrustAllMethod.invoke(pgOptions, false)
-
-            trustCertificate?.let { certificatePath ->
-                applyTrustCertificate(pgOptions, pgConnectOptionsClass, certificatePath)
-            }
-
-            if (configuredSslMode == "verify-full") {
-                val setHostnameVerificationMethod = pgConnectOptionsClass.getMethod(
-                    "setHostnameVerificationAlgorithm",
-                    String::class.java,
-                )
-                setHostnameVerificationMethod.invoke(pgOptions, "HTTPS")
-            }
+            // Vert.x 5부터 TLS 설정은 ClientSSLOptions로 분리되었습니다.
+            applySslOptions(pgOptions, pgConnectOptionsClass, configuredSslMode)
 
             logger.info(
                 "Created PgConnectOptions with verified SSL mode '{}' for PostgreSQL connection",
@@ -147,19 +135,32 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
         }
     }
 
-    private fun applyTrustCertificate(
+    /**
+     * TLS 설정을 [ClientSSLOptions]로 구성해 PgConnectOptions에 적용합니다.
+     *
+     * Vert.x 5에서 `setTrustAll`/`setPemTrustOptions`/`setHostnameVerificationAlgorithm`이
+     * PgConnectOptions에서 제거되고 `setSslOptions(ClientSSLOptions)`로 통합되었습니다.
+     */
+    private fun applySslOptions(
         pgOptions: Any,
         pgConnectOptionsClass: Class<*>,
-        certificatePath: String,
+        configuredSslMode: String,
     ) {
-        val pemTrustOptionsClass = Class.forName(PEM_TRUST_OPTIONS_CLASS)
-        val pemTrustOptions = pemTrustOptionsClass.getDeclaredConstructor().newInstance()
-        pemTrustOptionsClass
-            .getMethod("addCertPath", String::class.java)
-            .invoke(pemTrustOptions, certificatePath)
+        val sslOptions = ClientSSLOptions()
+            // 어떤 SSL 모드에서도 인증서 검증을 우회하지 않음
+            .setTrustAll(false)
+
+        trustCertificate?.let { certificatePath ->
+            sslOptions.trustOptions = PemTrustOptions().addCertPath(certificatePath)
+        }
+
+        if (configuredSslMode == "verify-full") {
+            sslOptions.hostnameVerificationAlgorithm = "HTTPS"
+        }
+
         pgConnectOptionsClass
-            .getMethod("setPemTrustOptions", pemTrustOptionsClass)
-            .invoke(pgOptions, pemTrustOptions)
+            .getMethod("setSslOptions", ClientSSLOptions::class.java)
+            .invoke(pgOptions, sslOptions)
     }
 
     /**

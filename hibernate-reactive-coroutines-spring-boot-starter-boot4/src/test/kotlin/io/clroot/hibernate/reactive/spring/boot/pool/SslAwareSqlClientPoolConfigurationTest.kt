@@ -31,7 +31,7 @@ class SslAwareSqlClientPoolConfigurationTest : FunSpec({
         val options = sslConfiguration("require").connectOptions(POSTGRES_URI) as PgConnectOptions
 
         options.sslMode shouldBe SslMode.REQUIRE
-        options.isTrustAll shouldBe false
+        options.sslOptions.isTrustAll shouldBe false
     }
 
     test("verify-ca requires an explicit trust certificate") {
@@ -49,9 +49,9 @@ class SslAwareSqlClientPoolConfigurationTest : FunSpec({
         ).connectOptions(POSTGRES_URI) as PgConnectOptions
 
         options.sslMode shouldBe SslMode.VERIFY_CA
-        (options.trustOptions as PemTrustOptions).certPaths shouldContainExactly
+        (options.sslOptions.trustOptions as PemTrustOptions).certPaths shouldContainExactly
             listOf("/run/secrets/postgres-ca.pem")
-        options.isTrustAll shouldBe false
+        options.sslOptions.isTrustAll shouldBe false
     }
 
     test("verify-full enables hostname verification") {
@@ -61,7 +61,7 @@ class SslAwareSqlClientPoolConfigurationTest : FunSpec({
         ).connectOptions(POSTGRES_URI) as PgConnectOptions
 
         options.sslMode shouldBe SslMode.VERIFY_FULL
-        options.hostnameVerificationAlgorithm shouldBe "HTTPS"
+        options.sslOptions.hostnameVerificationAlgorithm shouldBe "HTTPS"
     }
 }) {
     companion object {

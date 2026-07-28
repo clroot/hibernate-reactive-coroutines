@@ -112,7 +112,7 @@ implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
 // Add
 implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.1.0")
-implementation("io.vertx:vertx-pg-client:4.5.16")  // or MySQL
+implementation("io.vertx:vertx-pg-client:5.1.5")  // or MySQL
 ```
 
 ### 2. Modify Repository Interfaces

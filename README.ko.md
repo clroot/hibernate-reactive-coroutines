@@ -1,7 +1,7 @@
 # Hibernate Reactive Coroutines
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.0-blue.svg)](https://kotlinlang.org)
-[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-3.1.0-green.svg)](https://hibernate.org/reactive/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
+[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
 > Hibernate Reactive를 Spring Data JPA처럼 사용하세요.
@@ -24,7 +24,7 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 - Java 17 이상
 - Spring Boot 3.4.x 또는 4.x
 
-> **Hibernate ORM 7이 필요합니다.** Hibernate Reactive 3.1은 Hibernate ORM 7.1 위에서 동작하며,
+> **Hibernate ORM 7이 필요합니다.** Hibernate Reactive 4.5는 Hibernate ORM 7.4 위에서 동작하며,
 > 이 스타터는 해당 버전을 의존성 제약으로 발행합니다. Spring Framework 6.x(Spring Boot 3.x)는
 > Hibernate ORM 7을 지원하지 않으므로, **Spring Boot 3 애플리케이션에서 `spring-boot-starter-data-jpa`와
 > 함께 사용하지 마세요** — 블로킹 JPA 쪽이 기동에 실패합니다. Spring Boot 4에서는 공존할 수 있습니다.
@@ -43,7 +43,7 @@ dependencies {
     implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0")
 
     // DB 드라이버
-    implementation("io.vertx:vertx-pg-client:4.5.16")
+    implementation("io.vertx:vertx-pg-client:5.1.5")
 }
 ```
 
@@ -58,7 +58,7 @@ dependencies {
     implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0'
 
     // DB 드라이버
-    implementation 'io.vertx:vertx-pg-client:4.5.16'
+    implementation 'io.vertx:vertx-pg-client:5.1.5'
 }
 ```
 

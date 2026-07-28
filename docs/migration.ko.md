@@ -112,7 +112,7 @@ implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
 // 추가
 implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.1.0")
-implementation("io.vertx:vertx-pg-client:4.5.16")  // 또는 MySQL
+implementation("io.vertx:vertx-pg-client:5.1.5")  // 또는 MySQL
 ```
 
 ### 2. Repository 인터페이스 수정
