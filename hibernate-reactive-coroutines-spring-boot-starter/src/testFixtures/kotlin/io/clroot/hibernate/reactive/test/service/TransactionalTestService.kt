@@ -1,5 +1,8 @@
 package io.clroot.hibernate.reactive.test.service
 
+import io.clroot.hibernate.reactive.ReactiveSessionContext
+import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
+import io.clroot.hibernate.reactive.currentSessionOrNull
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
 import org.springframework.stereotype.Service
@@ -14,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class TransactionalTestService(
     private val testEntityRepository: TestEntityRepository,
+    private val transactionExecutor: ReactiveTransactionExecutor,
 ) {
     @Transactional
     suspend fun saveEntity(name: String, value: Int): TestEntity {
@@ -59,5 +63,41 @@ class TransactionalTestService(
         }
         onSaved(savedEntities.map { it.id!! })
         throw RuntimeException("의도적 롤백 - 모든 저장이 롤백되어야 함")
+    }
+
+    // === @Transactional 안에서 tx.transactional {} 을 함께 쓰는 경우 ===
+
+    /**
+     * `tx.transactional {}`이 바깥 `@Transactional`에 참여해야 합니다.
+     * 별도 트랜잭션이 열리면 이 저장은 롤백되지 않습니다.
+     */
+    @Transactional
+    suspend fun saveNestedAndFail(name: String, value: Int) {
+        transactionExecutor.transactional {
+            testEntityRepository.save(TestEntity(name = name, value = value))
+        }
+        throw RuntimeException("의도적 롤백 - 중첩 저장까지 롤백되어야 함")
+    }
+
+    /**
+     * `tx.transactional {}`이 바깥 Spring 트랜잭션을 감지했는지 확인합니다.
+     *
+     * 감지하지 못하면 새 세션을 열면서 [ReactiveSessionContext]를 코루틴 컨텍스트에 추가합니다.
+     * 즉 여기서 세션이 보인다면 쓰이지도 않을 세션이 하나 더 열렸다는 뜻입니다.
+     */
+    @Transactional
+    suspend fun opensRedundantSession(): Boolean =
+        transactionExecutor.transactional {
+            currentSessionOrNull() != null
+        }
+
+    /**
+     * 읽기 전용 `@Transactional` 안에서는 쓰기 트랜잭션으로 승격할 수 없습니다.
+     */
+    @Transactional(readOnly = true)
+    suspend fun upgradeReadOnlyTransaction(name: String) {
+        transactionExecutor.transactional {
+            testEntityRepository.save(TestEntity(name = name, value = 0))
+        }
     }
 }

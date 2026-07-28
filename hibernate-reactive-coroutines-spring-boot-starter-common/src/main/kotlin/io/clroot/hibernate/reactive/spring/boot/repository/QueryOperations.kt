@@ -1,7 +1,9 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
+import io.clroot.hibernate.reactive.spring.boot.repository.query.CountQueryDeriver
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryAliasResolver
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
@@ -10,6 +12,7 @@ import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
 import jakarta.persistence.metamodel.Metamodel
 import jakarta.persistence.metamodel.PluralAttribute
+import io.smallrye.mutiny.Uni
 import jakarta.persistence.metamodel.SingularAttribute
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.data.domain.Pageable
@@ -36,17 +39,19 @@ internal class QueryOperations<T : Any>(
     // PartTree 쿼리 실행
     // ============================================
 
-    suspend fun executeSingleQuery(hql: String, args: List<Any?>): T? =
+    suspend fun executeSingleQuery(hql: String, args: List<Any?>, maxResults: Int? = null): T? =
         sessionProvider.read { session ->
             val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
+            maxResults?.let { query.maxResults = it }
             query.singleResultOrNull
         }
 
-    suspend fun executeListQuery(hql: String, args: List<Any?>): List<T> =
+    suspend fun executeListQuery(hql: String, args: List<Any?>, maxResults: Int? = null): List<T> =
         sessionProvider.read { session ->
             val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
+            maxResults?.let { query.maxResults = it }
             query.resultList
         }
 
@@ -66,13 +71,25 @@ internal class QueryOperations<T : Any>(
             query.singleResult
         } ?: 0L
 
-    suspend fun executeDeleteQuery(hql: String, args: List<Any?>) {
-        sessionProvider.write<Unit> { session ->
-            val query = session.createMutationQuery(hql)
+    /**
+     * 파생 `deleteBy...` 쿼리를 실행하고 삭제된 행 수를 반환합니다.
+     *
+     * 대상 엔티티를 먼저 로드한 뒤 제거하므로 cascade와 `@Version`이 정상 동작합니다.
+     */
+    suspend fun executeDeleteQuery(hql: String, args: List<Any?>): Long =
+        sessionProvider.write { session ->
+            val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
-            query.executeUpdate().replaceWith(Unit)
+            query.resultList.chain { entities ->
+                if (entities.isEmpty()) {
+                    Uni.createFrom().item(0L)
+                } else {
+                    val managed: List<Any> = entities
+                    session.removeAll(*managed.toTypedArray())
+                        .replaceWith(entities.size.toLong())
+                }
+            }
         }
-    }
 
     suspend fun executeListQueryWithSort(
         prepared: PreparedQueryMethod,
@@ -80,7 +97,7 @@ internal class QueryOperations<T : Any>(
         sort: Sort,
     ): List<T> {
         val hql = applyDynamicSort(prepared.hql, sort)
-        return executeListQuery(hql, args)
+        return executeListQuery(hql, args, prepared.maxResults)
     }
 
     // ============================================
@@ -116,12 +133,15 @@ internal class QueryOperations<T : Any>(
     suspend fun executeListAnnotatedQuery(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
+        sort: Sort = Sort.unsorted(),
     ): List<T> {
+        val hql = applyAnnotatedQuerySort(prepared, sort)
+
         return sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(prepared.hql, entityClass)
+                session.createNativeQuery(hql, entityClass)
             } else {
-                session.createQuery(prepared.hql, entityClass)
+                session.createQuery(hql, entityClass)
             }
 
             bindAnnotatedParameters(query, prepared, args)
@@ -247,7 +267,39 @@ internal class QueryOperations<T : Any>(
         return "$baseHql ORDER BY $sortClause"
     }
 
-    internal fun buildSortClause(sort: Sort): String {
+    /**
+     * `@Query`로 선언된 쿼리에 동적 [Sort]를 적용합니다.
+     *
+     * 쿼리가 이미 `ORDER BY`를 갖고 있으면 뒤에 덧붙여 작성자의 정렬 의도를 보존합니다.
+     * 안전하게 적용할 수 없으면 조용히 무시하지 않고 예외를 던집니다.
+     */
+    internal fun applyAnnotatedQuerySort(prepared: PreparedQueryMethod, sort: Sort): String {
+        if (sort.isUnsorted) return prepared.hql
+
+        if (prepared.isNativeQuery) {
+            throw UnsupportedOperationException(
+                "Sorting a native @Query is not supported for method '${prepared.method.name}'. " +
+                        "Declare the ORDER BY clause inside the query instead.",
+            )
+        }
+
+        val alias = QueryAliasResolver.resolve(prepared.hql)
+            ?: throw IllegalStateException(
+                "Cannot apply Sort to @Query method '${prepared.method.name}' because its root alias " +
+                        "could not be determined. Declare the ORDER BY clause inside the query instead.",
+            )
+
+        val sortClause = buildSortClause(sort, alias)
+        val baseHql = prepared.hql.trimEnd()
+
+        return if (CountQueryDeriver.hasOrderBy(baseHql)) {
+            "$baseHql, $sortClause"
+        } else {
+            "$baseHql ORDER BY $sortClause"
+        }
+    }
+
+    internal fun buildSortClause(sort: Sort, alias: String = "e"): String {
         if (sort.isUnsorted) return ""
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
@@ -277,7 +329,7 @@ internal class QueryOperations<T : Any>(
                     throw IllegalArgumentException("Sort property must resolve to a basic attribute")
                 }
             }
-            "e.${order.property} $direction"
+            "$alias.${order.property} $direction"
         }.joinToString(", ")
     }
 

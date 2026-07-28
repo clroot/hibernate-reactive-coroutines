@@ -83,7 +83,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0"
+                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0 ESCAPE '\\'"
                 result.parameterBinders shouldHaveSize 1
                 result.parameterBinders[0] shouldBe ParameterBinder.Containing
             }
@@ -94,7 +94,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0"
+                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0 ESCAPE '\\'"
                 result.parameterBinders shouldHaveSize 1
                 result.parameterBinders[0] shouldBe ParameterBinder.StartingWith
             }
@@ -105,7 +105,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0"
+                result.hql shouldBe "FROM User e WHERE e.name LIKE :p0 ESCAPE '\\'"
                 result.parameterBinders shouldHaveSize 1
                 result.parameterBinders[0] shouldBe ParameterBinder.EndingWith
             }
@@ -116,7 +116,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "FROM User e WHERE e.name NOT LIKE :p0"
+                result.hql shouldBe "FROM User e WHERE e.name NOT LIKE :p0 ESCAPE '\\'"
                 result.parameterBinders[0] shouldBe ParameterBinder.Containing
             }
         }
@@ -335,7 +335,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "DELETE FROM User e WHERE e.name = :p0"
+                result.hql shouldBe "FROM User e WHERE e.name = :p0"
             }
 
             it("deleteByAge") {
@@ -344,7 +344,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "DELETE FROM User e WHERE e.age = :p0"
+                result.hql shouldBe "FROM User e WHERE e.age = :p0"
             }
         }
 

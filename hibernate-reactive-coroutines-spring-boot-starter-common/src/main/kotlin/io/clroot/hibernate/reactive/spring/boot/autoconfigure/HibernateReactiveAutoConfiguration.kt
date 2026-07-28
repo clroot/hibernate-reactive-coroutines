@@ -1,27 +1,38 @@
 package io.clroot.hibernate.reactive.spring.boot.autoconfigure
 
+import io.clroot.hibernate.reactive.AmbientTransactionProbe
 import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.spring.boot.pool.SslAwareSqlClientPoolConfiguration
 import io.clroot.hibernate.reactive.spring.boot.transaction.HibernateReactiveTransactionManager
+import io.clroot.hibernate.reactive.spring.boot.transaction.SpringAmbientTransactionProbe
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import jakarta.persistence.AttributeConverter
+import jakarta.persistence.Converter
+import jakarta.persistence.Embeddable
 import jakarta.persistence.Entity
+import jakarta.persistence.MappedSuperclass
 import org.hibernate.cfg.AvailableSettings
 import org.hibernate.cfg.Configuration
 import org.hibernate.reactive.mutiny.Mutiny
 import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.AutoConfigurationPackages
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.context.properties.bind.Bindable
+import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.core.type.filter.AnnotationTypeFilter
+import org.springframework.transaction.ReactiveTransactionManager
 import org.springframework.transaction.reactive.TransactionalEventPublisher
+import org.springframework.util.ClassUtils
 
 /**
  * Hibernate Reactive Auto-configuration.
@@ -58,11 +69,11 @@ public class HibernateReactiveAutoConfiguration(
     private val applicationContext: ApplicationContext,
     private val properties: HibernateReactiveProperties,
     // === 데이터소스 설정 ===
-    @Value("\${spring.datasource.url}") private val jdbcUrl: String,
-    @Value("\${spring.datasource.username}") private val username: String,
-    @Value("\${spring.datasource.password}") private val password: String,
+    @Value("\${spring.datasource.url:#{null}}") private val jdbcUrl: String?,
+    @Value("\${spring.datasource.username:#{null}}") private val username: String?,
+    @Value("\${spring.datasource.password:#{null}}") private val password: String?,
     // === JPA 기본 설정 ===
-    @Value("\${spring.jpa.database-platform}") private val dialect: String,
+    @Value("\${spring.jpa.database-platform:#{null}}") private val dialect: String?,
     @Value("\${spring.jpa.hibernate.ddl-auto:none}") private val ddlAuto: String,
     @Value("\${spring.jpa.show-sql:false}") private val showSql: Boolean,
     // === SQL 포맷팅 ===
@@ -94,23 +105,25 @@ public class HibernateReactiveAutoConfiguration(
     @Value("\${spring.jpa.properties.hibernate.cache.use_query_cache:false}") private val useQueryCache: Boolean,
 ) {
     @Bean
-    @ConditionalOnMissingBean(name = ["hibernateSessionFactory"])
+    @ConditionalOnMissingBean(value = [Mutiny.SessionFactory::class], name = ["hibernateSessionFactory"])
     public fun hibernateSessionFactory(): org.hibernate.SessionFactory {
-        val reactiveUrl = ReactiveConnectionUrl.fromJdbc(jdbcUrl)
+        val resolvedJdbcUrl = jdbcUrl?.takeIf { it.isNotBlank() } ?: throw IllegalStateException(
+            "Hibernate Reactive is on the classpath but 'spring.datasource.url' is not set. " +
+                    "Set it, define your own Mutiny.SessionFactory bean, or exclude " +
+                    "${javaClass.name} from auto-configuration.",
+        )
+        val reactiveUrl = ReactiveConnectionUrl.fromJdbc(resolvedJdbcUrl)
 
         val configuration =
             Configuration().apply {
                 // @SpringBootApplication 패키지 기준으로 @Entity 클래스 자동 스캔
                 val basePackages = AutoConfigurationPackages.get(applicationContext)
-                findEntityClasses(basePackages).forEach { entityClass ->
-                    addAnnotatedClass(entityClass)
+                findManagedClasses(basePackages).forEach { managedClass ->
+                    addManagedClass(this, managedClass)
                 }
             }
                 // === 기본 연결 설정 ===
                 .setProperty(AvailableSettings.JAKARTA_JDBC_URL, reactiveUrl)
-                .setProperty(AvailableSettings.JAKARTA_JDBC_USER, username)
-                .setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, password)
-                .setProperty(AvailableSettings.DIALECT, dialect)
                 .setProperty(AvailableSettings.HBM2DDL_AUTO, ddlAuto)
                 // === SQL 로깅 설정 ===
                 .setProperty(AvailableSettings.SHOW_SQL, showSql.toString())
@@ -134,6 +147,15 @@ public class HibernateReactiveAutoConfiguration(
                 .setProperty("hibernate.connection.pool_size", properties.poolSize.toString())
 
         // === Optional Hibernate 설정 (null 가능) ===
+
+        // 자격 증명은 URL의 userinfo로도 전달될 수 있으므로 설정된 경우에만 적용합니다.
+        username?.let { configuration.setProperty(AvailableSettings.JAKARTA_JDBC_USER, it) }
+        password?.let { configuration.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, it) }
+
+        // Dialect가 없으면 Hibernate가 커넥션 메타데이터로 자동 판별합니다.
+        dialect?.takeIf { it.isNotBlank() }?.let {
+            configuration.setProperty(AvailableSettings.DIALECT, it)
+        }
 
         // Fetch 설정
         defaultBatchFetchSize?.let {
@@ -181,12 +203,18 @@ public class HibernateReactiveAutoConfiguration(
         }
 
         // JDBC URL 쿼리 파라미터에서 Hibernate 설정 추출
-        extractUrlParameter(jdbcUrl, "currentSchema")?.let {
+        extractUrlParameter(resolvedJdbcUrl, "currentSchema")?.let {
             configuration.setProperty(AvailableSettings.DEFAULT_SCHEMA, it)
         }
 
+        // 명시적으로 선언된 spring.jpa.properties.* 를 그대로 전달합니다.
+        // 위에서 계산한 기본값보다 사용자의 명시적 설정이 우선합니다.
+        passthroughJpaProperties().forEach { (key, value) ->
+            configuration.setProperty(key, value)
+        }
+
         // SSL 설정: 프로퍼티 우선, 없으면 URL 파라미터에서 추출
-        val sslMode = resolveSslMode()
+        val sslMode = resolveSslMode(resolvedJdbcUrl)
         if (sslMode != null && sslMode != "disable") {
             // 커스텀 SqlClientPoolConfiguration 등록
             configuration.setProperty(
@@ -219,7 +247,7 @@ public class HibernateReactiveAutoConfiguration(
      *
      * @return SSL 모드 문자열 또는 null
      */
-    private fun resolveSslMode(): String? {
+    private fun resolveSslMode(jdbcUrl: String): String? {
         // 1. 프로퍼티에서 명시적으로 설정된 경우 우선
         if (properties.sslMode != "disable") {
             return properties.sslMode
@@ -228,6 +256,18 @@ public class HibernateReactiveAutoConfiguration(
         // 2. URL 파라미터에서 sslmode 추출
         return extractSslModeFromUrl(jdbcUrl)
     }
+
+    /**
+     * `spring.jpa.properties.*` 로 선언된 모든 Hibernate 설정을 반환합니다.
+     *
+     * 이 스타터가 명시적으로 처리하는 `hibernate.reactive.*` 는 Hibernate가 알지 못하는
+     * 키이므로 제외합니다.
+     */
+    private fun passthroughJpaProperties(): Map<String, String> =
+        Binder.get(applicationContext.environment)
+            .bind(JPA_PROPERTIES_PREFIX, Bindable.mapOf(String::class.java, String::class.java))
+            .orElseGet(::emptyMap)
+            .filterKeys { !it.startsWith(REACTIVE_PROPERTIES_PREFIX) }
 
     /**
      * JDBC URL에서 sslmode 파라미터를 추출합니다.
@@ -264,11 +304,25 @@ public class HibernateReactiveAutoConfiguration(
 
     @Bean
     @ConditionalOnMissingBean
-    public fun reactiveTransactionExecutor(sessionFactory: Mutiny.SessionFactory): ReactiveTransactionExecutor =
-        ReactiveTransactionExecutor(sessionFactory)
+    public fun ambientTransactionProbe(sessionFactory: Mutiny.SessionFactory): AmbientTransactionProbe =
+        SpringAmbientTransactionProbe(sessionFactory)
 
     @Bean
     @ConditionalOnMissingBean
+    public fun reactiveTransactionExecutor(
+        sessionFactory: Mutiny.SessionFactory,
+        ambientTransactionProbe: AmbientTransactionProbe,
+    ): ReactiveTransactionExecutor =
+        ReactiveTransactionExecutor(sessionFactory, ambientTransactionProbe)
+
+    /**
+     * 다른 [ReactiveTransactionManager]가 이미 등록되어 있으면 물러납니다.
+     *
+     * 타입이 아닌 구현 클래스만 검사하면 R2DBC 등과 공존할 때 트랜잭션 매니저가 둘이 되어
+     * 첫 `@Transactional` 호출 시점에 `NoUniqueBeanDefinitionException`이 발생합니다.
+     */
+    @Bean
+    @ConditionalOnMissingBean(ReactiveTransactionManager::class)
     public fun hibernateReactiveTransactionManager(
         reactiveSessionFactory: Mutiny.SessionFactory,
     ): HibernateReactiveTransactionManager =
@@ -288,17 +342,53 @@ public class HibernateReactiveAutoConfiguration(
     ): TransactionalAwareSessionProvider =
         TransactionalAwareSessionProvider(sessionFactory)
 
-    private fun findEntityClasses(basePackages: List<String>): List<Class<*>> {
+    /**
+     * 영속성 유닛에 등록할 클래스들을 스캔합니다.
+     *
+     * `@Entity` 뿐 아니라 `@Embeddable`, `@MappedSuperclass`, `@Converter` 까지 등록해야
+     * Spring Boot의 블로킹 JPA와 동일한 매핑 결과를 얻을 수 있습니다.
+     * `@MappedSuperclass`는 보통 추상 클래스이므로 기본 후보 판별을 완화합니다.
+     */
+    private fun findManagedClasses(basePackages: List<String>): List<Class<*>> {
         val scanner =
-            ClassPathScanningCandidateComponentProvider(false).apply {
+            object : ClassPathScanningCandidateComponentProvider(false) {
+                override fun isCandidateComponent(beanDefinition: AnnotatedBeanDefinition): Boolean =
+                    beanDefinition.metadata.isIndependent
+            }.apply {
+                setResourceLoader(applicationContext)
                 addIncludeFilter(AnnotationTypeFilter(Entity::class.java))
+                addIncludeFilter(AnnotationTypeFilter(Embeddable::class.java))
+                addIncludeFilter(AnnotationTypeFilter(MappedSuperclass::class.java))
+                addIncludeFilter(AnnotationTypeFilter(Converter::class.java))
             }
 
-        return basePackages.flatMap { basePackage ->
-            scanner
-                .findCandidateComponents(basePackage)
-                .mapNotNull { it.beanClassName }
-                .map { Class.forName(it) }
+        val classLoader = applicationContext.classLoader ?: javaClass.classLoader
+
+        return basePackages
+            .flatMap { basePackage -> scanner.findCandidateComponents(basePackage) }
+            .mapNotNull { it.beanClassName }
+            .distinct()
+            .map { ClassUtils.forName(it, classLoader) }
+    }
+
+    /**
+     * 스캔된 클래스를 Hibernate [Configuration]에 등록합니다.
+     *
+     * `@Converter`는 전용 API를 사용해야 `autoApply` 속성이 반영됩니다.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun addManagedClass(configuration: Configuration, managedClass: Class<*>) {
+        if (managedClass.isAnnotationPresent(Converter::class.java) &&
+            AttributeConverter::class.java.isAssignableFrom(managedClass)
+        ) {
+            configuration.addAttributeConverter(managedClass as Class<out AttributeConverter<*, *>>)
+        } else {
+            configuration.addAnnotatedClass(managedClass)
         }
+    }
+
+    private companion object {
+        private const val JPA_PROPERTIES_PREFIX = "spring.jpa.properties"
+        private const val REACTIVE_PROPERTIES_PREFIX = "hibernate.reactive."
     }
 }

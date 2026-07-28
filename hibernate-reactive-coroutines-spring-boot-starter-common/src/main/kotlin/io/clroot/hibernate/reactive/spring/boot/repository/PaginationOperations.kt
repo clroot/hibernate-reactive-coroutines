@@ -19,10 +19,10 @@ import org.springframework.data.domain.Sort
  */
 internal class PaginationOperations<T : Any>(
     private val entityClass: Class<T>,
+    private val entityName: String,
     private val sessionProvider: TransactionalAwareSessionProvider,
     private val queryOps: QueryOperations<T>,
 ) {
-    private val entityName: String = entityClass.simpleName
 
     // ============================================
     // 기본 findAll with Pageable/Sort
@@ -112,11 +112,13 @@ internal class PaginationOperations<T : Any>(
         args: List<Any?>,
         pageable: Pageable,
     ): Page<T> {
+        val hql = queryOps.applyAnnotatedQuerySort(prepared, pageable.sort)
+
         val content = sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(prepared.hql, entityClass)
+                session.createNativeQuery(hql, entityClass)
             } else {
-                session.createQuery(prepared.hql, entityClass)
+                session.createQuery(hql, entityClass)
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)
@@ -142,11 +144,13 @@ internal class PaginationOperations<T : Any>(
         args: List<Any?>,
         pageable: Pageable,
     ): Slice<T> {
+        val hql = queryOps.applyAnnotatedQuerySort(prepared, pageable.sort)
+
         val content = sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(prepared.hql, entityClass)
+                session.createNativeQuery(hql, entityClass)
             } else {
-                session.createQuery(prepared.hql, entityClass)
+                session.createQuery(hql, entityClass)
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)

@@ -98,7 +98,7 @@ class HqlRecorderTest : RecordingIntegrationTestBase() {
 
             context("DELETE 쿼리 기록") {
 
-                it("deleteByName은 DELETE HQL을 생성한다") {
+                it("deleteByName은 대상을 조회한 뒤 제거한다") {
                     // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "to-delete", value = 1))
@@ -111,9 +111,10 @@ class HqlRecorderTest : RecordingIntegrationTestBase() {
                     }
 
                     // then
+                    // cascade와 @Version이 동작하도록 bulk DELETE 대신 로드 후 제거합니다.
                     hqlRecorder.assertQueryCount(1)
-                    hqlRecorder.assertLastQueryContains("DELETE FROM TestEntity")
-                    hqlRecorder.getLastQuery()?.queryType shouldBe QueryType.DELETE
+                    hqlRecorder.assertLastQueryContains("FROM TestEntity")
+                    hqlRecorder.getLastQuery()?.queryType shouldBe QueryType.SELECT
                 }
             }
 

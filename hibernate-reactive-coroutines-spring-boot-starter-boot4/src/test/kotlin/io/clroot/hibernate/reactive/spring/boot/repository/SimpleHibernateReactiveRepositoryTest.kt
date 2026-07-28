@@ -214,6 +214,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
 
                 val crud = CrudOperations<SaveAllEntity, Long>(
                     entityClass = SaveAllEntity::class.java,
+                    entityName = "SaveAllEntity",
                     sessionProvider = localSessionProvider,
                     transactionExecutor = localTransactionExecutor,
                     auditingHandler = null,

@@ -24,6 +24,12 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 - Java 17 이상
 - Spring Boot 3.4.x 또는 4.x
 
+> **Hibernate ORM 7이 필요합니다.** Hibernate Reactive 3.1은 Hibernate ORM 7.1 위에서 동작하며,
+> 이 스타터는 해당 버전을 의존성 제약으로 발행합니다. Spring Framework 6.x(Spring Boot 3.x)는
+> Hibernate ORM 7을 지원하지 않으므로, **Spring Boot 3 애플리케이션에서 `spring-boot-starter-data-jpa`와
+> 함께 사용하지 마세요** — 블로킹 JPA 쪽이 기동에 실패합니다. Spring Boot 4에서는 공존할 수 있습니다.
+> Boot 3에서 둘 다 필요하다면 리액티브 영속성 계층과 블로킹 영속성 계층을 별도 모듈로 분리하세요.
+
 ## 설치
 
 ### Gradle (Kotlin DSL)

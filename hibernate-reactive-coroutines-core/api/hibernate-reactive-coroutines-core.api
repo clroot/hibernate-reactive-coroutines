@@ -1,3 +1,14 @@
+public final class io/clroot/hibernate/reactive/AmbientTransaction {
+	public synthetic fun <init> (ZJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getRemainingTimeout-UwyO8pc ()J
+	public final fun isReadOnly ()Z
+}
+
+public abstract interface class io/clroot/hibernate/reactive/AmbientTransactionProbe {
+	public abstract fun currentTransaction (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
 public final class io/clroot/hibernate/reactive/ReactiveSessionContext : kotlin/coroutines/AbstractCoroutineContextElement {
 	public static final field Key Lio/clroot/hibernate/reactive/ReactiveSessionContext$Key;
 	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JJILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -27,6 +38,8 @@ public final class io/clroot/hibernate/reactive/ReactiveSessionProvider {
 public final class io/clroot/hibernate/reactive/ReactiveTransactionExecutor {
 	public static final field Companion Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor$Companion;
 	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;Lio/clroot/hibernate/reactive/AmbientTransactionProbe;)V
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;Lio/clroot/hibernate/reactive/AmbientTransactionProbe;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun readOnly-KLykuaI (JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public static synthetic fun readOnly-KLykuaI$default (Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun transactional-KLykuaI (JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

@@ -51,13 +51,54 @@ query-level pagination, and parameterized ordering require an explicit `countQue
 
 ### Unsupported Features
 
-| Feature                         | Alternative                    |
-| ------------------------------- | ------------------------------ |
-| Specification (dynamic queries) | Write directly with `@Query`   |
-| QueryByExample                  | Combine conditional methods    |
-| Projection (interface-based)    | Use `SELECT new DTO(...)`      |
-| `@EntityGraph`                  | FETCH JOIN or `fetch()` method |
-| Native @Modifying               | Use JPQL instead               |
+These are rejected at application startup with an explanatory message, not at first call.
+
+| Feature                                   | Alternative                                     |
+| ----------------------------------------- | ----------------------------------------------- |
+| Specification (dynamic queries)           | Write directly with `@Query`                    |
+| QueryByExample                            | Combine conditional methods                     |
+| Projection (interface-based)              | Use FETCH JOIN and map in Kotlin                |
+| `@EntityGraph`                            | FETCH JOIN or `fetch()` method                  |
+| Native `@Modifying`                       | Use JPQL instead                                |
+| Scalar/aggregate/DTO results in `@Query`  | Return the entity type, or use `count…`/`exists…` derived methods |
+| Non-suspend (including `Flow`) query methods | Declare `suspend fun … : List<T>`            |
+| Overloads with the same name and arity    | Give the methods distinct names                 |
+| `Top`/`First` combined with `Pageable`    | Use one or the other                            |
+| Sorting a native `@Query`                 | Put `ORDER BY` inside the query                 |
+
+---
+
+## Behavior Notes
+
+Differences worth knowing before you migrate, beyond the feature table above.
+
+**Deletes load before removing.** `deleteById`, `delete`, `deleteAll`, `deleteAllById` and derived
+`deleteBy…` methods fetch the target entities and remove them one by one, matching
+`SimpleJpaRepository`. Cascades, `@Version` checks and `@PreRemove` callbacks all fire, and the
+persistence context stays consistent. The cost is a `SELECT` before the `DELETE`; for bulk deletion
+without cascade semantics, write an explicit `@Modifying @Query("DELETE …")`.
+
+**Derived `deleteBy…` can return the deleted count.** Declare the method as `Unit`, `Int` or `Long`.
+
+**`LIKE` values are escaped.** `Containing`, `StartingWith` and `EndingWith` escape `%`, `_` and `\`
+in the bound value, so `findByNameContaining("%")` matches a literal percent sign rather than every
+row. The explicit `Like` keyword does not escape — there you supply the pattern yourself.
+
+**`IgnoreCase` compares both sides in lower case.** `IgnoreCase` on a non-String property is rejected
+at startup; `AllIgnoreCase` applies only to String properties.
+
+**`Sort` applies to `@Query` methods.** A `Sort` parameter or a sorted `Pageable` is appended to the
+query's own `ORDER BY` clause, so an ordering written into the query keeps priority.
+
+**Entity names come from the JPA metamodel.** `@Entity(name = "…")` and same-simple-name entities in
+different packages work correctly.
+
+**`Flow` is not streaming.** `findAll()` and other `Flow`-returning methods load the full result set
+before emitting. Use `Pageable` for large tables.
+
+**Mixing `@Transactional` and `tx.transactional {}` is safe.** `tx.transactional {}` joins an active
+Spring transaction instead of opening a second session, and refuses to upgrade a
+`@Transactional(readOnly = true)` transaction to a writable one.
 
 ---
 

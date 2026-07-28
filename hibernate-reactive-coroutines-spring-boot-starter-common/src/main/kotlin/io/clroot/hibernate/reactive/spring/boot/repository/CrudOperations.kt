@@ -22,11 +22,11 @@ import org.hibernate.reactive.mutiny.Mutiny
  */
 internal class CrudOperations<T : Any, ID : Any>(
     private val entityClass: Class<T>,
+    private val entityName: String,
     private val sessionProvider: TransactionalAwareSessionProvider,
     private val transactionExecutor: ReactiveTransactionExecutor,
     private val auditingHandler: ReactiveAuditingHandler<*>?,
 ) {
-    private val entityName: String = entityClass.simpleName
 
     private suspend fun prepareEntity(entity: T): Boolean {
         val isNew = EntityStateDetector.isNew(entity)
@@ -140,11 +140,18 @@ internal class CrudOperations<T : Any, ID : Any>(
     // Delete 작업
     // ============================================
 
+    /**
+     * 엔티티를 로드한 뒤 제거합니다.
+     *
+     * bulk `DELETE` 문은 cascade, `@Version` 낙관적 락, 영속성 컨텍스트 정리를 모두 건너뛰므로
+     * Spring Data JPA와 동일하게 로드 후 제거하는 방식을 사용합니다.
+     * 대상이 없으면 조용히 무시합니다.
+     */
     suspend fun deleteById(id: ID) {
         sessionProvider.write<Unit> { session ->
-            session.createMutationQuery("DELETE FROM $entityName e WHERE e.id = :id")
-                .setParameter("id", RepositoryIdAdapter.unwrap(id))
-                .executeUpdate()
+            session.find(entityClass, RepositoryIdAdapter.unwrap(id))
+                .onItem()
+                .transformToUni { entity: T? -> removeIfPresent(session, entity) }
                 .replaceWith(Unit)
         }
     }
@@ -161,9 +168,10 @@ internal class CrudOperations<T : Any, ID : Any>(
         if (idList.isEmpty()) return
 
         sessionProvider.write<Unit> { session ->
-            session.createMutationQuery("DELETE FROM $entityName e WHERE e.id IN :ids")
+            session.createQuery("FROM $entityName e WHERE e.id IN :ids", entityClass)
                 .setParameter("ids", idList)
-                .executeUpdate()
+                .resultList
+                .chain { entities -> removeAll(session, entities) }
                 .replaceWith(Unit)
         }
     }
@@ -183,9 +191,21 @@ internal class CrudOperations<T : Any, ID : Any>(
 
     suspend fun deleteAll() {
         sessionProvider.write<Unit> { session ->
-            session.createMutationQuery("DELETE FROM $entityName")
-                .executeUpdate()
+            session.createQuery("FROM $entityName e", entityClass)
+                .resultList
+                .chain { entities -> removeAll(session, entities) }
                 .replaceWith(Unit)
         }
     }
+
+    private fun removeIfPresent(session: Mutiny.Session, entity: T?): Uni<Void> =
+        if (entity == null) Uni.createFrom().voidItem() else session.remove(entity)
+
+    private fun removeAll(session: Mutiny.Session, entities: List<T>): Uni<Void> =
+        if (entities.isEmpty()) {
+            Uni.createFrom().voidItem()
+        } else {
+            val managed: List<Any> = entities
+            session.removeAll(*managed.toTypedArray())
+        }
 }

@@ -6,13 +6,25 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.every
 import io.mockk.mockk
+import jakarta.persistence.metamodel.EntityType
+import jakarta.persistence.metamodel.Metamodel
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
 class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
 
     val sessionProvider = mockk<TransactionalAwareSessionProvider>()
     val transactionExecutor = mockk<ReactiveTransactionExecutor>()
+
+    // HQL 엔티티 이름은 JPA 메타모델에서 조회하므로 테스트에서도 등록된 엔티티처럼 동작시킵니다.
+    val metamodel = mockk<Metamodel>()
+    every { sessionProvider.metamodel } returns metamodel
+    every { metamodel.entity(any<Class<*>>()) } answers {
+        mockk<EntityType<*>> {
+            every { name } returns firstArg<Class<*>>().simpleName
+        }
+    }
 
     describe("HibernateReactiveRepositoryFactoryBean") {
 

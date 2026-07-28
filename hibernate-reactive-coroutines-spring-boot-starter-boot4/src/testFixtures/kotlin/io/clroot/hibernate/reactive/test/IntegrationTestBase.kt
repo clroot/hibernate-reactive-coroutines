@@ -3,6 +3,7 @@ package io.clroot.hibernate.reactive.test
 import io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConfiguration
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.extensions.spring.SpringExtension
+import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.coroutines.awaitSuspending
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.beans.factory.annotation.Autowired
@@ -57,17 +58,29 @@ abstract class IntegrationTestBase : DescribeSpec() {
     /**
      * 모든 테스트 테이블의 데이터를 삭제합니다.
      * 스키마 격리 환경에서 안전하게 동작하도록 DELETE를 사용합니다.
+     * FK 제약조건 순서를 고려하여 자식 테이블부터 삭제합니다.
      */
     private suspend fun clearAllTables() {
+        // FK 제약조건 순서: 자식 → 부모
+        val entityNames = listOf(
+            "ChildEntity",
+            "ParentEntity",
+            "VersionedEntity",
+            "AnotherEntity",
+            "RenamedAlias",
+            "TestEntity",
+        )
+
         sessionFactory.withTransaction { session ->
-            // 스키마 격리 환경에서는 DELETE가 더 안전함
-            // (currentSchema 설정이 search_path에 영향을 주지 않을 수 있음)
-            // FK 제약으로 인해 자식 테이블 먼저 삭제
-            session.createMutationQuery("DELETE FROM ChildEntity").executeUpdate()
-            session.createMutationQuery("DELETE FROM ParentEntity").executeUpdate()
-            session.createMutationQuery("DELETE FROM VersionedEntity").executeUpdate()
-            session.createMutationQuery("DELETE FROM AnotherEntity").executeUpdate()
-            session.createMutationQuery("DELETE FROM TestEntity").executeUpdate()
+            // Uni는 구독해야 실행되므로 반드시 chain으로 연결한다.
+            // 나열만 하면 마지막 구문 외에는 실행되지 않는다.
+            entityNames.fold(Uni.createFrom().voidItem()) { chain, entityName ->
+                chain.chain { _ ->
+                    session.createMutationQuery("DELETE FROM $entityName")
+                        .executeUpdate()
+                        .replaceWithVoid()
+                }
+            }
         }.awaitSuspending()
     }
 }

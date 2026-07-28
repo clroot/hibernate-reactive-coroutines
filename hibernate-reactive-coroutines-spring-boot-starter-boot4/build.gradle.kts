@@ -38,10 +38,6 @@ dependencies {
     // Mutiny-Reactor (for Uni/Mono conversion)
     implementation(libs.mutiny.reactor)
 
-    // Spring Boot annotation processor
-    annotationProcessor(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-
     // Test
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(libs.kotest.runner.junit5)

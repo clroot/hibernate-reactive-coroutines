@@ -32,6 +32,14 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
     // 삭제
     suspend fun deleteByName(name: String)
 
+    // 삭제 건수 반환
+    suspend fun deleteAllByValue(value: Int): Long
+
+    // 개수 제한 (Top/First)
+    suspend fun findTop2ByOrderByValueDesc(): List<TestEntity>
+
+    suspend fun findFirstByOrderByValueDesc(): TestEntity?
+
     // LIKE 검색 (Containing)
     suspend fun findAllByNameContaining(name: String): List<TestEntity>
 
@@ -105,4 +113,18 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
         countQuery = "SELECT COUNT(e) FROM TestEntity e WHERE e.value = :value",
     )
     suspend fun findByValueWithExplicitCount(@Param("value") value: Int, pageable: Pageable): Page<TestEntity>
+
+    // @Query + 동적 Sort
+    @Query("SELECT e FROM TestEntity e WHERE e.value > :minValue")
+    suspend fun findByValueGreaterThanWithQuery(
+        @Param("minValue") minValue: Int,
+        sort: Sort,
+    ): List<TestEntity>
+
+    // @Query에 ORDER BY가 이미 있는 경우
+    @Query("SELECT e FROM TestEntity e WHERE e.value > :minValue ORDER BY e.value DESC")
+    suspend fun findOrderedByValueGreaterThanWithQuery(
+        @Param("minValue") minValue: Int,
+        sort: Sort,
+    ): List<TestEntity>
 }

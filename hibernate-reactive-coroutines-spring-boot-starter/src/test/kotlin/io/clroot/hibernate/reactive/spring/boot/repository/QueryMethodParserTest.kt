@@ -202,10 +202,10 @@ private interface QueryRepository {
     suspend fun findWithRolesAndCount(pageable: Pageable): Page<User>
 
     @Query(
-        value = "SELECT e.active FROM User e GROUP BY e.active",
+        value = "SELECT e FROM User e GROUP BY e",
         countQuery = "SELECT COUNT(DISTINCT e.active) FROM User e",
     )
-    suspend fun countByActiveWithCount(pageable: Pageable): Page<Boolean>
+    suspend fun countByActiveWithCount(pageable: Pageable): Page<User>
 
     @Query(
         value = "SELECT e FROM User e WHERE e.active = :active " +
