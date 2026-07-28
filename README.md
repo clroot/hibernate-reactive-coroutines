@@ -51,10 +51,10 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 ```kotlin
 dependencies {
     // For Spring Boot 3.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.1.0")
 
     // For Spring Boot 4.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0")
 
     // Database driver (choose one)
     implementation("io.vertx:vertx-pg-client:4.5.16")      // PostgreSQL
@@ -67,10 +67,10 @@ dependencies {
 ```groovy
 dependencies {
     // For Spring Boot 3.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.0.0'
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.1.0'
 
     // For Spring Boot 4.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.0.0'
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0'
 
     // Database driver
     implementation 'io.vertx:vertx-pg-client:4.5.16'
@@ -84,14 +84,14 @@ dependencies {
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 
 <!-- For Spring Boot 4.x -->
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
