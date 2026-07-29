@@ -181,9 +181,7 @@ subprojects {
         explicitApi()
 
         @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-        extensions.configure<org.jetbrains.kotlin.gradle.dsl.abi.AbiValidationExtension> {
-            enabled.set(true)
-        }
+        abiValidation()
     }
     tasks.named("check") {
         dependsOn("checkLegacyAbi")

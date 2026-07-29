@@ -8,7 +8,7 @@ dependencies {
     api(project(":hibernate-reactive-coroutines-core"))
     api(platform("org.springframework.boot:spring-boot-dependencies:3.4.13"))
     constraints {
-        api("org.hibernate.orm:hibernate-core:7.1.0.Final")
+        api("org.hibernate.orm:hibernate-core:7.4.5.Final")
         api("jakarta.persistence:jakarta.persistence-api:3.2.0")
     }
 

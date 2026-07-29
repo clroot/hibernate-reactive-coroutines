@@ -1,7 +1,7 @@
 # Hibernate Reactive Coroutines
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.0-blue.svg)](https://kotlinlang.org)
-[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-3.1.0-green.svg)](https://hibernate.org/reactive/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
+[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
 > A **Hibernate Reactive Spring Boot Starter** that brings Spring Data JPA-like convenience to Kotlin Coroutines.
@@ -37,7 +37,7 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 - Java 17 or later
 - Spring Boot 3.4.x or 4.x
 
-> **Hibernate ORM 7 is required.** Hibernate Reactive 3.1 runs on Hibernate ORM 7.1, and this starter
+> **Hibernate ORM 7 is required.** Hibernate Reactive 4.5 runs on Hibernate ORM 7.4, and this starter
 > publishes that as a dependency constraint. Because Spring Framework 6.x (Spring Boot 3.x) does not
 > support Hibernate ORM 7, **do not combine this starter with `spring-boot-starter-data-jpa` in a
 > Spring Boot 3 application** — the blocking JPA half will fail to start. On Spring Boot 4 the two can
@@ -57,8 +57,8 @@ dependencies {
     implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0")
 
     // Database driver (choose one)
-    implementation("io.vertx:vertx-pg-client:4.5.16")      // PostgreSQL
-    // implementation("io.vertx:vertx-mysql-client:4.5.16") // MySQL
+    implementation("io.vertx:vertx-pg-client:5.1.5")      // PostgreSQL
+    // implementation("io.vertx:vertx-mysql-client:5.1.5") // MySQL
 }
 ```
 
@@ -73,7 +73,7 @@ dependencies {
     implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.1.0'
 
     // Database driver
-    implementation 'io.vertx:vertx-pg-client:4.5.16'
+    implementation 'io.vertx:vertx-pg-client:5.1.5'
 }
 ```
 
