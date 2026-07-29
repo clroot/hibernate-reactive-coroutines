@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
     api(project(":hibernate-reactive-coroutines-core"))
-    api(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
+    api(platform("org.springframework.boot:spring-boot-dependencies:4.0.7"))
     constraints {
         api("org.hibernate.orm:hibernate-core:7.4.5.Final")
         api("jakarta.persistence:jakarta.persistence-api:3.2.0")
@@ -47,7 +47,7 @@ dependencies {
     testImplementation(libs.scram.client)
 
     // TestFixtures
-    testFixturesImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.0"))
+    testFixturesImplementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.7"))
     testFixturesApi("org.springframework:spring-tx")
     testFixturesApi("org.springframework.data:spring-data-commons")
     testFixturesApi("org.springframework.boot:spring-boot-starter-test")
