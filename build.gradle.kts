@@ -37,7 +37,7 @@ val versionSpecificStarterPaths = setOf(
     "resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports",
 )
 
-val verifyStarterSourceLayout by tasks.registering {
+val verifyStarterSourceLayout = tasks.register("verifyStarterSourceLayout") {
     group = "verification"
     description = "Verifies that Boot starter production sources have a single owner."
 
@@ -99,7 +99,7 @@ val verifyStarterSourceLayout by tasks.registering {
     }
 }
 
-val validateReleaseVersion by tasks.registering {
+val validateReleaseVersion = tasks.register("validateReleaseVersion") {
     group = "verification"
     description = "Validates the release version and its optional source tag."
 
@@ -127,7 +127,7 @@ val validateReleaseVersion by tasks.registering {
     }
 }
 
-val validateReleaseSigning by tasks.registering {
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
     group = "verification"
     description = "Validates that a Central release has complete in-memory PGP credentials."
     inputs.property("hasSigningKey", hasSigningKey)
@@ -220,7 +220,7 @@ subprojects {
             skip()
         }
 
-        val verifyPublicationMetadata by tasks.registering {
+        val verifyPublicationMetadata = tasks.register("verifyPublicationMetadata") {
             group = "verification"
             description = "Verifies that test fixtures do not leak into published metadata."
             dependsOn(
@@ -262,7 +262,7 @@ subprojects {
         dependsOn(dokkaHtml)
         from(dokkaHtml.map { it.outputs.files })
     }
-    val verifyJavadocJar by tasks.registering {
+    val verifyJavadocJar = tasks.register("verifyJavadocJar") {
         group = "verification"
         description = "Verifies that the published javadoc JAR contains Dokka HTML."
         dependsOn(javadocJar)
