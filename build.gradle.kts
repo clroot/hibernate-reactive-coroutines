@@ -184,7 +184,7 @@ subprojects {
         abiValidation()
     }
     tasks.named("check") {
-        dependsOn("checkLegacyAbi")
+        dependsOn("checkKotlinAbi")
     }
 
     if (name in starterProjectNames) {
