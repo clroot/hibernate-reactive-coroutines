@@ -19,17 +19,32 @@ plugins {
     `java-test-fixtures`
 }
 
-val sharedStarterMain = rootProject.layout.projectDirectory
-    .dir("hibernate-reactive-coroutines-spring-boot-starter-common/src/main")
+val sharedStarterRoot = rootProject.layout.projectDirectory
+    .dir("hibernate-reactive-coroutines-spring-boot-starter-common/src")
+val sharedStarterMain = sharedStarterRoot.dir("main")
+val sharedStarterTest = sharedStarterRoot.dir("test")
+val sharedStarterTestFixtures = sharedStarterRoot.dir("testFixtures")
 
 kotlin {
     sourceSets.named("main") {
         kotlin.srcDir(sharedStarterMain.dir("kotlin"))
     }
+    sourceSets.named("test") {
+        kotlin.srcDir(sharedStarterTest.dir("kotlin"))
+    }
+    sourceSets.named("testFixtures") {
+        kotlin.srcDir(sharedStarterTestFixtures.dir("kotlin"))
+    }
 }
 
 sourceSets.named("main") {
     resources.srcDir(sharedStarterMain.dir("resources"))
+}
+sourceSets.named("test") {
+    resources.srcDir(sharedStarterTest.dir("resources"))
+}
+sourceSets.named("testFixtures") {
+    resources.srcDir(sharedStarterTestFixtures.dir("resources"))
 }
 
 tasks.named("check") {

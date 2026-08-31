@@ -15,21 +15,20 @@ import org.gradle.api.tasks.TaskAction
 import java.io.File
 
 /**
- * Fails when two Boot starter modules physically own the same production source path.
+ * Fails when Boot starter modules copy a path owned by a shared source tree or each other.
  *
- * The starters deliberately cross-compile one shared source tree against different Spring Boot
- * platforms, so the shared tree must stay the single owner of every file it provides. A path that
- * appears in more than one starter's own `src/main` is a copy that will silently drift, except for
- * the explicitly allowed version-specific descriptors.
+ * The starters deliberately cross-compile shared source trees against different Spring Boot
+ * platforms. Shared main, test, and test-fixture trees must remain the single owner of every common
+ * file, while each starter's own tree may contain only version-specific paths.
  */
 abstract class VerifyStarterSourceLayout : DefaultTask() {
 
-    /** Source tree shared by every starter; the single owner of the cross-compiled production code. */
+    /** Source tree shared by every starter; the single owner of the cross-compiled source set. */
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sharedSourceDirectory: DirectoryProperty
 
-    /** Each starter's own `src/main`, which may only hold version-specific files. */
+    /** Each starter's corresponding source directory, which may only hold version-specific files. */
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val starterSourceDirectories: ListProperty<Directory>
@@ -47,16 +46,24 @@ abstract class VerifyStarterSourceLayout : DefaultTask() {
             )
         }
 
-        val duplicatedPaths = sourceRoots
-            .map(::relativeFilePaths)
+        val sharedRoot = sharedSourceDirectory.get().asFile
+        val sharedPaths = relativeFilePaths(sharedRoot)
+        val starterPathSets = sourceRoots.map(::relativeFilePaths)
+        val allowedPaths = versionSpecificPaths.get()
+
+        val copiedFromShared = starterPathSets
+            .flatMap { it.intersect(sharedPaths) }
+            .toSet()
+        val copiedBetweenStarters = starterPathSets
             .reduce(Set<String>::intersect)
-            .minus(versionSpecificPaths.get())
+        val duplicatedPaths = (copiedFromShared + copiedBetweenStarters)
+            .minus(allowedPaths)
             .sorted()
 
         if (duplicatedPaths.isNotEmpty()) {
             throw GradleException(
-                "Boot starter production sources must not be copied between modules. " +
-                    "Move these to ${sharedSourceDirectory.get().asFile}:\n" +
+                "Boot starter sources must have a single owner. " +
+                    "Move common paths to $sharedRoot or declare a version-specific path:\n" +
                     duplicatedPaths.joinToString(separator = "\n") { " - $it" },
             )
         }
