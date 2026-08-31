@@ -7,6 +7,7 @@ import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.toList
 import org.springframework.beans.factory.annotation.Autowired
@@ -139,6 +140,14 @@ class PaginationEdgeCasesTest : IntegrationTestBase() {
                     // then
                     slice.content.shouldBeEmpty()
                     slice.hasNext().shouldBeFalse()
+                }
+
+                it("Int 범위를 넘는 offset은 잘못된 페이지로 잘리지 않고 거부된다") {
+                    shouldThrow<IllegalArgumentException> {
+                        tx.readOnly {
+                            testEntityRepository.findAll(PageRequest.of(Int.MAX_VALUE, 2))
+                        }
+                    }
                 }
             }
 
@@ -343,6 +352,30 @@ class PaginationEdgeCasesTest : IntegrationTestBase() {
                     // then
                     val filtered = sorted.filter { it.name.startsWith("findall-sort-") }
                     filtered.map { it.name } shouldBe listOf("findall-sort-a", "findall-sort-b", "findall-sort-c")
+                }
+
+                it("ignoreCase 정렬은 문자열을 LOWER로 정렬한다") {
+                    tx.transactional {
+                        testEntityRepository.save(TestEntity(name = "case-sort-apple", value = 1))
+                        testEntityRepository.save(TestEntity(name = "case-sort-Banana", value = 2))
+                        testEntityRepository.save(TestEntity(name = "case-sort-cherry", value = 3))
+                    }
+
+                    val sorted = tx.readOnly {
+                        testEntityRepository.findAll(Sort.by(Sort.Order.by("name").ignoreCase()))
+                    }
+
+                    sorted.filter { it.name.startsWith("case-sort-", ignoreCase = true) }
+                        .map { it.name } shouldBe
+                            listOf("case-sort-apple", "case-sort-Banana", "case-sort-cherry")
+                }
+
+                it("문자열이 아닌 속성의 ignoreCase 정렬은 거부한다") {
+                    shouldThrow<IllegalArgumentException> {
+                        tx.readOnly {
+                            testEntityRepository.findAll(Sort.by(Sort.Order.by("value").ignoreCase()))
+                        }
+                    }
                 }
             }
         }

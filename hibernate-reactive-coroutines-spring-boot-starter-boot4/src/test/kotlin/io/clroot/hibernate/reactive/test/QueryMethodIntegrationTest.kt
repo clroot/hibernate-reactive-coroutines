@@ -84,6 +84,33 @@ class QueryMethodIntegrationTest : IntegrationTestBase() {
                 }
             }
 
+            context("In/NotIn 컬렉션") {
+                it("빈 IN은 결과 없음, 빈 NOT IN은 전체 결과를 반환한다") {
+                    tx.transactional {
+                        testEntityRepository.save(TestEntity(name = "collection-a", value = 1))
+                        testEntityRepository.save(TestEntity(name = "collection-b", value = 2))
+                    }
+
+                    tx.readOnly {
+                        testEntityRepository.findAllByNameIn(emptyList()).shouldBeEmpty()
+                        testEntityRepository.findAllByNameNotIn(emptyList()).map { it.name }.toSet() shouldBe
+                                setOf("collection-a", "collection-b")
+                    }
+                }
+
+                it("비어 있지 않은 컬렉션은 정상적으로 바인딩한다") {
+                    tx.transactional {
+                        testEntityRepository.save(TestEntity(name = "collection-in-a", value = 1))
+                        testEntityRepository.save(TestEntity(name = "collection-in-b", value = 2))
+                    }
+
+                    val found = tx.readOnly {
+                        testEntityRepository.findAllByNameIn(listOf("collection-in-b"))
+                    }
+                    found.map { it.name } shouldBe listOf("collection-in-b")
+                }
+            }
+
             context("existsByName - 존재 여부") {
                 it("존재하는 이름은 true를 반환한다") {
                     // given

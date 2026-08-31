@@ -10,6 +10,7 @@ import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryStatementType
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
@@ -192,19 +193,19 @@ internal class QueryMethodParser(
     private fun validateQueryAnnotation(method: Method, queryAnnotation: Query) {
         val query = queryAnnotation.value
         val isModifying = method.isAnnotationPresent(Modifying::class.java)
-        val trimmedQuery = query.trim()
+        val statementType = CountQueryDeriver.statementType(query)
 
-        // @Modifying인데 SELECT 쿼리면 에러
-        if (isModifying && trimmedQuery.startsWith("SELECT", ignoreCase = true)) {
+        if (statementType == QueryStatementType.UNKNOWN) {
+            throw IllegalStateException(
+                "Method '${method.name}' has an unsupported or unrecognized @Query statement",
+            )
+        }
+        if (isModifying && statementType == QueryStatementType.SELECT) {
             throw IllegalStateException(
                 "@Modifying method '${method.name}' cannot have SELECT query",
             )
         }
-
-        // SELECT 쿼리가 아닌데 @Modifying가 없으면 에러
-        val isSelectOrFrom = trimmedQuery.startsWith("SELECT", ignoreCase = true) ||
-                trimmedQuery.startsWith("FROM", ignoreCase = true)
-        if (!isModifying && !isSelectOrFrom) {
+        if (!isModifying && statementType == QueryStatementType.MODIFYING) {
             throw IllegalStateException(
                 "Method '${method.name}' has UPDATE/DELETE query but missing @Modifying annotation",
             )

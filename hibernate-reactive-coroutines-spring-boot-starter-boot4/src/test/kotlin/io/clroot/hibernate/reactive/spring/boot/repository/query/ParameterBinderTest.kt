@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -27,6 +28,22 @@ class ParameterBinderTest : DescribeSpec({
                 val binder = ParameterBinder.Direct
 
                 binder.bind(null).shouldBeNull()
+            }
+        }
+
+        context("collection binders") {
+            it("빈 컬렉션은 Hibernate가 방언에 맞게 정규화하도록 그대로 전달한다") {
+                ParameterBinder.InCollection.bind(emptyList<String>()) shouldBe emptyList<String>()
+                ParameterBinder.NotInCollection.bind(emptyList<String>()) shouldBe emptyList<String>()
+            }
+
+            it("null 컬렉션은 명확하게 거부한다") {
+                shouldThrow<IllegalArgumentException> { ParameterBinder.InCollection.bind(null) }
+                shouldThrow<IllegalArgumentException> { ParameterBinder.NotInCollection.bind(null) }
+            }
+
+            it("컬렉션이 아닌 값은 거부한다") {
+                shouldThrow<IllegalArgumentException> { ParameterBinder.InCollection.bind("not-a-collection") }
             }
         }
 
@@ -96,7 +113,11 @@ class ParameterBinderTest : DescribeSpec({
                 ParameterBinder.forType(Part.Type.SIMPLE_PROPERTY) shouldBe ParameterBinder.Direct
                 ParameterBinder.forType(Part.Type.BETWEEN) shouldBe ParameterBinder.Direct
                 ParameterBinder.forType(Part.Type.GREATER_THAN) shouldBe ParameterBinder.Direct
-                ParameterBinder.forType(Part.Type.IN) shouldBe ParameterBinder.Direct
+            }
+
+            it("IN 계열 타입에는 컬렉션 바인더를 반환한다") {
+                ParameterBinder.forType(Part.Type.IN) shouldBe ParameterBinder.InCollection
+                ParameterBinder.forType(Part.Type.NOT_IN) shouldBe ParameterBinder.NotInCollection
             }
         }
     }
