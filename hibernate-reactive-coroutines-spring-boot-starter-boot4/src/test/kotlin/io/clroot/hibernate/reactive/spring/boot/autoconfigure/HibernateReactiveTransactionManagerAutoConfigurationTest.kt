@@ -6,6 +6,7 @@ import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.mockk
+import io.vertx.core.Vertx
 import org.hibernate.SessionFactory
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -44,6 +45,7 @@ class HibernateReactiveTransactionManagerAutoConfigurationTest : DescribeSpec({
                     context.getBeanNamesForType(Mutiny.SessionFactory::class.java).toList() shouldContainExactly
                             listOf("userSessionFactory")
                     context.containsBean("hibernateSessionFactory") shouldBe false
+                    context.getBeanNamesForType(Vertx::class.java).toList() shouldBe emptyList()
                 }
         }
 

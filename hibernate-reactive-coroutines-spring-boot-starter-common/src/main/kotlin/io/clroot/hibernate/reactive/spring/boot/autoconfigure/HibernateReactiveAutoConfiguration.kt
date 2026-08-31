@@ -122,7 +122,10 @@ public class HibernateReactiveAutoConfiguration(
      * (세션 팩토리가 이 빈에 의존하므로 세션 팩토리가 먼저 닫힙니다).
      */
     @Bean
-    @ConditionalOnMissingBean(Vertx::class)
+    @ConditionalOnMissingBean(
+        value = [Vertx::class, Mutiny.SessionFactory::class],
+        name = ["hibernateSessionFactory"],
+    )
     public fun vertx(): Vertx = Vertx.vertx(buildVertxOptions(properties.vertx))
 
     @Bean
