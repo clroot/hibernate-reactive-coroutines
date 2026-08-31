@@ -7,6 +7,8 @@ import io.clroot.hibernate.reactive.spring.boot.pool.SslAwareSqlClientPoolConfig
 import io.clroot.hibernate.reactive.spring.boot.transaction.HibernateReactiveTransactionManager
 import io.clroot.hibernate.reactive.spring.boot.transaction.SpringAmbientTransactionProbe
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import io.vertx.core.Vertx
+import io.vertx.core.VertxOptions
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
 import jakarta.persistence.Embeddable
@@ -16,6 +18,8 @@ import org.hibernate.cfg.AvailableSettings
 import org.hibernate.cfg.Configuration
 import org.hibernate.reactive.mutiny.Mutiny
 import org.hibernate.reactive.provider.ReactiveServiceRegistryBuilder
+import org.hibernate.reactive.vertx.VertxInstance
+import org.hibernate.reactive.vertx.impl.ProvidedVertxInstance
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfiguration
@@ -57,6 +61,12 @@ import org.springframework.util.ClassUtils
  * - `spring.jpa.properties.hibernate.reactive.connect-timeout`: 커넥션 요청 타임아웃 (밀리초)
  * - `spring.jpa.properties.hibernate.reactive.idle-timeout`: 유휴 커넥션 타임아웃 (밀리초)
  * - `spring.jpa.properties.hibernate.reactive.max-wait-queue-size`: 대기 큐 최대 크기
+ * - `spring.jpa.properties.hibernate.reactive.vertx.*`: 스타터가 생성하는 Vert.x 인스턴스 설정
+ *   (이벤트 루프 수, blocked-thread checker 임계값)
+ *
+ * Vert.x 인스턴스는 스타터가 직접 생성해 [Vertx] 빈으로 노출하고 Hibernate Reactive에
+ * [VertxInstance] 서비스로 주입합니다. 애플리케이션에 [Vertx] 빈이 이미 있으면 그 빈을
+ * 재사용하므로, 앱 전체에서 Vert.x 인스턴스를 한 벌로 유지할 수 있습니다.
  *
  * SSL 모드는 다음 우선순위로 적용됩니다:
  * 1. `spring.jpa.properties.hibernate.reactive.ssl-mode` 프로퍼티 (disable이 아닌 경우)
@@ -104,9 +114,20 @@ public class HibernateReactiveAutoConfiguration(
     @Value("\${spring.jpa.properties.hibernate.cache.use_second_level_cache:false}") private val useSecondLevelCache: Boolean,
     @Value("\${spring.jpa.properties.hibernate.cache.use_query_cache:false}") private val useQueryCache: Boolean,
 ) {
+    /**
+     * Hibernate Reactive가 사용할 Vert.x 인스턴스.
+     *
+     * 애플리케이션에 [Vertx] 빈이 이미 있으면 물러나고 그 빈을 재사용합니다.
+     * 스타터가 생성한 인스턴스는 컨텍스트 종료 시 `close()`로 정리됩니다
+     * (세션 팩토리가 이 빈에 의존하므로 세션 팩토리가 먼저 닫힙니다).
+     */
+    @Bean
+    @ConditionalOnMissingBean(Vertx::class)
+    public fun vertx(): Vertx = Vertx.vertx(buildVertxOptions(properties.vertx))
+
     @Bean
     @ConditionalOnMissingBean(value = [Mutiny.SessionFactory::class], name = ["hibernateSessionFactory"])
-    public fun hibernateSessionFactory(): org.hibernate.SessionFactory {
+    public fun hibernateSessionFactory(vertx: Vertx): org.hibernate.SessionFactory {
         val resolvedJdbcUrl = jdbcUrl?.takeIf { it.isNotBlank() } ?: throw IllegalStateException(
             "Hibernate Reactive is on the classpath but 'spring.datasource.url' is not set. " +
                     "Set it, define your own Mutiny.SessionFactory bean, or exclude " +
@@ -233,6 +254,9 @@ public class HibernateReactiveAutoConfiguration(
         val serviceRegistry =
             ReactiveServiceRegistryBuilder()
                 .applySettings(configuration.properties)
+                // 스타터(또는 애플리케이션)가 소유한 Vert.x를 주입해, Hibernate Reactive 내부의
+                // DefaultVertxInstance가 별도 Vert.x를 하나 더 띄우지 않게 한다.
+                .addService(VertxInstance::class.java, ProvidedVertxInstance(vertx))
                 .build()
 
         return configuration.buildSessionFactory(serviceRegistry)
@@ -391,4 +415,28 @@ public class HibernateReactiveAutoConfiguration(
         private const val JPA_PROPERTIES_PREFIX = "spring.jpa.properties"
         private const val REACTIVE_PROPERTIES_PREFIX = "hibernate.reactive."
     }
+}
+
+/**
+ * [HibernateReactiveProperties.VertxSettings]를 [VertxOptions]로 변환합니다.
+ *
+ * 설정하지 않은 값은 Vert.x 기본값을 그대로 둡니다.
+ * 시간 값은 나노초 단위로 적용해 밀리초 미만 값도 유실되지 않습니다.
+ */
+internal fun buildVertxOptions(settings: HibernateReactiveProperties.VertxSettings): VertxOptions {
+    val options = VertxOptions()
+    settings.eventLoopPoolSize?.let { options.eventLoopPoolSize = it }
+    settings.maxEventLoopExecuteTime?.let {
+        options.maxEventLoopExecuteTime = it.toNanos()
+        options.maxEventLoopExecuteTimeUnit = java.util.concurrent.TimeUnit.NANOSECONDS
+    }
+    settings.blockedThreadCheckInterval?.let {
+        options.blockedThreadCheckInterval = it.toNanos()
+        options.blockedThreadCheckIntervalUnit = java.util.concurrent.TimeUnit.NANOSECONDS
+    }
+    settings.warningExceptionTime?.let {
+        options.warningExceptionTime = it.toNanos()
+        options.warningExceptionTimeUnit = java.util.concurrent.TimeUnit.NANOSECONDS
+    }
+    return options
 }

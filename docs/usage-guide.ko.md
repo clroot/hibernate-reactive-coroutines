@@ -33,6 +33,39 @@ spring:
 | `idle-timeout`        | 유휴 커넥션 유지 시간 (ms) | Vert.x 기본값 |
 | `max-wait-queue-size` | 대기 큐 최대 크기          | Vert.x 기본값 |
 
+### Vert.x 인스턴스
+
+스타터는 Hibernate Reactive가 실행될 Vert.x 인스턴스를 직접 생성해 Spring `Vertx` 빈으로
+노출하고, `VertxInstance` 서비스로 주입합니다. 애플리케이션에 `Vertx` 빈을 직접 정의하면
+스타터가 물러나 그 빈을 재사용합니다 — Hibernate Reactive가 내부적으로 두 번째 Vert.x를
+몰래 띄우는 대신, 앱 전체가 하나의 Vert.x 인스턴스를 공유할 수 있습니다.
+
+`spring.jpa.properties.hibernate.reactive.vertx` 아래 설정 (스타터가 인스턴스를 생성할 때만 적용):
+
+| 속성                            | 설명                                                  | 기본값          |
+| ------------------------------- | ----------------------------------------------------- | --------------- |
+| `event-loop-pool-size`          | 이벤트 루프 스레드 수                                 | 2 × CPU 코어    |
+| `max-event-loop-execute-time`   | blocked-thread checker가 경고하는 루프 점유 시간      | 2s              |
+| `blocked-thread-check-interval` | blocked-thread checker 검사 주기                      | 1s              |
+| `warning-exception-time`        | 경고에 스택트레이스가 포함되는 루프 점유 시간         | 5s              |
+
+시간 속성은 Spring duration 문법(`500ms`, `2s`)을 지원합니다. `transactional {}` 블록은 이
+이벤트 루프에서 실행되므로, 운영 환경에서 `max-event-loop-execute-time`과
+`warning-exception-time`을 낮춰두면 실수로 들어간 블로킹 호출(과 그 위치)을 로그에서 빠르게
+발견할 수 있습니다.
+
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        reactive:
+          vertx:
+            event-loop-pool-size: 4
+            max-event-loop-execute-time: 500ms
+            warning-exception-time: 2s
+```
+
 ### SSL
 
 | 모드          | 설명                        |

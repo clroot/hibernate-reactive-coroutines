@@ -35,6 +35,39 @@ spring:
 | `idle-timeout`        | Idle connection timeout (ms)        | Vert.x default |
 | `max-wait-queue-size` | Maximum wait queue size             | Vert.x default |
 
+### Vert.x Instance
+
+The starter creates the Vert.x instance Hibernate Reactive runs on, exposes it as a Spring `Vertx`
+bean, and injects it via the `VertxInstance` service. Define your own `Vertx` bean and the starter
+backs off and reuses yours — so the whole application can share a single Vert.x instance instead of
+Hibernate Reactive silently spinning up a second one.
+
+Settings under `spring.jpa.properties.hibernate.reactive.vertx` (applied only when the starter
+creates the instance):
+
+| Property                       | Description                                              | Default        |
+| ------------------------------ | -------------------------------------------------------- | -------------- |
+| `event-loop-pool-size`         | Number of event loop threads                             | 2 × CPU cores  |
+| `max-event-loop-execute-time`  | Loop occupancy before the blocked-thread checker warns   | 2s             |
+| `blocked-thread-check-interval`| How often the blocked-thread checker runs                | 1s             |
+| `warning-exception-time`       | Loop occupancy before warnings include a stack trace     | 5s             |
+
+Duration properties accept Spring's duration syntax (`500ms`, `2s`). `transactional {}` blocks run
+on these event loops, so lowering `max-event-loop-execute-time` and `warning-exception-time` in
+production surfaces accidental blocking calls (and who made them) in the logs quickly.
+
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        reactive:
+          vertx:
+            event-loop-pool-size: 4
+            max-event-loop-execute-time: 500ms
+            warning-exception-time: 2s
+```
+
 ### SSL
 
 | Mode          | Description                              |
