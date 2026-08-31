@@ -209,6 +209,37 @@ val children = sessionProvider.fetch(parent, Parent::children)
 
 `Propagation.REQUIRES_NEW` is not supported due to potential connection pool exhaustion in reactive environments.
 
+### Blocking Call Detection (BlockHound)
+
+`transactional {}` blocks run on Vert.x event loop threads, where a single blocking call
+(`Thread.sleep`, a synchronous HTTP client, file I/O, ...) stalls every transaction pinned to that
+loop. [BlockHound](https://github.com/reactor/BlockHound) can catch such calls in tests — but it only
+inspects threads that are *marked* non-blocking, and Vert.x event loop threads are not marked by
+default. The `hibernate-reactive-coroutines-blockhound` module registers that marking automatically:
+
+```kotlin
+dependencies {
+    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.1.0")
+}
+
+tasks.withType<Test>().configureEach {
+    // Required for BlockHound's runtime instrumentation on JDK 13+
+    jvmArgs("-XX:+AllowRedefinitionToAddDeleteMethods", "-Djdk.attach.allowAttachSelf=true")
+}
+```
+
+```kotlin
+BlockHound.install() // picks up the integration via ServiceLoader
+
+tx.transactional {
+    Thread.sleep(100) // throws BlockingOperationError
+}
+```
+
+Pairing it with `org.jetbrains.kotlinx:kotlinx-coroutines-debug` is recommended so coroutine
+internals are allowlisted. BlockHound instruments bytecode, so keep it in tests and local
+development; for production detection rely on the Vert.x built-in blocked-thread checker.
+
 ## Comparison with Alternatives
 
 | Feature | This Library | Spring Data R2DBC | Quarkus Panache |

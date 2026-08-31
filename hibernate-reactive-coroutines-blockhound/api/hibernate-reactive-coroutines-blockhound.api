@@ -1,0 +1,5 @@
+public final class io/clroot/hibernate/reactive/blockhound/VertxEventLoopBlockHoundIntegration : reactor/blockhound/integration/BlockHoundIntegration {
+	public fun <init> ()V
+	public fun applyTo (Lreactor/blockhound/BlockHound$Builder;)V
+}
+
