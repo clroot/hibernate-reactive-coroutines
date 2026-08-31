@@ -8,6 +8,19 @@ import org.hibernate.reactive.pool.impl.DefaultSqlClientPoolConfiguration
 import org.slf4j.LoggerFactory
 import java.net.URI
 
+private const val PG_CONNECT_OPTIONS_CLASS = "io.vertx.pgclient.PgConnectOptions"
+
+/**
+ * Copies every [SqlConnectOptions] property through Vert.x's native PgConnectOptions copy constructor.
+ * Reflection keeps `vertx-pg-client` an optional runtime dependency.
+ */
+internal fun copyPostgresConnectOptions(source: SqlConnectOptions): SqlConnectOptions {
+    val pgConnectOptionsClass = Class.forName(PG_CONNECT_OPTIONS_CLASS)
+    return pgConnectOptionsClass
+        .getConstructor(SqlConnectOptions::class.java)
+        .newInstance(source) as SqlConnectOptions
+}
+
 /**
  * SSL을 지원하는 SqlClientPoolConfiguration.
  *
@@ -19,7 +32,6 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
     public companion object {
         private const val SSL_MODE_PROPERTY = "hibernate.vertx.pool.ssl.mode"
         private const val TRUST_CERTIFICATE_PROPERTY = "hibernate.vertx.pool.ssl.trust-certificate"
-        private const val PG_CONNECT_OPTIONS_CLASS = "io.vertx.pgclient.PgConnectOptions"
         private const val SSL_MODE_CLASS = "io.vertx.pgclient.SslMode"
 
         private val logger = LoggerFactory.getLogger(SslAwareSqlClientPoolConfiguration::class.java)
@@ -105,11 +117,8 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
             val pgConnectOptionsClass = Class.forName(PG_CONNECT_OPTIONS_CLASS)
             val sslModeClass = Class.forName(SSL_MODE_CLASS)
 
-            // PgConnectOptions 인스턴스 생성
-            val pgOptions = pgConnectOptionsClass.getDeclaredConstructor().newInstance()
-
-            // 기본 옵션 복사
-            copyBaseOptions(baseOptions, pgOptions, pgConnectOptionsClass)
+            // Vert.x의 복사 생성자로 SqlConnectOptions의 현재 및 향후 모든 속성을 보존합니다.
+            val pgOptions = copyPostgresConnectOptions(baseOptions)
 
             // SSL 모드 설정
             val sslModeOfMethod = sslModeClass.getMethod("of", String::class.java)
@@ -125,7 +134,7 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
                 configuredSslMode,
             )
 
-            return pgOptions as SqlConnectOptions
+            return pgOptions
         } catch (e: Exception) {
             throw IllegalStateException(
                 "Failed to configure PostgreSQL SSL mode '$configuredSslMode'; " +
@@ -161,41 +170,5 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
         pgConnectOptionsClass
             .getMethod("setSslOptions", ClientSSLOptions::class.java)
             .invoke(pgOptions, sslOptions)
-    }
-
-    /**
-     * 기본 SqlConnectOptions의 설정을 PgConnectOptions로 복사합니다.
-     */
-    private fun copyBaseOptions(source: SqlConnectOptions, target: Any, targetClass: Class<*>) {
-        // SqlConnectOptions의 공통 setter 메서드들
-        val setters = listOf(
-            "setHost" to { source.host },
-            "setPort" to { source.port },
-            "setDatabase" to { source.database },
-            "setUser" to { source.user },
-            "setPassword" to { source.password },
-            "setCachePreparedStatements" to { source.cachePreparedStatements },
-            "setPreparedStatementCacheMaxSize" to { source.preparedStatementCacheMaxSize },
-        )
-
-        for ((methodName, valueProvider) in setters) {
-            val value = valueProvider()
-            if (value != null) {
-                val paramType = when (value) {
-                    is Int -> Int::class.java
-                    is Boolean -> Boolean::class.java
-                    else -> String::class.java
-                }
-                val method = targetClass.getMethod(methodName, paramType)
-                method.invoke(target, value)
-            }
-        }
-
-        // Properties 복사
-        val properties = source.properties
-        if (properties != null && properties.isNotEmpty()) {
-            val setPropertiesMethod = targetClass.getMethod("setProperties", Map::class.java)
-            setPropertiesMethod.invoke(target, properties)
-        }
     }
 }

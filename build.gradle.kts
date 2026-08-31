@@ -15,15 +15,43 @@ val starterProjects = listOf(
     project(":hibernate-reactive-coroutines-spring-boot-starter-boot4"),
 )
 
-tasks.register<VerifyStarterSourceLayout>("verifyStarterSourceLayout") {
+val verifyStarterMainSourceLayout = tasks.register<VerifyStarterSourceLayout>("verifyStarterMainSourceLayout") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Verifies that Boot starter production sources have a single owner."
-
+    description = "Verifies that Boot starter main sources have a single owner."
     sharedSourceDirectory =
         layout.projectDirectory.dir("hibernate-reactive-coroutines-spring-boot-starter-common/src/main")
     starterSourceDirectories = starterProjects.map { it.layout.projectDirectory.dir("src/main") }
     versionSpecificPaths = setOf(
         "resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports",
+    )
+}
+
+val verifyStarterTestSourceLayout = tasks.register<VerifyStarterSourceLayout>("verifyStarterTestSourceLayout") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Verifies that Boot starter test sources have a single owner."
+    sharedSourceDirectory =
+        layout.projectDirectory.dir("hibernate-reactive-coroutines-spring-boot-starter-common/src/test")
+    starterSourceDirectories = starterProjects.map { it.layout.projectDirectory.dir("src/test") }
+    versionSpecificPaths = emptySet()
+}
+
+val verifyStarterTestFixtureSourceLayout =
+    tasks.register<VerifyStarterSourceLayout>("verifyStarterTestFixtureSourceLayout") {
+        group = LifecycleBasePlugin.VERIFICATION_GROUP
+        description = "Verifies that Boot starter test fixtures have a single owner."
+        sharedSourceDirectory =
+            layout.projectDirectory.dir("hibernate-reactive-coroutines-spring-boot-starter-common/src/testFixtures")
+        starterSourceDirectories = starterProjects.map { it.layout.projectDirectory.dir("src/testFixtures") }
+        versionSpecificPaths = emptySet()
+    }
+
+tasks.register("verifyStarterSourceLayout") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Verifies that all Boot starter source sets have a single owner."
+    dependsOn(
+        verifyStarterMainSourceLayout,
+        verifyStarterTestSourceLayout,
+        verifyStarterTestFixtureSourceLayout,
     )
 }
 
