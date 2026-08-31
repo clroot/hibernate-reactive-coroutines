@@ -8,10 +8,22 @@ vertx = "5.1.5"
 kotest = "6.0.7"
 mockk = "1.14.7"
 testcontainers = "2.0.5"
+spring-boot3 = "3.4.13"
+spring-boot4 = "4.0.7"
+hibernate-orm = "7.4.5.Final"
+jakarta-persistence = "3.2.0"
 
 [libraries]
 # Hibernate Reactive
 hibernate-reactive-core = { module = "org.hibernate.reactive:hibernate-reactive-core", version.ref = "hibernate-reactive" }
+
+# Spring Boot platforms (one per supported major; the starters cross-compile against both)
+spring-boot3-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot3" }
+spring-boot4-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot4" }
+
+# Constraints applied to the starters so the Hibernate Reactive stack wins over the Boot BOM
+hibernate-orm-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-orm" }
+jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version.ref = "jakarta-persistence" }
 
 # Mutiny
 mutiny-kotlin = { module = "io.smallrye.reactive:mutiny-kotlin", version.ref = "mutiny" }
@@ -42,6 +54,12 @@ vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx"
 vertx-pg-client = { module = "io.vertx:vertx-pg-client", version.ref = "vertx" }
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
 scram-client = { module = "com.ongres.scram:scram-client", version = "3.2" }
+
+# Gradle plugin artifacts, consumed by build-logic convention plugins only
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin", version.ref = "kotlin" }
+kotlin-spring-gradle-plugin = { module = "org.jetbrains.kotlin.plugin.spring:org.jetbrains.kotlin.plugin.spring.gradle.plugin", version.ref = "kotlin" }
+kotlin-jpa-gradle-plugin = { module = "org.jetbrains.kotlin.plugin.jpa:org.jetbrains.kotlin.plugin.jpa.gradle.plugin", version.ref = "kotlin" }
+dokka-gradle-plugin = { module = "org.jetbrains.dokka:org.jetbrains.dokka.gradle.plugin", version.ref = "dokka" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
