@@ -35,4 +35,5 @@ Thumbs.db
 
 # Local configuration
 .claude/
+.gjc/
 docs/plans
