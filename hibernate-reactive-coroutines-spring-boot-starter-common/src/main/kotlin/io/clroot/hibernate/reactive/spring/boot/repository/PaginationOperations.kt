@@ -122,7 +122,7 @@ internal class PaginationOperations<T : Any>(
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)
-            query.firstResult = pageable.offset.toInt()
+            query.firstResult = pageable.offset.toHibernateFirstResult()
             query.maxResults = pageable.pageSize
             query.resultList
         }
@@ -154,7 +154,7 @@ internal class PaginationOperations<T : Any>(
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)
-            query.firstResult = pageable.offset.toInt()
+            query.firstResult = pageable.offset.toHibernateFirstResult()
             query.maxResults = pageable.pageSize + 1
             query.resultList
         }
@@ -202,7 +202,7 @@ internal class PaginationOperations<T : Any>(
         args.forEachIndexed { index, arg ->
             query.setParameter("p$index", arg)
         }
-        query.firstResult = offset.toInt()
+        query.firstResult = offset.toHibernateFirstResult()
         query.maxResults = limit
         query.resultList
     }
@@ -244,4 +244,12 @@ internal class PaginationOperations<T : Any>(
     private fun shouldSkipCountQuery(content: List<T>, pageable: Pageable): Boolean {
         return (content.isNotEmpty() || pageable.offset == 0L) && content.size < pageable.pageSize
     }
+}
+
+internal fun Long.toHibernateFirstResult(): Int {
+    require(this in 0..Int.MAX_VALUE.toLong()) {
+        "Page offset $this exceeds Hibernate's supported first-result range 0..${Int.MAX_VALUE}; " +
+                "use a smaller page or keyset pagination"
+    }
+    return toInt()
 }

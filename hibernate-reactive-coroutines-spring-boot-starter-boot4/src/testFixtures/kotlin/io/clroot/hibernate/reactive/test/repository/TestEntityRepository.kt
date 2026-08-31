@@ -23,6 +23,10 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
     // 리스트 조회
     suspend fun findAllByValue(value: Int): List<TestEntity>
 
+    suspend fun findAllByNameIn(names: List<String>): List<TestEntity>
+
+    suspend fun findAllByNameNotIn(names: List<String>): List<TestEntity>
+
     // 존재 여부
     suspend fun existsByName(name: String): Boolean
 

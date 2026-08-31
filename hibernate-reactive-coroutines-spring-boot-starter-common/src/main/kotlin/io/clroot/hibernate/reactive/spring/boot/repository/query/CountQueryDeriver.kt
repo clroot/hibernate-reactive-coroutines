@@ -2,6 +2,12 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
 
 import java.util.Locale
 
+internal enum class QueryStatementType {
+    SELECT,
+    MODIFYING,
+    UNKNOWN,
+}
+
 internal object CountQueryDeriver {
     private val selectClauseRegex = Regex(
         "^SELECT\\s+(?:(DISTINCT)\\s+)?(.+?)\\s+FROM\\s+",
@@ -183,11 +189,31 @@ internal object CountQueryDeriver {
     fun hasOrderBy(query: String): Boolean =
         scan(query).tokens.findSequence(query, "ORDER", "BY") != null
 
+    /**
+     * Finds the executable top-level statement while ignoring leading block comments and CTE bodies.
+     */
+    fun statementType(query: String): QueryStatementType {
+        val tokens = scan(query.trim()).tokens.filterNot { it.qualified }
+        val first = tokens.firstOrNull() ?: return QueryStatementType.UNKNOWN
+        val statement = if (first.value == "WITH") {
+            tokens.drop(1).firstOrNull { it.value in STATEMENT_TOKENS }
+        } else {
+            first
+        }
+        return when (statement?.value) {
+            "SELECT", "FROM" -> QueryStatementType.SELECT
+            "UPDATE", "DELETE", "INSERT" -> QueryStatementType.MODIFYING
+            else -> QueryStatementType.UNKNOWN
+        }
+    }
+
     private fun unsupported(feature: String): Nothing {
         throw IllegalStateException(
             "Automatic count query derivation does not support $feature; declare countQuery explicitly",
         )
     }
+
+    private val STATEMENT_TOKENS = setOf("SELECT", "FROM", "UPDATE", "DELETE", "INSERT")
 
     private val aliasFollowingClauses = setOf(
         "WHERE", "GROUP", "HAVING", "ORDER", "LIMIT", "OFFSET", "JOIN",

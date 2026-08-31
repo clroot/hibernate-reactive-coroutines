@@ -19,7 +19,7 @@ internal data object BetweenCondition : ConditionBuilder {
 internal data object InCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IN :p$paramIndex",
-        binders = listOf(ParameterBinder.Direct),
+        binders = listOf(ParameterBinder.InCollection),
         paramCount = 1,
     )
 }
@@ -28,7 +28,7 @@ internal data object InCondition : ConditionBuilder {
 internal data object NotInCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property NOT IN :p$paramIndex",
-        binders = listOf(ParameterBinder.Direct),
+        binders = listOf(ParameterBinder.NotInCollection),
         paramCount = 1,
     )
 }

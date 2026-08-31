@@ -25,6 +25,7 @@ class QueryOperationsTest : DescribeSpec({
     val userType = mockk<ManagedType<User>>()
     val addressType = mockk<ManagedType<Address>>()
     val nameAttribute = mockk<SingularAttribute<User, String>>()
+    val ageAttribute = mockk<SingularAttribute<User, Int>>()
     val addressAttribute = mockk<SingularAttribute<User, Address>>()
     val addressesAttribute = mockk<PluralAttribute<User, List<Address>, Address>>()
     val addressAttributeType = mockk<Type<Address>>()
@@ -33,13 +34,18 @@ class QueryOperationsTest : DescribeSpec({
     every { metamodel.managedType(User::class.java) } returns userType
     every { metamodel.managedType(Address::class.java) } returns addressType
     every { userType.getAttribute("name") } returns nameAttribute
+    every { userType.getAttribute("age") } returns ageAttribute
     every { userType.getAttribute("address") } returns addressAttribute
     every { userType.getAttribute("addresses") } returns addressesAttribute
     every { addressAttribute.type } returns addressAttributeType
     every { addressAttributeType.javaType } returns Address::class.java
     every { addressType.getAttribute("city") } returns cityAttribute
     every { cityAttribute.persistentAttributeType } returns Attribute.PersistentAttributeType.BASIC
+    every { cityAttribute.javaType } returns String::class.java
     every { nameAttribute.persistentAttributeType } returns Attribute.PersistentAttributeType.BASIC
+    every { nameAttribute.javaType } returns String::class.java
+    every { ageAttribute.persistentAttributeType } returns Attribute.PersistentAttributeType.BASIC
+    every { ageAttribute.javaType } returns Int::class.java
     every { userType.getAttribute("computed") } throws IllegalArgumentException()
     every { userType.getAttribute("doesNotExist") } throws IllegalArgumentException()
 
@@ -56,6 +62,17 @@ class QueryOperationsTest : DescribeSpec({
             operations.buildSortClause(sort) shouldBe "e.address.city ASC"
         }
 
+        it("applies ignoreCase with LOWER to a String property") {
+            operations.buildSortClause(Sort.by(Sort.Order.by("name").ignoreCase())) shouldBe
+                    "LOWER(e.name) ASC"
+        }
+
+        it("rejects ignoreCase on a non-String property") {
+            shouldThrow<IllegalArgumentException> {
+                operations.buildSortClause(Sort.by(Sort.Order.by("age").ignoreCase()))
+            }
+        }
+
         it("resolves a JPA field-access property without a JavaBean getter") {
             val fieldMetamodel = mockk<Metamodel>()
             val fieldType = mockk<ManagedType<FieldAccessUser>>()
@@ -63,6 +80,7 @@ class QueryOperationsTest : DescribeSpec({
             every { fieldMetamodel.managedType(FieldAccessUser::class.java) } returns fieldType
             every { fieldType.getAttribute("name") } returns fieldAttribute
             every { fieldAttribute.persistentAttributeType } returns Attribute.PersistentAttributeType.BASIC
+            every { fieldAttribute.javaType } returns String::class.java
             val fieldOperations = QueryOperations(
                 FieldAccessUser::class.java,
                 mockk<TransactionalAwareSessionProvider>(),

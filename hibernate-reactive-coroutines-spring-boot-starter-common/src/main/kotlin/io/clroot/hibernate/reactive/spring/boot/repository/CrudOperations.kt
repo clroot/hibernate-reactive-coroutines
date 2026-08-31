@@ -122,13 +122,12 @@ internal class CrudOperations<T : Any, ID : Any>(
     // Exists / Count 작업
     // ============================================
 
-    suspend fun existsById(id: ID): Boolean {
-        val count = sessionProvider.read { session ->
-            session.createQuery("SELECT COUNT(e) FROM $entityName e WHERE e.id = :id", Long::class.javaObjectType)
-                .setParameter("id", RepositoryIdAdapter.unwrap(id))
-                .singleResult
-        }
-        return (count ?: 0L) > 0
+    suspend fun existsById(id: ID): Boolean = sessionProvider.read { session ->
+        session.createQuery("SELECT 1 FROM $entityName e WHERE e.id = :id", Int::class.javaObjectType)
+            .setParameter("id", RepositoryIdAdapter.unwrap(id))
+            .setMaxResults(1)
+            .resultList
+            .map(List<Int>::isNotEmpty)
     }
 
     suspend fun count(): Long = sessionProvider.read { session ->

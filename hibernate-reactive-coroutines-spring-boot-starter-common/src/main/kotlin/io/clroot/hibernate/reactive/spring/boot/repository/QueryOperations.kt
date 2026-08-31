@@ -55,14 +55,13 @@ internal class QueryOperations<T : Any>(
             query.resultList
         }
 
-    suspend fun executeExistsQuery(hql: String, args: List<Any?>): Boolean {
-        val count = sessionProvider.read { session ->
-            val query = session.createQuery(hql, Long::class.javaObjectType)
+    suspend fun executeExistsQuery(hql: String, args: List<Any?>): Boolean =
+        sessionProvider.read { session ->
+            val query = session.createQuery(hql, Int::class.javaObjectType)
             bindIndexedParameters(query, args)
-            query.singleResult
+            query.maxResults = 1
+            query.resultList.map(List<Int>::isNotEmpty)
         }
-        return (count ?: 0L) > 0
-    }
 
     suspend fun executeCountQuery(hql: String, args: List<Any?>): Long =
         sessionProvider.read { session ->
@@ -309,6 +308,7 @@ internal class QueryOperations<T : Any>(
             }
 
             var owningType: ManagedType<*> = managedType(entityClass)
+            var leafType: Class<*>? = null
             segments.forEachIndexed { index, segment ->
                 val attribute = try {
                     owningType.getAttribute(segment)
@@ -325,11 +325,22 @@ internal class QueryOperations<T : Any>(
 
                 if (index < segments.lastIndex) {
                     owningType = managedType(attribute.type.javaType)
-                } else if (attribute.persistentAttributeType != Attribute.PersistentAttributeType.BASIC) {
-                    throw IllegalArgumentException("Sort property must resolve to a basic attribute")
+                } else {
+                    if (attribute.persistentAttributeType != Attribute.PersistentAttributeType.BASIC) {
+                        throw IllegalArgumentException("Sort property must resolve to a basic attribute")
+                    }
+                    leafType = attribute.javaType
                 }
             }
-            "$alias.${order.property} $direction"
+            val expression = if (order.isIgnoreCase) {
+                require(leafType == String::class.java) {
+                    "Ignore-case sorting requires a String property"
+                }
+                "LOWER($alias.${order.property})"
+            } else {
+                "$alias.${order.property}"
+            }
+            "$expression $direction"
         }.joinToString(", ")
     }
 

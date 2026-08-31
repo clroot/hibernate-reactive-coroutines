@@ -92,6 +92,14 @@ class QueryMethodValidationTest : DescribeSpec({
         it("accepts entity results") {
             parse("findActive").hql shouldContain "FROM Member"
         }
+
+        it("accepts a SELECT preceded by a block comment") {
+            parse("findWithComment").hql shouldContain "SELECT e FROM Member"
+        }
+
+        it("accepts a SELECT preceded by a CTE") {
+            parse("findWithCte").hql shouldContain "WITH recent"
+        }
     }
 })
 
@@ -117,4 +125,13 @@ private interface MemberRepository {
 
     @Query("SELECT e FROM Member e WHERE e.age > 0")
     suspend fun findActive(): List<Member>
+
+    @Query("/* index hint */ SELECT e FROM Member e")
+    suspend fun findWithComment(): List<Member>
+
+    @Query(
+        "WITH recent AS (SELECT e.id AS id FROM Member e) " +
+                "SELECT e FROM Member e WHERE e.id IN (SELECT r.id FROM recent r)",
+    )
+    suspend fun findWithCte(): List<Member>
 }

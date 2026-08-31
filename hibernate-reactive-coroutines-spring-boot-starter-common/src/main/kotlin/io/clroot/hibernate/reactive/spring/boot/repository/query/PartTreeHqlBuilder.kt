@@ -100,7 +100,13 @@ internal class PartTreeHqlBuilder(
         }
     }
 
-    private fun buildExistsQuery(): String = buildCountQuery()
+    private fun buildExistsQuery(): String {
+        val where = buildWhereClause()
+        return buildString {
+            append("SELECT 1 FROM $entityName e")
+            if (where.isNotEmpty()) append(" WHERE $where")
+        }
+    }
 
     /**
      * 파생 `deleteBy...` 메서드가 삭제할 엔티티를 조회하는 SELECT를 생성합니다.
@@ -192,7 +198,8 @@ internal class PartTreeHqlBuilder(
                     "Invalid sort property"
                 }
             }
-            "e.$property $direction"
+            val expression = if (order.isIgnoreCase) "LOWER(e.$property)" else "e.$property"
+            "$expression $direction"
         }.joinToString(", ")
     }
 }

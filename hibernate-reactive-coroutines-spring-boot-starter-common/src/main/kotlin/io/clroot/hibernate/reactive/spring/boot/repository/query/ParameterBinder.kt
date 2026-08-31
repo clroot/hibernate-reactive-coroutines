@@ -22,6 +22,14 @@ public sealed class ParameterBinder {
         override fun bind(value: Any?): Any? = value
     }
 
+    internal data object InCollection : ParameterBinder() {
+        override fun bind(value: Any?): Any = requireCollection(value, "IN")
+    }
+
+    internal data object NotInCollection : ParameterBinder() {
+        override fun bind(value: Any?): Any = requireCollection(value, "NOT IN")
+    }
+
     /**
      * LIKE 패턴 바인더 - 값 양쪽에 % 추가
      */
@@ -56,6 +64,14 @@ public sealed class ParameterBinder {
                 .replace("%", "\\%")
                 .replace("_", "\\_")
 
+        private fun requireCollection(value: Any?, operator: String): Any {
+            requireNotNull(value) { "$operator collection parameter must not be null" }
+            require(value is Iterable<*> || value.javaClass.isArray) {
+                "$operator parameter must be a collection or array"
+            }
+            return value
+        }
+
         /** 이스케이프된 LIKE 패턴에 사용할 HQL `ESCAPE` 절. */
         internal const val LIKE_ESCAPE_CLAUSE: String = " ESCAPE '\\'"
 
@@ -66,6 +82,8 @@ public sealed class ParameterBinder {
             Part.Type.CONTAINING, Part.Type.NOT_CONTAINING -> Containing
             Part.Type.STARTING_WITH -> StartingWith
             Part.Type.ENDING_WITH -> EndingWith
+            Part.Type.IN -> InCollection
+            Part.Type.NOT_IN -> NotInCollection
             else -> Direct
         }
     }

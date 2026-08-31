@@ -226,7 +226,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 val result = builder.build()
 
                 result.hql shouldBe "FROM User e WHERE e.name IN :p0"
-                result.parameterBinders shouldHaveSize 1
+                result.parameterBinders shouldBe listOf(ParameterBinder.InCollection)
             }
 
             it("findByNameNotIn") {
@@ -236,6 +236,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 val result = builder.build()
 
                 result.hql shouldBe "FROM User e WHERE e.name NOT IN :p0"
+                result.parameterBinders shouldBe listOf(ParameterBinder.NotInCollection)
             }
         }
 
@@ -289,7 +290,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "SELECT COUNT(e) FROM User e WHERE e.name = :p0"
+                result.hql shouldBe "SELECT 1 FROM User e WHERE e.name = :p0"
             }
 
             it("existsByEmail") {
@@ -298,7 +299,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                 val result = builder.build()
 
-                result.hql shouldBe "SELECT COUNT(e) FROM User e WHERE e.email = :p0"
+                result.hql shouldBe "SELECT 1 FROM User e WHERE e.email = :p0"
             }
         }
 
@@ -372,6 +373,14 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
                     result.hql shouldContain "ORDER BY e.age DESC"
                     result.hql shouldNotContain "e.email"
+                }
+
+                it("ignoreCase를 LOWER 정렬로 변환한다") {
+                    val partTree = PartTree("findAllByName", User::class.java)
+                    val builder = PartTreeHqlBuilder("User", partTree)
+                    val dynamicSort = Sort.by(Sort.Order.by("name").ignoreCase())
+
+                    builder.buildWithSort(dynamicSort).hql shouldContain "ORDER BY LOWER(e.name) ASC"
                 }
             }
 
