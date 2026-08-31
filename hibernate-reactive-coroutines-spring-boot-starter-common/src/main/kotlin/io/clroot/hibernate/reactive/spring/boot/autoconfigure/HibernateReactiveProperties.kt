@@ -137,5 +137,18 @@ public data class HibernateReactiveProperties(
          * 어떤 코드가 루프를 막았는지 추적하려면 이 값을 낮추세요.
          */
         val warningExceptionTime: Duration? = null,
+
+        /**
+         * 내장 Netty 리액티브 웹 서버(WebFlux)를 이 Vert.x의 이벤트 루프 위에서 실행합니다
+         * (기본값: false)
+         *
+         * 켜면 reactor-netty가 별도의 이벤트 루프 풀을 만들지 않아 앱 전체가 하나의
+         * 스레드 풀을 공유합니다. 대신 장애 격리가 약해집니다: 트랜잭션 블록 안의 블로킹
+         * 호출 하나가 DB 계층뿐 아니라 HTTP 서빙(헬스체크 포함)까지 함께 멈출 수 있습니다.
+         *
+         * 켜기 전에 hibernate-reactive-coroutines-blockhound로 블로킹 호출이 없는지
+         * 테스트에서 검증하고, blocked-thread checker 임계값을 낮춰 운영에서 감시하세요.
+         */
+        val shareEventLoops: Boolean = false,
     )
 }

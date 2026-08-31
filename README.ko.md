@@ -16,6 +16,8 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 - 페이지네이션 (`Page`, `Slice`, `Pageable`)
 - Spring `@Transactional` 통합
 - Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
+- Vert.x 인스턴스를 Spring 빈으로 소유·공유, WebFlux 서버와의 이벤트 루프 통합(opt-in)
+- 블로킹 호출 탐지: BlockHound 통합 모듈 + Vert.x blocked-thread checker 설정 노출
 
 **Spring Data JPA 기능 커버리지: ~85-90%** - 자세한 내용은 [마이그레이션 가이드](docs/migration.ko.md)를 참고하세요.
 

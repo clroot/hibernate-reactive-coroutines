@@ -50,6 +50,11 @@ dependencies {
     // Compiled against by SslAwareSqlClientPoolConfiguration; provided at runtime by hibernate-reactive.
     compileOnly(lib("vertx-sql-client"))
 
+    // Compiled against by the opt-in event-loop sharing auto-configuration; provided at runtime by
+    // the application's WebFlux stack. Versions come from the Boot platform's reactor-bom import.
+    compileOnly("org.springframework:spring-web")
+    compileOnly("io.projectreactor.netty:reactor-netty-core")
+
     // Parameter-name extraction for @Query. Left versionless so the Kotlin plugin's own constraint
     // supplies the version, which is what the published POM records.
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -68,6 +73,9 @@ dependencies {
     implementation(lib("mutiny-reactor"))
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // Boots a real Netty reactive web server in the event-loop sharing integration test.
+    // application-test.yml pins web-application-type=none so other tests stay non-web.
+    testImplementation("org.springframework.boot:spring-boot-starter-webflux")
     testImplementation(lib("kotest-runner-junit5"))
     testImplementation(lib("kotest-assertions-core"))
     testImplementation(lib("kotest-extensions-spring"))

@@ -66,6 +66,34 @@ spring:
             warning-exception-time: 2s
 ```
 
+### 이벤트 루프 공유 (opt-in)
+
+WebFlux 애플리케이션에서는 기본적으로 reactor-netty와 Vert.x가 각자의 Netty 이벤트 루프 풀을
+띄웁니다. `share-event-loops: true`를 설정하면 내장 Netty 리액티브 웹 서버가 스타터의 Vert.x
+이벤트 루프 위에서 실행됩니다 — HTTP 서빙과 DB I/O가 하나의 스레드 풀을 공유합니다:
+
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        reactive:
+          vertx:
+            share-event-loops: true
+```
+
+요청이 처음부터 Vert.x 이벤트 루프 스레드에서 시작하므로 `transactional {}` 진입 시 다른
+풀로 넘어가는 스레드 전환이 사라지고, Vert.x blocked-thread checker와
+`hibernate-reactive-coroutines-blockhound` 통합이 웹 계층까지 커버합니다. Spring Boot 3.x와
+4.x 모두 지원하며, 애플리케이션이 직접 정의한 `ReactorResourceFactory` 빈이 있으면 그 빈이
+우선합니다.
+
+**켜기 전에 트레이드오프를 이해하세요.** 분리된 풀은 격벽 역할을 합니다: `transactional {}`
+블록 안의 블로킹 호출은 DB 계층만 멈추게 합니다. 루프를 공유하면 같은 실수가 그 루프에
+배정된 모든 HTTP 커넥션(헬스체크 포함)을 함께 얼리고, 무거운 DB 이벤트 트래픽이 같은
+스레드에서 HTTP 이벤트와 경쟁합니다. 켜기 전에 BlockHound로 테스트에서 블로킹 호출 부재를
+검증하고, 운영에서는 blocked-thread checker 임계값을 낮춰 감시하세요. opt-in인 이유입니다.
+
 ### SSL
 
 | 모드          | 설명                        |

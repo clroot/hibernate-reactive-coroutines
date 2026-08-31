@@ -29,6 +29,8 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 - **Pagination support** (`Page`, `Slice`, `Pageable`)
 - **Spring `@Transactional`** integration with coroutine context propagation
 - **Auditing** (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
+- **Application-owned Vert.x**: exposed as a Spring bean, with opt-in event-loop sharing for the WebFlux Netty server
+- **Blocking call detection**: BlockHound integration module + Vert.x blocked-thread checker settings
 
 **Spring Data JPA feature coverage: ~85-90%** — See [Migration Guide](docs/migration.md) for details.
 

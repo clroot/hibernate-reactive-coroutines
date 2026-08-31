@@ -1,4 +1,8 @@
 spring:
+  # webflux가 테스트 클래스패스에 있어도 기존 테스트는 웹 컨텍스트 없이 뜨게 한다.
+  # 이벤트 루프 공유 통합 테스트만 프로퍼티로 reactive를 다시 켠다.
+  main:
+    web-application-type: none
   reactor:
     context-propagation: auto
   jpa:

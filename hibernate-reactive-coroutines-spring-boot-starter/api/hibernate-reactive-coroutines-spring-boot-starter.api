@@ -58,18 +58,20 @@ public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/Hibern
 
 public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings {
 	public fun <init> ()V
-	public fun <init> (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;)V
-	public synthetic fun <init> (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;Z)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/Integer;
 	public final fun component2 ()Ljava/time/Duration;
 	public final fun component3 ()Ljava/time/Duration;
 	public final fun component4 ()Ljava/time/Duration;
-	public final fun copy (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;
-	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;
+	public final fun component5 ()Z
+	public final fun copy (Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;Z)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;Ljava/lang/Integer;Ljava/time/Duration;Ljava/time/Duration;Ljava/time/Duration;ZILjava/lang/Object;)Lio/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveProperties$VertxSettings;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBlockedThreadCheckInterval ()Ljava/time/Duration;
 	public final fun getEventLoopPoolSize ()Ljava/lang/Integer;
 	public final fun getMaxEventLoopExecuteTime ()Ljava/time/Duration;
+	public final fun getShareEventLoops ()Z
 	public final fun getWarningExceptionTime ()Ljava/time/Duration;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -83,6 +85,18 @@ public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateRea
 
 public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/HibernateReactiveRepositoryAutoConfiguration$Companion {
 	public final fun hibernateReactiveRepositoryRegistrar ()Lio/clroot/hibernate/reactive/spring/boot/repository/HibernateReactiveRepositoryRegistrar;
+}
+
+public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/VertxEventLoopSharingAutoConfiguration {
+	public fun <init> ()V
+	public fun reactorResourceFactory (Lio/vertx/core/Vertx;)Lorg/springframework/http/client/ReactorResourceFactory;
+}
+
+public final class io/clroot/hibernate/reactive/spring/boot/autoconfigure/VertxLoopResources : reactor/netty/resources/LoopResources {
+	public fun <init> (Lio/vertx/core/Vertx;)V
+	public fun dispose ()V
+	public fun disposeLater (Ljava/time/Duration;Ljava/time/Duration;)Lreactor/core/publisher/Mono;
+	public fun onServer (Z)Lio/netty/channel/EventLoopGroup;
 }
 
 public final class io/clroot/hibernate/reactive/spring/boot/pool/SslAwareSqlClientPoolConfiguration : org/hibernate/reactive/pool/impl/DefaultSqlClientPoolConfiguration {

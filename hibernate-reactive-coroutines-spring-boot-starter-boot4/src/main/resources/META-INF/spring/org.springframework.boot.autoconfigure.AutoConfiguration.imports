@@ -2,3 +2,4 @@ io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveAutoConf
 io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveTransactionManagementAutoConfiguration
 io.clroot.hibernate.reactive.spring.boot.autoconfigure.HibernateReactiveRepositoryAutoConfiguration
 io.clroot.hibernate.reactive.spring.boot.autoconfigure.AuditingAutoConfiguration
+io.clroot.hibernate.reactive.spring.boot.autoconfigure.VertxEventLoopSharingAutoConfiguration
