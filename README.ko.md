@@ -16,6 +16,8 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 - 페이지네이션 (`Page`, `Slice`, `Pageable`)
 - Spring `@Transactional` 통합
 - Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
+- Vert.x 인스턴스를 Spring 빈으로 소유·공유, WebFlux 서버와의 이벤트 루프 통합(opt-in)
+- 블로킹 호출 탐지: BlockHound 통합 모듈 + Vert.x blocked-thread checker 설정 노출
 
 **Spring Data JPA 기능 커버리지: ~85-90%** - 자세한 내용은 [마이그레이션 가이드](docs/migration.ko.md)를 참고하세요.
 
@@ -155,6 +157,37 @@ val children = sessionProvider.fetch(parent, Parent::children)
 ### REQUIRES_NEW 미지원
 
 리액티브 환경에서 커넥션 풀 고갈 위험이 있어 지원하지 않습니다.
+
+### 블로킹 호출 탐지 (BlockHound)
+
+`transactional {}` 블록은 Vert.x 이벤트 루프에서 실행되므로, 블록 안의 블로킹 호출 하나
+(`Thread.sleep`, 동기 HTTP 클라이언트, 파일 I/O 등)가 해당 루프의 모든 트랜잭션을 멈추게 합니다.
+[BlockHound](https://github.com/reactor/BlockHound)로 테스트에서 이런 호출을 잡을 수 있지만,
+BlockHound는 "논블로킹으로 표시된 스레드"만 검사하며 Vert.x 이벤트 루프는 기본적으로 표시되지
+않습니다. `hibernate-reactive-coroutines-blockhound` 모듈이 이 표시를 자동으로 등록합니다:
+
+```kotlin
+dependencies {
+    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.1.0")
+}
+
+tasks.withType<Test>().configureEach {
+    // JDK 13+에서 BlockHound 런타임 계측에 필요
+    jvmArgs("-XX:+AllowRedefinitionToAddDeleteMethods", "-Djdk.attach.allowAttachSelf=true")
+}
+```
+
+```kotlin
+BlockHound.install() // ServiceLoader로 통합이 자동 등록됨
+
+tx.transactional {
+    Thread.sleep(100) // BlockingOperationError 발생
+}
+```
+
+코루틴 내부 동작의 allowlist를 위해 `org.jetbrains.kotlinx:kotlinx-coroutines-debug`와 함께 쓰는
+것을 권장합니다. BlockHound는 바이트코드 계측이므로 테스트·로컬 개발에서만 사용하고, 운영 환경
+탐지는 Vert.x 내장 blocked-thread checker를 사용하세요.
 
 ## 라이선스
 

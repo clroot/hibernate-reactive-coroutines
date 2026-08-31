@@ -35,6 +35,67 @@ spring:
 | `idle-timeout`        | Idle connection timeout (ms)        | Vert.x default |
 | `max-wait-queue-size` | Maximum wait queue size             | Vert.x default |
 
+### Vert.x Instance
+
+The starter creates the Vert.x instance Hibernate Reactive runs on, exposes it as a Spring `Vertx`
+bean, and injects it via the `VertxInstance` service. Define your own `Vertx` bean and the starter
+backs off and reuses yours — so the whole application can share a single Vert.x instance instead of
+Hibernate Reactive silently spinning up a second one.
+
+Settings under `spring.jpa.properties.hibernate.reactive.vertx` (applied only when the starter
+creates the instance):
+
+| Property                       | Description                                              | Default        |
+| ------------------------------ | -------------------------------------------------------- | -------------- |
+| `event-loop-pool-size`         | Number of event loop threads                             | 2 × CPU cores  |
+| `max-event-loop-execute-time`  | Loop occupancy before the blocked-thread checker warns   | 2s             |
+| `blocked-thread-check-interval`| How often the blocked-thread checker runs                | 1s             |
+| `warning-exception-time`       | Loop occupancy before warnings include a stack trace     | 5s             |
+
+Duration properties accept Spring's duration syntax (`500ms`, `2s`). `transactional {}` blocks run
+on these event loops, so lowering `max-event-loop-execute-time` and `warning-exception-time` in
+production surfaces accidental blocking calls (and who made them) in the logs quickly.
+
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        reactive:
+          vertx:
+            event-loop-pool-size: 4
+            max-event-loop-execute-time: 500ms
+            warning-exception-time: 2s
+```
+
+### Event Loop Sharing (opt-in)
+
+In a WebFlux application, reactor-netty and Vert.x each run their own Netty event loop pool by
+default. Setting `share-event-loops: true` runs the embedded Netty reactive web server on the
+starter's Vert.x event loops instead — one thread pool for HTTP serving and DB I/O:
+
+```yaml
+spring:
+  jpa:
+    properties:
+      hibernate:
+        reactive:
+          vertx:
+            share-event-loops: true
+```
+
+Requests then start on Vert.x event loop threads, so entering `transactional {}` no longer hops to
+a different pool, and both the Vert.x blocked-thread checker and the
+`hibernate-reactive-coroutines-blockhound` integration cover the web layer too. Works on Spring
+Boot 3.x and 4.x; a user-defined `ReactorResourceFactory` bean takes precedence.
+
+**Understand the trade-off before enabling.** Separate pools act as a bulkhead: a blocking call
+inside a `transactional {}` block stalls only the DB layer. With shared loops, that same mistake
+freezes every HTTP connection assigned to that loop — health checks included — and heavy DB event
+traffic competes with HTTP events on the same threads. Verify your code with BlockHound in tests
+and tighten the blocked-thread checker in production before turning this on. This is why it is
+opt-in.
+
 ### SSL
 
 | Mode          | Description                              |

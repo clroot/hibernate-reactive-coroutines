@@ -1,6 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.autoconfigure
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.time.Duration
 
 /**
  * Hibernate Reactive 전용 설정 프로퍼티.
@@ -82,4 +83,72 @@ public data class HibernateReactiveProperties(
      * @see org.hibernate.reactive.provider.Settings.POOL_MAX_WAIT_QUEUE_SIZE
      */
     val maxWaitQueueSize: Int? = null,
-)
+
+    /**
+     * 스타터가 생성하는 Vert.x 인스턴스 설정.
+     *
+     * 애플리케이션에 `Vertx` 빈이 이미 있으면 그 빈이 사용되며 이 설정은 무시됩니다.
+     */
+    val vertx: VertxSettings = VertxSettings(),
+) {
+    /**
+     * Hibernate Reactive가 사용할 Vert.x 인스턴스의 이벤트 루프·blocked-thread checker 설정.
+     *
+     * `transactional {}` 블록은 이벤트 루프에서 실행되므로, blocked-thread checker 임계값을
+     * 낮게 잡을수록 블록 안의 실수(블로킹 호출, CPU 독점)를 운영 로그에서 빨리 발견할 수 있습니다.
+     *
+     * ```yaml
+     * spring:
+     *   jpa:
+     *     properties:
+     *       hibernate:
+     *         reactive:
+     *           vertx:
+     *             event-loop-pool-size: 4
+     *             max-event-loop-execute-time: 500ms
+     *             warning-exception-time: 2s
+     * ```
+     */
+    public data class VertxSettings(
+        /**
+         * 이벤트 루프 스레드 수 (기본값: Vert.x 기본값, 2 × CPU 코어)
+         *
+         * DB I/O 전용 Vert.x이므로 웹 서버와 별도로 뜨는 환경에서는
+         * 코어 수보다 작게 잡아 스레드 수를 줄일 수 있습니다.
+         */
+        val eventLoopPoolSize: Int? = null,
+
+        /**
+         * 이벤트 루프가 한 번에 점유할 수 있는 최대 시간 (기본값: Vert.x 기본값, 2초)
+         *
+         * 초과 시 blocked-thread checker가 경고 로그를 남깁니다.
+         */
+        val maxEventLoopExecuteTime: Duration? = null,
+
+        /**
+         * blocked-thread checker의 검사 주기 (기본값: Vert.x 기본값, 1초)
+         */
+        val blockedThreadCheckInterval: Duration? = null,
+
+        /**
+         * 이 시간 이상 루프가 점유되면 경고 로그에 스택트레이스를 포함합니다
+         * (기본값: Vert.x 기본값, 5초)
+         *
+         * 어떤 코드가 루프를 막았는지 추적하려면 이 값을 낮추세요.
+         */
+        val warningExceptionTime: Duration? = null,
+
+        /**
+         * 내장 Netty 리액티브 웹 서버(WebFlux)를 이 Vert.x의 이벤트 루프 위에서 실행합니다
+         * (기본값: false)
+         *
+         * 켜면 reactor-netty가 별도의 이벤트 루프 풀을 만들지 않아 앱 전체가 하나의
+         * 스레드 풀을 공유합니다. 대신 장애 격리가 약해집니다: 트랜잭션 블록 안의 블로킹
+         * 호출 하나가 DB 계층뿐 아니라 HTTP 서빙(헬스체크 포함)까지 함께 멈출 수 있습니다.
+         *
+         * 켜기 전에 hibernate-reactive-coroutines-blockhound로 블로킹 호출이 없는지
+         * 테스트에서 검증하고, blocked-thread checker 임계값을 낮춰 운영에서 감시하세요.
+         */
+        val shareEventLoops: Boolean = false,
+    )
+}
