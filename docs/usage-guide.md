@@ -310,6 +310,22 @@ class UserService(private val userRepository: UserRepository) {
 }
 ```
 
+#### Transaction timeouts
+
+A finite `@Transactional(timeout = ...)` is enforced as a transaction deadline. On PostgreSQL, the
+starter also installs a transaction-scoped `statement_timeout` and refreshes it with the remaining
+deadline before repository operations and flush. A statement that exceeds the deadline is therefore
+cancelled by PostgreSQL instead of holding the pooled connection until normal completion. The
+setting uses `SET LOCAL`, so commit or rollback removes it automatically before the connection is
+reused. PostgreSQL applies this setting with millisecond granularity, so cancellation follows normal
+scheduler and network timing rather than a nanosecond-exact boundary.
+
+Hibernate Reactive has no portable public API for cancelling an in-flight query. Other database
+dialects retain the deadline checks before and after repository operations and mark expired
+transactions rollback-only, but a statement already executing in the database might still finish.
+`ReactiveTransactionExecutor` also uses coroutine cancellation rather than a database-specific
+statement timeout.
+
 ### Transactional Events
 
 The starter auto-configures Spring's reactive `TransactionalEventPublisher`. Use it instead of

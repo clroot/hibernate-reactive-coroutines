@@ -307,6 +307,20 @@ class UserService(private val userRepository: UserRepository) {
 }
 ```
 
+#### 트랜잭션 타임아웃
+
+유한한 `@Transactional(timeout = ...)` 값은 트랜잭션 deadline으로 적용됩니다. PostgreSQL에서는
+starter가 트랜잭션 범위의 `statement_timeout`도 설정하고, repository 작업과 flush 직전에 남은
+deadline으로 갱신합니다. 따라서 실행 중인 statement가 deadline을 넘으면 풀 커넥션을 계속
+점유하지 않고 PostgreSQL 서버에서 중단됩니다. `SET LOCAL`을 사용하므로 commit 또는 rollback
+후 커넥션이 재사용되기 전에 설정이 자동으로 제거됩니다. PostgreSQL 설정은 밀리초 단위이므로
+취소 시점에는 일반적인 scheduler·network 지연이 포함될 수 있습니다.
+
+Hibernate Reactive에는 실행 중인 쿼리를 취소하는 이식 가능한 공개 API가 없습니다. 다른 DB
+방언에서는 repository 작업 전후의 deadline 검사와 만료 트랜잭션의 rollback-only 처리를
+유지하지만, DB에서 이미 실행 중인 statement는 완료될 수 있습니다. `ReactiveTransactionExecutor`
+역시 DB별 statement timeout이 아니라 코루틴 취소를 사용합니다.
+
 ### 트랜잭션 이벤트
 
 starter는 Spring의 reactive `TransactionalEventPublisher`를 자동 구성합니다. Reactive

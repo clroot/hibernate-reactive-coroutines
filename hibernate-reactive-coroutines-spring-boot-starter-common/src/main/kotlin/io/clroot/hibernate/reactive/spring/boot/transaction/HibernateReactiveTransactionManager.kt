@@ -8,7 +8,6 @@ import io.vertx.core.Context
 import io.vertx.core.Vertx
 import org.hibernate.reactive.mutiny.Mutiny
 import org.hibernate.reactive.pool.ReactiveConnection
-import org.hibernate.reactive.session.ReactiveConnectionSupplier
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.transaction.TransactionDefinition
@@ -69,8 +68,8 @@ public class HibernateReactiveTransactionManager(
                 sessionHolder.configureTransaction(transactionMode(definition), transactionTimeout(definition))
 
                 runOnVertxContext(vertxContext) {
-                    val reactiveConnection = getReactiveConnection(session)
-                    TransactionIsolationConfigurer.begin(reactiveConnection, definition.isolationLevel)
+                    val reactiveConnection = ReactiveConnectionAccessor.get(session)
+                    beginTransaction(sessionHolder, reactiveConnection, definition.isolationLevel)
                         .convert().with(UniReactorConverters.toMono())
                         .doOnSuccess {
                             session.isDefaultReadOnly = definition.isReadOnly
@@ -106,8 +105,9 @@ public class HibernateReactiveTransactionManager(
                 txObject.setSessionHolder(holder, true)
             }
             .chain { session ->
-                val reactiveConnection = getReactiveConnection(session)
-                TransactionIsolationConfigurer.begin(reactiveConnection, definition.isolationLevel)
+                val sessionHolder = txObject.getSessionHolder()
+                val reactiveConnection = ReactiveConnectionAccessor.get(session)
+                beginTransaction(sessionHolder, reactiveConnection, definition.isolationLevel)
                     .replaceWith(session)
             }
             .invoke { session ->
@@ -143,7 +143,7 @@ public class HibernateReactiveTransactionManager(
         // Spring 표준 동작: 내부 트랜잭션이 rollback-only로 마킹되면 외부 커밋 시 예외 발생
         if (sessionHolder.isRollbackOnly && !hasTransactionTimedOut(sessionHolder)) {
             return runOnVertxContext(sessionHolder.getVertxContext()) {
-                val reactiveConnection = getReactiveConnection(session)
+                val reactiveConnection = ReactiveConnectionAccessor.get(session)
                 Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
                     .convert().with(UniReactorConverters.toMono())
             }.then(
@@ -156,7 +156,7 @@ public class HibernateReactiveTransactionManager(
         }
 
         return runOnVertxContext(sessionHolder.getVertxContext()) {
-            val reactiveConnection = getReactiveConnection(session)
+            val reactiveConnection = ReactiveConnectionAccessor.get(session)
             completeTransaction(sessionHolder, session, reactiveConnection)
                 .convert().with(UniReactorConverters.toMono())
         }
@@ -171,13 +171,31 @@ public class HibernateReactiveTransactionManager(
             return rollbackTimedOutTransaction(sessionHolder, reactiveConnection)
         }
 
-        // 커밋 전에 영속성 컨텍스트의 변경사항을 DB에 반영
-        return session.flush()
+        // 커밋 전에 남은 deadline을 statement timeout에 반영하고 영속성 컨텍스트를 flush합니다.
+        val remainingTimeout = sessionHolder.toReactiveSessionContext().remainingTimeout()
+        return TransactionTimeoutConfigurer.configure(reactiveConnection, remainingTimeout)
+            .chain { _: Void? -> session.flush() }
+            .onFailure()
+            .recoverWithUni { error ->
+                if (hasTransactionTimedOut(sessionHolder)) {
+                    rollbackTimedOutTransaction(sessionHolder, reactiveConnection, error)
+                } else {
+                    rollbackAfterCommitPreparationFailure(reactiveConnection, error)
+                }
+            }
             .chain { _: Void? ->
                 if (hasTransactionTimedOut(sessionHolder)) {
                     rollbackTimedOutTransaction(sessionHolder, reactiveConnection)
                 } else {
                     Uni.createFrom().completionStage(reactiveConnection.commitTransaction())
+                        .onFailure()
+                        .recoverWithUni { error ->
+                            if (hasTransactionTimedOut(sessionHolder)) {
+                                rollbackTimedOutTransaction(sessionHolder, reactiveConnection, error)
+                            } else {
+                                Uni.createFrom().failure(error)
+                            }
+                        }
                 }
             }
     }
@@ -189,11 +207,19 @@ public class HibernateReactiveTransactionManager(
     private fun rollbackTimedOutTransaction(
         sessionHolder: MutinySessionHolder,
         reactiveConnection: ReactiveConnection,
+        cause: Throwable? = null,
     ): Uni<Void> {
         sessionHolder.markTransactionTimedOut()
-        val timeout = TransactionTimedOutException(
-            "Hibernate Reactive transaction exceeded its configured timeout",
-        )
+        val timeout = if (cause == null) {
+            TransactionTimedOutException(
+                "Hibernate Reactive transaction exceeded its configured timeout",
+            )
+        } else {
+            TransactionTimedOutException(
+                "Hibernate Reactive transaction exceeded its configured timeout",
+                cause,
+            )
+        }
         val error = UnexpectedRollbackException(
             "Hibernate Reactive transaction rolled back because its timeout expired",
             timeout,
@@ -201,6 +227,13 @@ public class HibernateReactiveTransactionManager(
         return Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
             .chain { _: Void? -> Uni.createFrom().failure(error) }
     }
+
+    private fun rollbackAfterCommitPreparationFailure(
+        reactiveConnection: ReactiveConnection,
+        error: Throwable,
+    ): Uni<Void> =
+        Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
+            .chain { _: Void? -> Uni.createFrom().failure(error) }
 
     override fun doRollback(
         synchronizationManager: TransactionSynchronizationManager,
@@ -213,7 +246,7 @@ public class HibernateReactiveTransactionManager(
         log.debug("Rolling back Hibernate Reactive transaction on Session [{}]", session)
 
         return runOnVertxContext(sessionHolder.getVertxContext()) {
-            val reactiveConnection = getReactiveConnection(session)
+            val reactiveConnection = ReactiveConnectionAccessor.get(session)
             Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
                 .convert().with(UniReactorConverters.toMono())
         }
@@ -321,48 +354,20 @@ public class HibernateReactiveTransactionManager(
         }
     }
 
-    /**
-     * Mutiny.Session에서 ReactiveConnection을 추출합니다.
-     *
-     * **WARNING: 내부 구현 의존성**
-     *
-     * 이 메서드는 Hibernate Reactive의 내부 구현에 의존하는 리플렉션을 사용합니다.
-     * MutinySessionImpl의 'delegate' 필드에 접근하여 ReactiveConnection을 추출합니다.
-     *
-     * 이 접근 방식은 다음과 같은 위험이 있습니다:
-     * - Hibernate Reactive 버전 업그레이드 시 내부 구조 변경으로 인해 깨질 수 있음
-     * - 'delegate' 필드명이나 클래스 구조가 변경될 경우 런타임 오류 발생
-     *
-     * 테스트된 버전: Hibernate Reactive 3.1.0.Final
-     * 의존성 업그레이드 시 이 메서드의 동작을 반드시 검증하세요.
-     */
-    private fun getReactiveConnection(session: Mutiny.Session): ReactiveConnection {
-        // 먼저 직접 캐스팅 시도
-        if (session is ReactiveConnectionSupplier) {
-            return session.reactiveConnection
-        }
-
-        // MutinySessionImpl의 delegate 필드에 리플렉션으로 접근 (내부 구현 의존)
-        return try {
-            val delegateField = session.javaClass.getDeclaredField("delegate")
-            delegateField.isAccessible = true
-            val delegate = delegateField.get(session)
-
-            if (delegate is ReactiveConnectionSupplier) {
-                delegate.reactiveConnection
-            } else {
-                throw IllegalStateException(
-                    "Cannot extract ReactiveConnection from ${session.javaClass.name}. " +
-                            "Delegate ${delegate?.javaClass?.name} does not implement ReactiveConnectionSupplier",
-                )
+    internal fun beginTransaction(
+        sessionHolder: MutinySessionHolder,
+        reactiveConnection: ReactiveConnection,
+        isolationLevel: Int,
+    ): Uni<Void> =
+        TransactionIsolationConfigurer.begin(reactiveConnection, isolationLevel)
+            .chain { _: Void? ->
+                val remainingTimeout = sessionHolder.toReactiveSessionContext().remainingTimeout()
+                TransactionTimeoutConfigurer.configure(reactiveConnection, remainingTimeout)
+                    .onFailure()
+                    .call { _: Throwable ->
+                        Uni.createFrom().completionStage(reactiveConnection.rollbackTransaction())
+                    }
             }
-        } catch (e: NoSuchFieldException) {
-            throw IllegalStateException(
-                "Cannot extract ReactiveConnection from ${session.javaClass.name}. No 'delegate' field found.",
-                e,
-            )
-        }
-    }
 
     private fun transactionMode(definition: TransactionDefinition): TransactionMode =
         if (definition.isReadOnly) TransactionMode.READ_ONLY else TransactionMode.READ_WRITE

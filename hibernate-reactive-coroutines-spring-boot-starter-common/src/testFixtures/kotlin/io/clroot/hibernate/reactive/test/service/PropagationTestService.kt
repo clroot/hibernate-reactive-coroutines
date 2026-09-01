@@ -134,6 +134,26 @@ class PropagationTestService(
     }
 
     @Transactional(timeout = 1)
+    suspend fun transactionWithSlowQuery(name: String): TestEntity {
+        val entity = testEntityRepository.save(TestEntity(name = name, value = 74))
+        sessionProvider.read { session ->
+            session
+                .createNativeQuery("SELECT 1 FROM pg_sleep(5)", Int::class.javaObjectType)
+                .resultList
+                .replaceWith(Unit)
+        }
+        return entity
+    }
+
+    @Transactional(readOnly = true)
+    suspend fun currentStatementTimeout(): String =
+        sessionProvider.read { session ->
+            session
+                .createNativeQuery("SHOW statement_timeout", String::class.java)
+                .singleResult
+        }
+
+    @Transactional(timeout = 1)
     suspend fun repositoryCallAfterTimeout(name: String, delayMillis: Long): TestEntity {
         kotlinx.coroutines.delay(delayMillis)
         return testEntityRepository.save(TestEntity(name = name, value = 72))
