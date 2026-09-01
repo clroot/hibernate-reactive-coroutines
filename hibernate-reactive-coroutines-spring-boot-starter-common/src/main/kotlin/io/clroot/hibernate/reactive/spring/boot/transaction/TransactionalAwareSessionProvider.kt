@@ -161,22 +161,41 @@ public open class TransactionalAwareSessionProvider(
         block: (Mutiny.Session) -> Uni<T>,
     ): T {
         checkTransactionTimeout(transaction)
-        val result = withContext(transaction.dispatcher ?: currentCoroutineContext()) {
+        try {
+            val result = withContext(transaction.dispatcher ?: currentCoroutineContext()) {
+                checkTransactionTimeout(transaction)
+                val remainingTimeout = transaction.sessionContext.remainingTimeout()
+                TransactionTimeoutConfigurer.configure(transaction.session, remainingTimeout)
+                    .chain { _: Void? -> block(transaction.session) }
+                    .awaitSuspending()
+            }
             checkTransactionTimeout(transaction)
-            block(transaction.session).awaitSuspending()
+            return result
+        } catch (error: Throwable) {
+            if (transaction.sessionContext.remainingTimeout() == Duration.ZERO) {
+                transaction.holder.markTransactionTimedOut()
+                throw transactionTimedOutException(error)
+            }
+            throw error
         }
-        checkTransactionTimeout(transaction)
-        return result
     }
 
     private fun checkTransactionTimeout(transaction: TransactionalSessionInfo) {
         if (transaction.sessionContext.remainingTimeout() == Duration.ZERO) {
             transaction.holder.markTransactionTimedOut()
-            throw TransactionTimedOutException(
-                "Hibernate Reactive transaction exceeded its configured timeout",
-            )
+            throw transactionTimedOutException()
         }
     }
+
+    private fun transactionTimedOutException(cause: Throwable? = null): TransactionTimedOutException =
+        if (cause == null) {
+            TransactionTimedOutException("Hibernate Reactive transaction exceeded its configured timeout")
+        } else {
+            TransactionTimedOutException(
+                "Hibernate Reactive transaction exceeded its configured timeout",
+                cause,
+            )
+        }
 
     // ==================== Lazy Loading 편의 메서드 ====================
 
