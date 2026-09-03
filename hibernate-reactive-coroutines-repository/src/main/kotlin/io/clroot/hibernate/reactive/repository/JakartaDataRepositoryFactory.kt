@@ -5,7 +5,7 @@ import io.clroot.hibernate.reactive.repository.runtime.RepositoryEntityLifecycle
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryFactory
 import jakarta.persistence.metamodel.Metamodel
 
-/** Creates non-Spring coroutine repositories from Jakarta Data metadata and HRC derived queries. */
+/** Creates non-Spring coroutine repositories from HRC query metadata and Jakarta Data paging types. */
 public class JakartaDataRepositoryFactory(
     sessionOperations: ReactiveSessionOperations,
     metamodel: Metamodel,

@@ -5,7 +5,9 @@ import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.QueryStatementType
-import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryHqlCompiler
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
 import io.clroot.hibernate.reactive.repository.query.derived.QuerySubject
@@ -16,8 +18,6 @@ import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 import jakarta.persistence.Tuple
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -27,7 +27,7 @@ import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
 
-/** Compiles Jakarta Data metadata and HRC method-name queries into neutral runtime descriptors. */
+/** Compiles HRC query metadata and Jakarta Data paging types into neutral runtime descriptors. */
 internal class JakartaDataQueryMethodParser(
     private val entityClass: Class<*>,
     private val entityName: String = entityClass.simpleName,
@@ -40,14 +40,14 @@ internal class JakartaDataQueryMethodParser(
 
     fun parse(method: Method): PreparedRepositoryQuery {
         val query = method.getAnnotation(Query::class.java)
-        val options = method.getAnnotation(QueryOptions::class.java)
-        require(query != null || options == null) {
-            "@QueryOptions on method '${method.name}' requires Jakarta Data @Query"
+        val modifying = method.getAnnotation(Modifying::class.java)
+        require(query != null || modifying == null) {
+            "@Modifying on method '${method.name}' requires HRC @Query"
         }
         return if (query == null) {
             parseDerivedQueryMethod(method)
         } else {
-            parseAnnotatedQueryMethod(method, query, options)
+            parseAnnotatedQueryMethod(method, query, modifying)
         }
     }
 
@@ -70,26 +70,24 @@ internal class JakartaDataQueryMethodParser(
     private fun parseAnnotatedQueryMethod(
         method: Method,
         annotation: Query,
-        options: QueryOptions?,
+        modifying: Modifying?,
     ): PreparedRepositoryQuery {
-        val isNativeQuery = options?.nativeQuery == true
+        val isNativeQuery = annotation.nativeQuery
         val hql = normalizeQuery(annotation.value, isNativeQuery)
         val statementType = CountQueryDeriver.statementType(hql)
-        require(statementType != QueryStatementType.UNKNOWN) {
-            "Method '${method.name}' has an unsupported or unrecognized @Query statement"
-        }
+        validateQueryAnnotation(method, statementType, modifying != null)
 
-        val isModifying = statementType == QueryStatementType.MODIFYING
+        val isModifying = modifying != null
         val returnType = determineAnnotatedReturnType(method, isModifying)
-        validateQueryOptions(method, options, isNativeQuery, isModifying, returnType)
+        validateQueryConfiguration(method, annotation, modifying, isNativeQuery, returnType)
         validatePageRequest(method, returnType)
         validateModifyingSpecialParameters(method, isModifying)
 
         val countHql = if (returnType == RepositoryQueryReturnType.PAGE) {
             when {
-                options?.countQuery?.isNotBlank() == true -> options.countQuery.trim()
+                annotation.countQuery.isNotBlank() -> annotation.countQuery.trim()
                 isNativeQuery -> throw IllegalStateException(
-                    "Native @Query method '${method.name}' returning Page requires @QueryOptions(countQuery = ...)",
+                    "Native @Query method '${method.name}' returning Page requires an explicit countQuery",
                 )
                 else -> CountQueryDeriver.derive(hql)
             }
@@ -111,7 +109,7 @@ internal class JakartaDataQueryMethodParser(
             queryKind = RepositoryQueryKind.ANNOTATED,
             isNativeQuery = isNativeQuery,
             isModifying = isModifying,
-            clearAutomatically = options?.clearAutomatically == true,
+            clearAutomatically = modifying?.clearAutomatically == true,
             parameterStyle = queryParameters.style,
             parameterNames = argumentNames,
             resultClass = resolveResultClass(method, returnType),
@@ -130,26 +128,39 @@ internal class JakartaDataQueryMethodParser(
         }
     }
 
-    private fun validateQueryOptions(
+    private fun validateQueryAnnotation(
         method: Method,
-        options: QueryOptions?,
-        isNativeQuery: Boolean,
+        statementType: QueryStatementType,
         isModifying: Boolean,
+    ) {
+        require(statementType != QueryStatementType.UNKNOWN) {
+            "Method '${method.name}' has an unsupported or unrecognized @Query statement"
+        }
+        if (isModifying && statementType == QueryStatementType.SELECT) {
+            throw IllegalStateException("@Modifying method '${method.name}' cannot have a SELECT query")
+        }
+        if (!isModifying && statementType == QueryStatementType.MODIFYING) {
+            throw IllegalStateException(
+                "Method '${method.name}' has an UPDATE/DELETE query but is missing @Modifying",
+            )
+        }
+    }
+
+    private fun validateQueryConfiguration(
+        method: Method,
+        annotation: Query,
+        modifying: Modifying?,
+        isNativeQuery: Boolean,
         returnType: RepositoryQueryReturnType,
     ) {
-        if (isNativeQuery && isModifying) {
+        if (isNativeQuery && modifying != null) {
             throw IllegalStateException(
                 "Native update/delete @Query method '${method.name}' is not supported by Hibernate Reactive",
             )
         }
-        if (options?.countQuery?.isNotBlank() == true && returnType != RepositoryQueryReturnType.PAGE) {
+        if (annotation.countQuery.isNotBlank() && returnType != RepositoryQueryReturnType.PAGE) {
             throw IllegalStateException(
-                "@QueryOptions(countQuery = ...) on method '${method.name}' requires a Page return type",
-            )
-        }
-        if (options?.clearAutomatically == true && !isModifying) {
-            throw IllegalStateException(
-                "@QueryOptions(clearAutomatically = true) on method '${method.name}' requires update/delete @Query",
+                "@Query(countQuery = ...) on method '${method.name}' requires a Page return type",
             )
         }
     }

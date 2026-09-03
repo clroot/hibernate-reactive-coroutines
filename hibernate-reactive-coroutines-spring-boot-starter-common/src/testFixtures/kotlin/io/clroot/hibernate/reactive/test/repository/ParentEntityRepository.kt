@@ -1,6 +1,6 @@
 package io.clroot.hibernate.reactive.test.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.test.entity.ParentEntity
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 

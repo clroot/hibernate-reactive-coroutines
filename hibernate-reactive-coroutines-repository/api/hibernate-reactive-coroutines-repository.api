@@ -44,15 +44,23 @@ public final class io/clroot/hibernate/reactive/repository/query/CountQueryDeriv
 	public final fun statementType (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
 }
 
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/query/Modifying : java/lang/annotation/Annotation {
+	public abstract fun clearAutomatically ()Z
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/query/Param : java/lang/annotation/Annotation {
+	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/query/Query : java/lang/annotation/Annotation {
+	public abstract fun countQuery ()Ljava/lang/String;
+	public abstract fun nativeQuery ()Z
+	public abstract fun value ()Ljava/lang/String;
+}
+
 public final class io/clroot/hibernate/reactive/repository/query/QueryAliasResolver {
 	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryAliasResolver;
 	public final fun resolve (Ljava/lang/String;)Ljava/lang/String;
-}
-
-public abstract interface annotation class io/clroot/hibernate/reactive/repository/query/QueryOptions : java/lang/annotation/Annotation {
-	public abstract fun clearAutomatically ()Z
-	public abstract fun countQuery ()Ljava/lang/String;
-	public abstract fun nativeQuery ()Z
 }
 
 public final class io/clroot/hibernate/reactive/repository/query/QueryParameterParser {

@@ -1,9 +1,9 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -180,6 +180,14 @@ class QueryMethodParserTest : DescribeSpec({
 
             error.message shouldContain "must return Int or Unit"
         }
+
+        it("rejects @Modifying without @Query") {
+            val error = shouldThrow<IllegalArgumentException> {
+                parse("modifyingWithoutQuery")
+            }
+
+            error.message shouldContain "requires HRC @Query"
+        }
     }
 })
 
@@ -230,6 +238,9 @@ private interface QueryRepository {
     @Modifying
     @Query("UPDATE User e SET e.active = false WHERE e.id = :id")
     suspend fun deactivateWithMessage(id: Long): String
+
+    @Modifying
+    suspend fun modifyingWithoutQuery(id: Long): User?
 
     @Query(
         """

@@ -2,6 +2,8 @@ package io.clroot.hibernate.reactive.ktor
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
@@ -18,8 +20,6 @@ import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue

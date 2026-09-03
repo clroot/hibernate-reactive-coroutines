@@ -138,13 +138,13 @@ class MyApplication
 
 ```kotlin
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
-import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
@@ -156,6 +156,7 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
         order: Order<User>,
     ): Page<User>
 
+    @Modifying
     @Query("UPDATE User u SET u.status = 'INACTIVE' WHERE u.id = :id")
     suspend fun deactivate(@Param("id") id: Long): Int
 
@@ -163,18 +164,17 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
-`JakartaDataRepositoryFactory`는 Jakarta Data `@Query`, `@Param`, `Page`/`PageRequest`, `Sort`,
-`Order`를 Spring 리포지토리와 동일한 중립 descriptor로 변환합니다. Update/delete 여부는 쿼리
-문장에서 추론하며 반환 타입으로 `Unit`, `Int`, `Long`을 지원합니다. HRC의 메서드명 쿼리 파생은
-코루틴 모델을 위한 확장으로 계속 사용할 수 있습니다.
+`JakartaDataRepositoryFactory`는 공용 HRC `@Query`, `@Param`, `@Modifying` metadata와
+Jakarta Data `Page`/`PageRequest`, `Sort`, `Order`를 함께 처리합니다. Spring 리포지토리도 같은
+쿼리 어노테이션을 사용하면서 페이징과 정렬은 Spring Data 타입을 유지합니다. Update/delete
+쿼리는 `@Modifying`을 요구하며 Spring 외 리포지토리에서는 `Unit`, `Int`, `Long` 반환 타입을
+지원합니다. HRC의 메서드명 쿼리 파생은 코루틴 모델을 위한 확장으로 계속 사용할 수 있습니다.
 
-Jakarta Data 1.0에는 native query, 명시적 page count query, persistence context clear를 위한
-metadata가 없습니다. 이런 기존 HRC 기능이 필요할 때만 Jakarta Data `@Query`와 함께
-`@QueryOptions`를 사용합니다.
+Native SQL과 명시적 page count query는 HRC `@Query`에 직접 설정합니다.
 
 ```kotlin
-@Query("SELECT * FROM users WHERE status = :status")
-@QueryOptions(
+@Query(
+    value = "SELECT * FROM users WHERE status = :status",
     nativeQuery = true,
     countQuery = "SELECT COUNT(*) FROM users WHERE status = :status",
 )
@@ -261,6 +261,18 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 | `OrderBy`                     | `findByStatusOrderByNameAsc` | `ORDER BY name ASC`            |
 
 ### @Query 어노테이션
+
+Spring과 Spring 외 리포지토리는 repository 모듈의 공용 HRC 쿼리 어노테이션을 사용합니다.
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
+```
+
+페이징은 통합별 타입을 유지합니다. Spring 리포지토리는 `Pageable`, `Page`, `Slice`, Spring
+`Sort`를 사용하고, Spring 외 리포지토리는 Jakarta Data `PageRequest`, `Page`, `Sort`, `Order`를
+사용합니다.
 
 복잡한 쿼리는 직접 JPQL을 작성할 수 있습니다.
 
@@ -367,7 +379,7 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
         sort: jakarta.data.Sort<User>,
     ): jakarta.data.page.Page<User>
 
-    @jakarta.data.repository.Query("FROM User u WHERE u.email = :email")
+    @io.clroot.hibernate.reactive.repository.query.Query("FROM User u WHERE u.email = :email")
     suspend fun findByEmail(email: String): User?
 }
 
@@ -389,7 +401,7 @@ fun Application.module() {
 
 `repository`를 등록하면 해당 엔티티도 Hibernate에 등록됩니다. 리포지토리가 없는 관리 엔티티만
 `entity`/`entities`로 따로 등록하면 됩니다. 플러그인은 의도적으로 클래스패스를 스캔하지 않습니다.
-등록된 프록시는 CRUD, 파생 쿼리, Jakarta Data `@Query`, offset 페이지네이션, 정렬을 공용
+등록된 프록시는 CRUD, 파생 쿼리, HRC `@Query`, offset 페이지네이션, 정렬을 공용
 프레임워크 독립 리포지토리 런타임에 위임합니다.
 
 `io.ktor:ktor-server-di`를 설치하고 `dependencyInjection = true`로 설정하면, 애플리케이션을

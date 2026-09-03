@@ -1,6 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe

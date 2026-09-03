@@ -1,6 +1,8 @@
 package io.clroot.hibernate.reactive.repository
 
-import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
@@ -15,8 +17,6 @@ import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 
 class JakartaDataQueryMethodParserTest : DescribeSpec({
     val parser = JakartaDataQueryMethodParser(User::class.java)
@@ -29,8 +29,8 @@ class JakartaDataQueryMethodParserTest : DescribeSpec({
         InvalidRepository::class.java.methods.single { it.name == methodName },
     )
 
-    describe("Jakarta Data query metadata") {
-        it("normalizes abbreviated JDQL and translates named parameters and Page metadata") {
+    describe("HRC query metadata with Jakarta Data paging") {
+        it("normalizes abbreviated HQL and translates named parameters and Page metadata") {
             val prepared = parse("findActive")
 
             prepared.hql shouldBe "FROM User e where active = :enabled"
@@ -42,7 +42,7 @@ class JakartaDataQueryMethodParserTest : DescribeSpec({
             prepared.resultClass shouldBe User::class.java
         }
 
-        it("infers update and delete execution and preserves supported row-count contracts") {
+        it("honors modifying queries and preserves supported row-count contracts") {
             val update = parse("deactivate")
             val delete = parse("deleteInactive")
             val reset = parse("resetNames")
@@ -68,7 +68,7 @@ class JakartaDataQueryMethodParserTest : DescribeSpec({
             prepared.resultClass shouldBe String::class.java
         }
 
-        it("uses HRC query options only for metadata missing from Jakarta Data") {
+        it("uses common HRC query and modifying options") {
             val prepared = parse("findWithRoles")
 
             prepared.countHql shouldBe "SELECT COUNT(e) FROM User e WHERE e.active = :active"
@@ -85,16 +85,21 @@ class JakartaDataQueryMethodParserTest : DescribeSpec({
 
         it("requires an explicit count query for native Page queries") {
             shouldThrow<IllegalStateException> { parseInvalid("nativeWithoutCount") }
-                .message shouldContain "requires @QueryOptions(countQuery = ...)"
+                .message shouldContain "requires an explicit countQuery"
         }
 
         it("rejects query options where the shared runtime cannot apply them") {
             shouldThrow<IllegalStateException> { parseInvalid("nativeUpdate") }
                 .message shouldContain "Native update/delete"
             shouldThrow<IllegalStateException> { parseInvalid("clearSelect") }
-                .message shouldContain "requires update/delete"
+                .message shouldContain "cannot have a SELECT query"
             shouldThrow<IllegalStateException> { parseInvalid("countOnList") }
                 .message shouldContain "requires a Page return type"
+        }
+
+        it("requires @Modifying for update and delete query statements") {
+            shouldThrow<IllegalStateException> { parseInvalid("missingModifying") }
+                .message shouldContain "missing @Modifying"
         }
     }
 
@@ -150,12 +155,15 @@ private interface JakartaRepository : CoroutineCrudRepository<User, Long> {
         order: Order<User>,
     ): Page<User>
 
+    @Modifying
     @Query("UPDATE User e SET e.active = false WHERE e.id = :id")
     suspend fun deactivate(id: Long): Int
 
+    @Modifying
     @Query("DELETE FROM User e WHERE e.active = false")
     suspend fun deleteInactive(): Long
 
+    @Modifying
     @Query("UPDATE User e SET e.name = ''")
     suspend fun resetNames()
 
@@ -166,16 +174,18 @@ private interface JakartaRepository : CoroutineCrudRepository<User, Long> {
 
     suspend fun findByActive(active: Boolean, pageRequest: PageRequest): Page<User>
 
-    @Query("SELECT e FROM User e LEFT JOIN FETCH e.roles WHERE e.active = :active")
-    @QueryOptions(countQuery = "SELECT COUNT(e) FROM User e WHERE e.active = :active")
+    @Query(
+        value = "SELECT e FROM User e LEFT JOIN FETCH e.roles WHERE e.active = :active",
+        countQuery = "SELECT COUNT(e) FROM User e WHERE e.active = :active",
+    )
     suspend fun findWithRoles(active: Boolean, pageRequest: PageRequest): Page<User>
 
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE User e SET e.active = false WHERE e.active = true")
-    @QueryOptions(clearAutomatically = true)
     suspend fun clearInactive()
 
-    @Query("SELECT * FROM users WHERE active = :active")
-    @QueryOptions(
+    @Query(
+        value = "SELECT * FROM users WHERE active = :active",
         nativeQuery = true,
         countQuery = "SELECT COUNT(*) FROM users WHERE active = :active",
     )
@@ -183,24 +193,29 @@ private interface JakartaRepository : CoroutineCrudRepository<User, Long> {
 }
 
 private interface InvalidRepository {
+    @Modifying
     @Query("UPDATE User e SET e.name = ''")
     suspend fun invalidUpdate(): String
 
+    @Query("UPDATE User e SET e.name = ''")
+    suspend fun missingModifying(): Int
+
     suspend fun findByName(name: String): Page<User>
 
-    @Query("SELECT * FROM users")
-    @QueryOptions(nativeQuery = true)
+    @Query(value = "SELECT * FROM users", nativeQuery = true)
     suspend fun nativeWithoutCount(pageRequest: PageRequest): Page<User>
 
-    @Query("UPDATE users SET active = false")
-    @QueryOptions(nativeQuery = true)
+    @Modifying
+    @Query(value = "UPDATE users SET active = false", nativeQuery = true)
     suspend fun nativeUpdate(): Int
 
+    @Modifying(clearAutomatically = true)
     @Query("SELECT e FROM User e")
-    @QueryOptions(clearAutomatically = true)
     suspend fun clearSelect(): List<User>
 
-    @Query("SELECT e FROM User e")
-    @QueryOptions(countQuery = "SELECT COUNT(e) FROM User e")
+    @Query(
+        value = "SELECT e FROM User e",
+        countQuery = "SELECT COUNT(e) FROM User e",
+    )
     suspend fun countOnList(): List<User>
 }

@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
+import io.clroot.hibernate.reactive.repository.query.Modifying
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding

@@ -1,6 +1,9 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
@@ -9,12 +12,9 @@ import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryHqlComp
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
 import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
 import io.clroot.hibernate.reactive.repository.query.derived.QuerySubject
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Param
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterBinder
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import jakarta.persistence.Tuple
 import org.springframework.data.domain.Page
@@ -62,6 +62,9 @@ internal class QueryMethodParser(
      */
     fun parse(method: Method): PreparedQueryMethod {
         val queryAnnotation = method.getAnnotation(Query::class.java)
+        require(queryAnnotation != null || !method.isAnnotationPresent(Modifying::class.java)) {
+            "@Modifying on method '${method.name}' requires HRC @Query"
+        }
 
         return if (queryAnnotation != null) {
             parseAnnotatedQueryMethod(method, queryAnnotation)
