@@ -131,6 +131,65 @@ class MyApplication
 
 ## Repository
 
+### Spring 외 통합을 위한 Jakarta Data 계약
+
+프레임워크 독립 리포지토리 모듈은 동기식/블로킹 CRUD 메서드를 추가하지 않고 Jakarta Data의
+`DataRepository` marker를 확장한 코루틴 계약을 제공합니다.
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import jakarta.data.Order
+import jakarta.data.Sort
+import jakarta.data.page.Page
+import jakarta.data.page.PageRequest
+import jakarta.data.repository.Param
+import jakarta.data.repository.Query
+
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByEmail(email: String): User?
+
+    @Query("where status = :status")
+    suspend fun findByStatus(
+        @Param("status") status: Status,
+        pageRequest: PageRequest,
+        order: Order<User>,
+    ): Page<User>
+
+    @Query("UPDATE User u SET u.status = 'INACTIVE' WHERE u.id = :id")
+    suspend fun deactivate(@Param("id") id: Long): Int
+
+    suspend fun findByNameContaining(name: String, sort: Sort<User>): List<User>
+}
+```
+
+`JakartaDataRepositoryFactory`는 Jakarta Data `@Query`, `@Param`, `Page`/`PageRequest`, `Sort`,
+`Order`를 Spring 리포지토리와 동일한 중립 descriptor로 변환합니다. Update/delete 여부는 쿼리
+문장에서 추론하며 반환 타입으로 `Unit`, `Int`, `Long`을 지원합니다. HRC의 메서드명 쿼리 파생은
+코루틴 모델을 위한 확장으로 계속 사용할 수 있습니다.
+
+Jakarta Data 1.0에는 native query, 명시적 page count query, persistence context clear를 위한
+metadata가 없습니다. 이런 기존 HRC 기능이 필요할 때만 Jakarta Data `@Query`와 함께
+`@QueryOptions`를 사용합니다.
+
+```kotlin
+@Query("SELECT * FROM users WHERE status = :status")
+@QueryOptions(
+    nativeQuery = true,
+    countQuery = "SELECT COUNT(*) FROM users WHERE status = :status",
+)
+suspend fun findNative(status: String, pageRequest: PageRequest): Page<User>
+```
+
+현재 호환 범위는 다음과 같습니다.
+
+- offset 기반 `PageRequest`만 지원하며 cursor 요청과 `CursoredPage`는 아직 지원하지 않습니다.
+- `PageRequest.withoutTotal()`은 count 쿼리를 생략합니다. 이 경우 Jakarta Data 규약대로
+  `Page.totalElements()`와 `totalPages()`는 예외를 던집니다.
+- 완전한 Jakarta Data provider 구현은 아닙니다. lifecycle 어노테이션, parameter 기반 `@Find`,
+  `Limit`, 동기식 기본 리포지토리 인터페이스는 현재 범위 밖입니다.
+- 리포지토리 모듈은 Spring Framework나 Spring Data에 의존하지 않습니다.
+
 ### CoroutineCrudRepository
 
 Spring Data의 `CoroutineCrudRepository`를 상속하여 CRUD 기능을 자동으로 사용할 수 있습니다.

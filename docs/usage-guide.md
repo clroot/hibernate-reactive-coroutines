@@ -133,6 +133,65 @@ class MyApplication
 
 ## Repository
 
+### Jakarta Data contract for non-Spring integrations
+
+The framework-neutral repository module exposes a coroutine contract that extends Jakarta Data's
+`DataRepository` marker without introducing synchronous/blocking CRUD methods:
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import jakarta.data.Order
+import jakarta.data.Sort
+import jakarta.data.page.Page
+import jakarta.data.page.PageRequest
+import jakarta.data.repository.Param
+import jakarta.data.repository.Query
+
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByEmail(email: String): User?
+
+    @Query("where status = :status")
+    suspend fun findByStatus(
+        @Param("status") status: Status,
+        pageRequest: PageRequest,
+        order: Order<User>,
+    ): Page<User>
+
+    @Query("UPDATE User u SET u.status = 'INACTIVE' WHERE u.id = :id")
+    suspend fun deactivate(@Param("id") id: Long): Int
+
+    suspend fun findByNameContaining(name: String, sort: Sort<User>): List<User>
+}
+```
+
+`JakartaDataRepositoryFactory` parses Jakarta Data `@Query` and `@Param`, `Page`/`PageRequest`,
+`Sort`, and `Order` into the same neutral descriptors used by Spring repositories. Update and delete
+statements are inferred from the query text and may return `Unit`, `Int`, or `Long`. HRC method-name
+query derivation remains available as a coroutine-specific extension.
+
+Jakarta Data 1.0 has no metadata for a native query, explicit page count query, or clearing the
+persistence context. When one of these existing HRC capabilities is needed, add `@QueryOptions`
+alongside Jakarta Data `@Query`:
+
+```kotlin
+@Query("SELECT * FROM users WHERE status = :status")
+@QueryOptions(
+    nativeQuery = true,
+    countQuery = "SELECT COUNT(*) FROM users WHERE status = :status",
+)
+suspend fun findNative(status: String, pageRequest: PageRequest): Page<User>
+```
+
+Current compatibility boundary:
+
+- Offset `PageRequest` is supported; cursor requests and `CursoredPage` are not yet supported.
+- `PageRequest.withoutTotal()` avoids the count query, and `Page.totalElements()`/`totalPages()` then
+  throw as required by Jakarta Data.
+- This is not a complete Jakarta Data provider. Lifecycle annotations, parameter-based `@Find`,
+  `Limit`, and the synchronous built-in repository interfaces are outside the current scope.
+- No Spring Framework or Spring Data dependency is required by the repository module.
+
 ### CoroutineCrudRepository
 
 Extend `CoroutineCrudRepository` to automatically use CRUD functionality.

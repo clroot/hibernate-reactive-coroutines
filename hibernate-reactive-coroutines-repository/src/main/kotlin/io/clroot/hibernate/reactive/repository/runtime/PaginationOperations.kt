@@ -17,7 +17,7 @@ internal class PaginationOperations<T : Any>(
         val hql = if (sortClause.isNotEmpty()) "$baseHql ORDER BY $sortClause" else baseHql
         val countHql = "SELECT COUNT(e) FROM $entityName e"
 
-        val content = executeWithPaging(hql, emptyList(), request.pageSize, request.offset)
+        val content = executeWithPaging(hql, emptyList(), runtimeAdapter.pageQueryLimit(request), request.offset)
         val totalElements = calculateTotalElements(content, request, countHql, emptyList())
         return runtimeAdapter.createPage(content, request, totalElements)
     }
@@ -32,6 +32,35 @@ internal class PaginationOperations<T : Any>(
         }
     }
 
+    suspend fun executeListQuery(
+        prepared: PreparedRepositoryQuery,
+        args: List<Any?>,
+        request: RepositoryPageRequest,
+    ): List<T> {
+        val hql = queryOperations.applyDynamicSort(prepared.hql, request.sort)
+        return executeWithPaging(hql, args, request.pageSize, request.offset)
+    }
+
+    suspend fun executeListAnnotatedQuery(
+        prepared: PreparedRepositoryQuery,
+        args: List<Any?>,
+        request: RepositoryPageRequest,
+    ): List<Any> {
+        val hql = queryOperations.applyAnnotatedQuerySort(prepared, request.sort)
+        val resultClass = queryOperations.annotatedResultClass(prepared)
+        return sessionOperations.read { session ->
+            val query = if (prepared.isNativeQuery) {
+                session.createNativeQuery(hql, resultClass)
+            } else {
+                session.createQuery(hql, resultClass)
+            }
+            queryOperations.bindAnnotatedParameters(query, prepared, args)
+            query.firstResult = request.offset.toHibernateFirstResult()
+            query.maxResults = request.pageSize
+            query.resultList
+        }
+    }
+
     suspend fun executePageQuery(
         prepared: PreparedRepositoryQuery,
         args: List<Any?>,
@@ -39,7 +68,7 @@ internal class PaginationOperations<T : Any>(
     ): Any {
         val hql = queryOperations.applyDynamicSort(prepared.hql, request.sort)
         val countHql = checkNotNull(prepared.countHql)
-        val content = executeWithPaging(hql, args, request.pageSize, request.offset)
+        val content = executeWithPaging(hql, args, runtimeAdapter.pageQueryLimit(request), request.offset)
         val totalElements = calculateTotalElements(content, request, countHql, args)
         return runtimeAdapter.createPage(content, request, totalElements)
     }
@@ -72,11 +101,11 @@ internal class PaginationOperations<T : Any>(
             }
             queryOperations.bindAnnotatedParameters(query, prepared, args)
             query.firstResult = request.offset.toHibernateFirstResult()
-            query.maxResults = request.pageSize
+            query.maxResults = runtimeAdapter.pageQueryLimit(request)
             query.resultList
         }
 
-        val totalElements = if (shouldSkipCountQuery(content, request)) {
+        val totalElements = if (!runtimeAdapter.shouldRequestTotal(request) || shouldSkipCountQuery(content, request)) {
             request.offset + content.size
         } else {
             executeCountAnnotatedQuery(prepared, args)
@@ -150,7 +179,7 @@ internal class PaginationOperations<T : Any>(
         request: RepositoryPageRequest,
         countHql: String,
         args: List<Any?>,
-    ): Long = if (shouldSkipCountQuery(content, request)) {
+    ): Long = if (!runtimeAdapter.shouldRequestTotal(request) || shouldSkipCountQuery(content, request)) {
         request.offset + content.size
     } else {
         executeCountForPage(countHql, args)

@@ -37,7 +37,7 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 ## Modules
 
 - `hibernate-reactive-coroutines-core`: coroutine session and transaction primitives
-- `hibernate-reactive-coroutines-repository`: framework-neutral query compiler, repository proxy, and CRUD/query runtime
+- `hibernate-reactive-coroutines-repository`: framework-neutral query/runtime plus a Jakarta Data-facing coroutine repository contract
 - `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 and 4 integrations
 - `hibernate-reactive-coroutines-blockhound`: optional blocking-call detection integration
 

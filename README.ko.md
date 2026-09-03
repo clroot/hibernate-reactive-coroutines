@@ -24,7 +24,7 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 ## 모듈
 
 - `hibernate-reactive-coroutines-core`: 코루틴 세션 및 트랜잭션 기본 기능
-- `hibernate-reactive-coroutines-repository`: 프레임워크 독립 쿼리 컴파일러, 리포지토리 프록시, CRUD/쿼리 런타임
+- `hibernate-reactive-coroutines-repository`: 프레임워크 독립 쿼리/런타임 및 Jakarta Data 기반 코루틴 리포지토리 계약
 - `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 및 4 통합
 - `hibernate-reactive-coroutines-blockhound`: 선택적 블로킹 호출 탐지 통합
 
