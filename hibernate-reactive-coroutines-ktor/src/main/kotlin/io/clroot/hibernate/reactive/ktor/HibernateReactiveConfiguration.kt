@@ -53,7 +53,7 @@ public class HibernateReactiveConfiguration {
     /** Whether to close an externally supplied session factory on shutdown. */
     public var closeExternalSessionFactory: Boolean = false
 
-    /** Whether to expose plugin resources through the optional `ktor-server-di` integration. */
+    /** Whether to expose plugin resources and repositories through optional Ktor dependency injection. */
     public var dependencyInjection: Boolean = false
 
     internal val databaseConfiguration: HibernateReactiveDatabaseConfiguration =
@@ -78,7 +78,7 @@ public class HibernateReactiveConfiguration {
 
     /**
      * Registers a coroutine repository and its entity/id contract explicitly.
-     * The entity must also be listed through [entity] or [entities].
+     * The repository's entity is added to the managed entity set automatically.
      */
     public fun <T : Any, ID : Any, R : CoroutineCrudRepository<T, ID>> repository(
         repositoryInterface: KClass<R>,
@@ -93,6 +93,7 @@ public class HibernateReactiveConfiguration {
         require(repositoryRegistrations[repositoryJavaClass] == null) {
             "Repository is already registered: ${repositoryJavaClass.name}"
         }
+        entityClasses += entityClass.java
         repositoryRegistrations[repositoryJavaClass] = RepositoryRegistration(
             repositoryInterface = repositoryJavaClass,
             entityClass = entityClass.java,

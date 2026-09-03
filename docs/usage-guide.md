@@ -384,24 +384,49 @@ fun Application.module() {
             poolSize = 10
             property("hibernate.format_sql", true)
         }
-        entities(User::class)
+        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 }
 ```
 
-`entity`/`entities` and `repository` are explicit by design; the plugin does not scan the whole
-classpath. Registered proxies delegate CRUD, derived queries, Jakarta Data `@Query`, offset
-pagination, and sorting to the shared framework-neutral repository runtime.
+`repository` registration implicitly adds its entity to Hibernate. Use `entity`/`entities` only for
+managed entities that do not have a repository. The plugin deliberately avoids classpath scanning.
+Registered proxies delegate CRUD, derived queries, Jakarta Data `@Query`, offset pagination, and
+sorting to the shared framework-neutral repository runtime.
 
-The following application-scoped accessors are available after installation:
+With `io.ktor:ktor-server-di` installed and `dependencyInjection = true`, resolve repositories and
+transaction infrastructure once while assembling the application, then pass application-specific
+services into routes:
 
 ```kotlin
-val sessionFactory = application.hibernateSessionFactory
-val sessions = application.hibernateSessionProvider
-val tx = application.hibernateTransactionExecutor
-val users = application.hibernateRepository<UserRepository>()
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = environment.config.property("database.url").getString()
+            username = environment.config.property("database.username").getString()
+            password = environment.config.property("database.password").getString()
+            schemaGeneration = "validate"
+        }
+        dependencyInjection = true
+        repository<UserRepository, User, Long>()
+    }
+
+    val users: UserRepository by dependencies
+    val transactions: ReactiveTransactionExecutor by dependencies
+    val userService = UserService(transactions, users)
+
+    routing {
+        post("/users") {
+            val request = call.receive<CreateUserRequest>()
+            call.respond(HttpStatusCode.Created, userService.create(request))
+        }
+    }
+}
 ```
+
+`Application.hibernateReactive` and the specialized application accessors remain available when DI
+is disabled or direct infrastructure access is appropriate.
 
 A repository operation made outside an explicit transaction opens its own session or write
 transaction. Hibernate Reactive schedules that database operation on its own isolated Vert.x
@@ -444,7 +469,6 @@ install(HibernateReactive) {
     closeExternalVertx = false          // default
     closeExternalSessionFactory = false // default
 
-    entity<User>()
     repository<UserRepository, User, Long>()
 }
 ```
@@ -457,11 +481,11 @@ must be that same instance and startup fails on a detectable mismatch. If a cust
 implementation does not expose Vert.x through Hibernate Reactive's public `Implementor` SPI,
 configure the matching instance explicitly.
 
-Set `dependencyInjection = true` and add `io.ktor:ktor-server-di` to opt into Ktor DI. This publishes
-`HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`, and `Vertx`.
-The session factory remains available as `HibernateReactiveResources.sessionFactory` instead of a
-separate DI value so Ktor DI's automatic `AutoCloseable` cleanup cannot override the ownership rules.
-Basic plugin use does not require the DI artifact.
+Set `dependencyInjection = true` and add `io.ktor:ktor-server-di` to publish every registered
+repository, `HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`,
+and `Vertx`. The session factory remains available as `HibernateReactiveResources.sessionFactory`
+instead of a separate DI value so Ktor DI's automatic `AutoCloseable` cleanup cannot override the
+ownership rules. Basic plugin use does not require the DI artifact.
 
 ## Transactions
 

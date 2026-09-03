@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.ktor
 
+import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -7,6 +8,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.server.application.install
+import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
@@ -51,16 +53,15 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                             schemaGeneration = "create-drop"
                             poolSize = 2
                         }
-                        entity<KtorUser>()
+                        dependencyInjection = true
                         repository<KtorUserRepository, KtorUser, Long>()
                     }
 
                     installedResources = hibernateReactive
+                    val repository: KtorUserRepository by dependencies
+                    val tx: ReactiveTransactionExecutor by dependencies
                     routing {
                         post("/exercise") {
-                            val repository = hibernateRepository<KtorUserRepository>()
-                            val tx = hibernateTransactionExecutor
-
                             repository.save(KtorUser(name = "alice", active = true))
                             tx.transactional {
                                 repository.save(KtorUser(name = "bob", active = true))
@@ -91,7 +92,6 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                         }
 
                         post("/crud") {
-                            val repository = hibernateRepository<KtorUserRepository>()
                             val saved = repository.save(KtorUser(name = "dave", active = true))
                             val found = repository.findById(saved.id!!)
                             found!!.name = "dave-updated"
@@ -101,8 +101,6 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                         }
 
                         post("/rollback") {
-                            val repository = hibernateRepository<KtorUserRepository>()
-                            val tx = hibernateTransactionExecutor
                             runCatching {
                                 tx.transactional {
                                     repository.save(KtorUser(name = "rolled-back", active = true))

@@ -381,24 +381,49 @@ fun Application.module() {
             poolSize = 10
             property("hibernate.format_sql", true)
         }
-        entities(User::class)
+        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 }
 ```
 
-`entity`/`entities`와 `repository`는 의도적으로 명시 등록만 지원하며, 플러그인은 전체 클래스패스를
-스캔하지 않습니다. 등록된 프록시는 CRUD, 파생 쿼리, Jakarta Data `@Query`, offset 페이지네이션,
-정렬을 공용 프레임워크 독립 리포지토리 런타임에 위임합니다.
+`repository`를 등록하면 해당 엔티티도 Hibernate에 등록됩니다. 리포지토리가 없는 관리 엔티티만
+`entity`/`entities`로 따로 등록하면 됩니다. 플러그인은 의도적으로 클래스패스를 스캔하지 않습니다.
+등록된 프록시는 CRUD, 파생 쿼리, Jakarta Data `@Query`, offset 페이지네이션, 정렬을 공용
+프레임워크 독립 리포지토리 런타임에 위임합니다.
 
-설치 후 다음 애플리케이션 범위 접근자를 사용할 수 있습니다:
+`io.ktor:ktor-server-di`를 설치하고 `dependencyInjection = true`로 설정하면, 애플리케이션을
+조립할 때 리포지토리와 트랜잭션 인프라를 한 번 주입받아 애플리케이션에 특화된 서비스를
+라우트에 전달할 수 있습니다:
 
 ```kotlin
-val sessionFactory = application.hibernateSessionFactory
-val sessions = application.hibernateSessionProvider
-val tx = application.hibernateTransactionExecutor
-val users = application.hibernateRepository<UserRepository>()
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = environment.config.property("database.url").getString()
+            username = environment.config.property("database.username").getString()
+            password = environment.config.property("database.password").getString()
+            schemaGeneration = "validate"
+        }
+        dependencyInjection = true
+        repository<UserRepository, User, Long>()
+    }
+
+    val users: UserRepository by dependencies
+    val transactions: ReactiveTransactionExecutor by dependencies
+    val userService = UserService(transactions, users)
+
+    routing {
+        post("/users") {
+            val request = call.receive<CreateUserRequest>()
+            call.respond(HttpStatusCode.Created, userService.create(request))
+        }
+    }
+}
 ```
+
+DI를 끄거나 인프라에 직접 접근해야 할 때에는 `Application.hibernateReactive`와 기존의 세부
+애플리케이션 접근자를 그대로 사용할 수 있습니다.
 
 명시적 트랜잭션 밖에서 실행한 리포지토리 작업은 자체 세션 또는 쓰기 트랜잭션을 엽니다. Hibernate
 Reactive가 해당 데이터베이스 작업을 자체 격리된 Vert.x 컨텍스트에서 예약하므로 Ktor 서버 엔진과
@@ -440,7 +465,6 @@ install(HibernateReactive) {
     closeExternalVertx = false          // 기본값
     closeExternalSessionFactory = false // 기본값
 
-    entity<User>()
     repository<UserRepository, User, Long>()
 }
 ```
@@ -453,10 +477,10 @@ Hibernate Reactive의 공개 `Implementor` SPI로 Vert.x를 노출하지 않는�
 명시하세요.
 
 Ktor DI를 사용하려면 `io.ktor:ktor-server-di`를 추가하고 `dependencyInjection = true`로 설정합니다.
-`HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`, `Vertx`가
-등록됩니다. 세션 팩토리는 별도 DI 값 대신 `HibernateReactiveResources.sessionFactory`로 제공하여
-Ktor DI의 `AutoCloseable` 자동 정리가 위 소유권 규칙을 무시하지 않게 합니다. 기본 플러그인 사용에는
-DI 아티팩트가 필요하지 않습니다.
+그러면 등록한 모든 리포지토리와 `HibernateReactiveResources`, `ReactiveSessionProvider`,
+`ReactiveTransactionExecutor`, `Vertx`가 등록됩니다. 세션 팩토리는 별도 DI 값 대신
+`HibernateReactiveResources.sessionFactory`로 제공하여 Ktor DI의 `AutoCloseable` 자동 정리가
+위 소유권 규칙을 무시하지 않게 합니다. 기본 플러그인 사용에는 DI 아티팩트가 필요하지 않습니다.
 
 ## 트랜잭션
 

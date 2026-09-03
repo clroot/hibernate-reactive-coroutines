@@ -20,7 +20,7 @@ public class HibernateReactiveResources internal constructor(
     public val transactionExecutor: ReactiveTransactionExecutor,
     /** Vert.x instance used by Hibernate Reactive. */
     public val vertx: Vertx,
-    private val repositories: Map<Class<*>, Any>,
+    internal val repositories: Map<Class<*>, Any>,
     private val closeSessionFactory: Boolean,
     private val closeVertx: Boolean,
 ) {

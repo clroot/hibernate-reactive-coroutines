@@ -123,26 +123,12 @@ class HibernateReactivePluginTest : DescribeSpec({
             }
         }
 
-        it("rejects a repository whose entity was not explicitly registered") {
-            val sessionFactory = mockk<Mutiny.SessionFactory>(relaxed = true)
-            val vertx = Vertx.vertx()
+        it("registers a repository entity as a managed entity") {
+            val configuration = HibernateReactiveConfiguration()
 
-            try {
-                val exception = shouldThrow<IllegalArgumentException> {
-                    testApplication {
-                        application {
-                            install(HibernateReactive) {
-                                this.sessionFactory = sessionFactory
-                                this.vertx = vertx
-                                repository<UnregisteredRepository, UnregisteredEntity, Long>()
-                            }
-                        }
-                    }
-                }
-                exception.message shouldContain "must be registered explicitly"
-            } finally {
-                vertx.close().toCompletionStage().toCompletableFuture().join()
-            }
+            configuration.repository<UnregisteredRepository, UnregisteredEntity, Long>()
+
+            configuration.entityClasses shouldBe setOf(UnregisteredEntity::class.java)
         }
 
         it("optionally publishes infrastructure to Ktor dependency injection") {

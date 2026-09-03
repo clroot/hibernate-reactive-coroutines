@@ -148,12 +148,14 @@ spring:
 ```kotlin
 dependencies {
     implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
+    implementation("io.ktor:ktor-server-di:<ktor-version>")
     implementation("io.vertx:vertx-pg-client:5.1.5")
 }
 ```
 
-엔티티와 Jakarta Data 코루틴 리포지토리를 명시적으로 등록합니다. 플러그인은 클래스패스를
-스캔하거나 요청 전체에 세션/트랜잭션을 자동으로 열지 않습니다:
+Jakarta Data 코루틴 리포지토리를 명시적으로 등록합니다. 리포지토리를 등록하면 해당 엔티티도
+함께 등록되므로 플러그인이 클래스패스를 스캔할 필요가 없습니다. 요청 전체에 세션이나
+트랜잭션을 자동으로 열지도 않습니다:
 
 ```kotlin
 fun Application.module() {
@@ -164,14 +166,16 @@ fun Application.module() {
             password = "password"
             schemaGeneration = "validate"
         }
-        entity<User>()
+        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 
+    val users: UserRepository by dependencies
+    val transactions: ReactiveTransactionExecutor by dependencies
+
     routing {
         post("/users") {
-            val users = hibernateRepository<UserRepository>()
-            val saved = hibernateTransactionExecutor.transactional {
+            val saved = transactions.transactional {
                 users.save(User(name = "Alice", email = "alice@example.com"))
             }
             call.respond(saved.id!!)
@@ -183,9 +187,9 @@ fun Application.module() {
 플러그인이 만든 세션 팩토리와 Vert.x는 애플리케이션 종료 시 닫힙니다. 외부에서 제공한
 인스턴스는 기본적으로 보존되며, 플러그인에 소유권을 넘길 때만
 `closeExternalSessionFactory` 또는 `closeExternalVertx`를 설정하세요.
-`dependencyInjection = true`로 선택적 `ktor-server-di`에 리소스 레지스트리, 세션 프로바이더,
-트랜잭션 실행기와 Vert.x를 등록할 수 있습니다. 외부 세션 팩토리와 트랜잭션 경계에 대한 자세한
-내용은 [사용 가이드](docs/usage-guide.ko.md#ktor-통합)를 참고하세요.
+`dependencyInjection = true`로 설정하면 선택형 `ktor-server-di` 모듈에 각 리포지토리와 리소스
+레지스트리, 세션 프로바이더, 트랜잭션 실행기, Vert.x가 등록됩니다. 외부 세션 팩토리와
+트랜잭션 경계에 대한 자세한 내용은 [사용 가이드](docs/usage-guide.ko.md#ktor-통합)를 참고하세요.
 
 ## 문서
 

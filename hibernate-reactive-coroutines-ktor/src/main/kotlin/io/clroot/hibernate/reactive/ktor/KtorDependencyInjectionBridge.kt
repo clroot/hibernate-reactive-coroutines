@@ -3,9 +3,14 @@ package io.clroot.hibernate.reactive.ktor
 import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.ktor.server.application.Application
+import io.ktor.server.plugins.di.DependencyKey
+import io.ktor.server.plugins.di.DependencyRegistry
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.plugins.di.provide
+import io.ktor.util.reflect.TypeInfo
 import io.vertx.core.Vertx
+import kotlin.reflect.KClass
+import kotlin.reflect.full.starProjectedType
 
 internal object KtorDependencyInjectionBridge {
     fun install(application: Application, resources: HibernateReactiveResources) {
@@ -17,6 +22,15 @@ internal object KtorDependencyInjectionBridge {
             provide<ReactiveSessionProvider> { resources.sessionProvider } cleanup { }
             provide<ReactiveTransactionExecutor> { resources.transactionExecutor } cleanup { }
             provide<Vertx> { resources.vertx } cleanup { }
+            resources.repositories.forEach { (repositoryType, repository) ->
+                provideRepository(repositoryType.kotlin, repository)
+            }
         }
+    }
+
+    private fun DependencyRegistry.provideRepository(repositoryType: KClass<*>, repository: Any) {
+        val key = DependencyKey(TypeInfo(repositoryType, repositoryType.starProjectedType))
+        set<Any>(key) { repository }
+        cleanup(key) { }
     }
 }
