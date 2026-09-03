@@ -293,7 +293,7 @@ public final class io/clroot/hibernate/reactive/spring/boot/transaction/SpringAm
 	public fun currentTransaction (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
-public class io/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider {
+public class io/clroot/hibernate/reactive/spring/boot/transaction/TransactionalAwareSessionProvider : io/clroot/hibernate/reactive/ReactiveSessionOperations {
 	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
 	public fun fetch (Ljava/lang/Object;Lkotlin/reflect/KProperty1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun fetchAll (Ljava/lang/Object;[Lkotlin/reflect/KProperty1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

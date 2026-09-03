@@ -1,4 +1,4 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
 /**
  * 알 수 없는 메서드에 대한 유사 메서드 추천을 담당하는 헬퍼.

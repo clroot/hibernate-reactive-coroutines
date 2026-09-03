@@ -17,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
 import jakarta.persistence.Id
+import jakarta.persistence.metamodel.Metamodel
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import java.lang.reflect.Proxy
@@ -26,6 +27,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
 
     val sessionProvider = mockk<TransactionalAwareSessionProvider>()
     val transactionExecutor = mockk<ReactiveTransactionExecutor>()
+    every { sessionProvider.metamodel } returns mockk<Metamodel>(relaxed = true)
 
     fun createProxy(): TestRepository {
         val handler = SimpleHibernateReactiveRepository(
@@ -189,52 +191,11 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                 capturedError!!.message shouldContain "save"
             }
         }
-
-        context("saveAll 트랜잭션 경계") {
-            it("모든 저장을 하나의 sessionProvider write 경계에서 실행한다") {
-                val localSessionProvider = mockk<TransactionalAwareSessionProvider>()
-                val localTransactionExecutor = mockk<ReactiveTransactionExecutor>()
-                val session = mockk<Mutiny.Session>()
-                var writeCalls = 0
-
-                coEvery {
-                    localSessionProvider.write<Any?>(any())
-                } coAnswers {
-                    writeCalls++
-                    firstArg<(Mutiny.Session) -> Uni<Any?>>()
-                        .invoke(session)
-                        .awaitSuspending()
-                }
-                coEvery {
-                    localTransactionExecutor.transactional<Any?>(any(), any())
-                } coAnswers {
-                    secondArg<suspend () -> Any?>().invoke()
-                }
-                every { session.persist(any()) } returns Uni.createFrom().voidItem()
-
-                val crud = CrudOperations<SaveAllEntity, Long>(
-                    entityClass = SaveAllEntity::class.java,
-                    entityName = "SaveAllEntity",
-                    sessionProvider = localSessionProvider,
-                    transactionExecutor = localTransactionExecutor,
-                    auditingHandler = null,
-                )
-
-                val saved = crud.saveAll(List(2_000) { SaveAllEntity() }).toList()
-
-                writeCalls shouldBe 1
-                saved.size shouldBe 2_000
-                coVerify(exactly = 0) {
-                    localTransactionExecutor.transactional<Any?>(any(), any())
-                }
-            }
-        }
     }
 }) {
     companion object {
         interface TestRepository : CoroutineCrudRepository<TestEntity, Long>
         class TestEntity
-        class SaveAllEntity(@Id val id: Long? = null)
 
         // 에러 메시지 테스트용 인터페이스 (오타가 포함된 메서드명)
         @Suppress("unused")

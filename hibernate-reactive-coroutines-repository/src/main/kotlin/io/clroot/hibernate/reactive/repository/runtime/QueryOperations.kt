@@ -1,14 +1,11 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import io.clroot.hibernate.reactive.repository.query.CountQueryDeriver
 import io.clroot.hibernate.reactive.repository.query.QueryAliasResolver
+import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.QueryPropertyPathValidator
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
-import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
-import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
-import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import io.clroot.hibernate.reactive.repository.query.derived.QueryOrder
 import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
 import jakarta.persistence.metamodel.Metamodel
@@ -16,8 +13,6 @@ import jakarta.persistence.metamodel.PluralAttribute
 import io.smallrye.mutiny.Uni
 import jakarta.persistence.metamodel.SingularAttribute
 import org.hibernate.reactive.mutiny.Mutiny
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
 
 /**
  * 쿼리 실행을 담당하는 내부 헬퍼 클래스.
@@ -29,8 +24,8 @@ import org.springframework.data.domain.Sort
  */
 internal class QueryOperations<T : Any>(
     private val entityClass: Class<T>,
-    private val sessionProvider: TransactionalAwareSessionProvider,
-    private val metamodel: Metamodel? = null,
+    private val sessionOperations: ReactiveSessionOperations,
+    private val metamodel: Metamodel,
 ) {
 
     // ============================================
@@ -38,7 +33,7 @@ internal class QueryOperations<T : Any>(
     // ============================================
 
     suspend fun executeSingleQuery(hql: String, args: List<Any?>, maxResults: Int? = null): T? =
-        sessionProvider.read { session ->
+        sessionOperations.read { session ->
             val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
             maxResults?.let { query.maxResults = it }
@@ -46,7 +41,7 @@ internal class QueryOperations<T : Any>(
         }
 
     suspend fun executeListQuery(hql: String, args: List<Any?>, maxResults: Int? = null): List<T> =
-        sessionProvider.read { session ->
+        sessionOperations.read { session ->
             val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
             maxResults?.let { query.maxResults = it }
@@ -54,7 +49,7 @@ internal class QueryOperations<T : Any>(
         }
 
     suspend fun executeExistsQuery(hql: String, args: List<Any?>): Boolean =
-        sessionProvider.read { session ->
+        sessionOperations.read { session ->
             val query = session.createQuery(hql, Int::class.javaObjectType)
             bindIndexedParameters(query, args)
             query.maxResults = 1
@@ -62,7 +57,7 @@ internal class QueryOperations<T : Any>(
         }
 
     suspend fun executeCountQuery(hql: String, args: List<Any?>): Long =
-        sessionProvider.read { session ->
+        sessionOperations.read { session ->
             val query = session.createQuery(hql, Long::class.javaObjectType)
             bindIndexedParameters(query, args)
             query.singleResult
@@ -74,7 +69,7 @@ internal class QueryOperations<T : Any>(
      * 대상 엔티티를 먼저 로드한 뒤 제거하므로 cascade와 `@Version`이 정상 동작합니다.
      */
     suspend fun executeDeleteQuery(hql: String, args: List<Any?>): Long =
-        sessionProvider.write { session ->
+        sessionOperations.write { session ->
             val query = session.createQuery(hql, entityClass)
             bindIndexedParameters(query, args)
             query.resultList.chain { entities ->
@@ -89,9 +84,9 @@ internal class QueryOperations<T : Any>(
         }
 
     suspend fun executeListQueryWithSort(
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
-        sort: Sort,
+        sort: List<QueryOrder>,
     ): List<T> {
         val hql = applyDynamicSort(prepared.hql, sort)
         return executeListQuery(hql, args, prepared.maxResults)
@@ -102,7 +97,7 @@ internal class QueryOperations<T : Any>(
     // ============================================
 
     suspend fun executeModifyingAnnotatedQuery(
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
     ): Int {
         if (prepared.isNativeQuery) {
@@ -111,15 +106,11 @@ internal class QueryOperations<T : Any>(
             )
         }
 
-        val clearAutomatically = prepared.method
-            .getAnnotation(Modifying::class.java)
-            ?.clearAutomatically == true
-
-        return sessionProvider.write { session ->
+        return sessionOperations.write { session ->
             val query = session.createMutationQuery(prepared.hql)
             bindAnnotatedParameters(query, prepared, args)
             query.executeUpdate().map { affectedRows ->
-                if (clearAutomatically) {
+                if (prepared.clearAutomatically) {
                     session.clear()
                 }
                 affectedRows
@@ -128,14 +119,14 @@ internal class QueryOperations<T : Any>(
     }
 
     suspend fun executeListAnnotatedQuery(
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
-        sort: Sort = Sort.unsorted(),
+        sort: List<QueryOrder> = emptyList(),
     ): List<Any> {
         val hql = applyAnnotatedQuerySort(prepared, sort)
         val resultClass = annotatedResultClass(prepared)
 
-        return sessionProvider.read { session ->
+        return sessionOperations.read { session ->
             val query = if (prepared.isNativeQuery) {
                 session.createNativeQuery(hql, resultClass)
             } else {
@@ -148,12 +139,12 @@ internal class QueryOperations<T : Any>(
     }
 
     suspend fun executeSingleAnnotatedQuery(
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
     ): Any? {
         val resultClass = annotatedResultClass(prepared)
 
-        return sessionProvider.read { session ->
+        return sessionOperations.read { session ->
             val query = if (prepared.isNativeQuery) {
                 session.createNativeQuery(prepared.hql, resultClass)
             } else {
@@ -170,9 +161,9 @@ internal class QueryOperations<T : Any>(
      * 엔티티의 상위 타입을 선언한 기존 메서드는 실제 엔티티 클래스를 유지합니다.
      */
     @Suppress("UNCHECKED_CAST")
-    internal fun annotatedResultClass(prepared: PreparedQueryMethod): Class<Any> {
+    internal fun annotatedResultClass(prepared: PreparedRepositoryQuery): Class<Any> {
         val declaredClass = checkNotNull(prepared.resultClass) {
-            "Missing result type for @Query method '${prepared.method.name}'"
+            "Missing result type for @Query method '${prepared.methodName}'"
         }
         val queryClass = if (declaredClass.isAssignableFrom(entityClass)) entityClass else declaredClass
         return queryClass as Class<Any>
@@ -202,67 +193,67 @@ internal class QueryOperations<T : Any>(
 
     internal fun <R> bindAnnotatedParameters(
         query: Mutiny.SelectionQuery<R>,
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
     ) {
         when (prepared.parameterStyle) {
-            ParameterStyle.NAMED -> {
-                prepared.annotatedParameters.names.forEach { name ->
+            QueryParameterStyle.NAMED -> {
+                prepared.parameters.names.forEach { name ->
                     query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
                 }
             }
 
-            ParameterStyle.POSITIONAL -> {
-                prepared.annotatedParameters.positions.forEach { position ->
+            QueryParameterStyle.POSITIONAL -> {
+                prepared.parameters.positions.forEach { position ->
                     query.setParameter(position, args[position - 1])
                 }
             }
 
-            ParameterStyle.NONE -> Unit
+            QueryParameterStyle.NONE -> Unit
         }
     }
 
     internal fun <R> bindAnnotatedCountParameters(
         query: Mutiny.SelectionQuery<R>,
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
     ) {
-        when (prepared.countAnnotatedParameters.style) {
-            ParameterStyle.NAMED -> {
-                prepared.countAnnotatedParameters.names.forEach { name ->
+        when (prepared.countParameters.style) {
+            QueryParameterStyle.NAMED -> {
+                prepared.countParameters.names.forEach { name ->
                     query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
                 }
             }
 
-            ParameterStyle.POSITIONAL -> {
-                prepared.countAnnotatedParameters.positions.forEach { position ->
+            QueryParameterStyle.POSITIONAL -> {
+                prepared.countParameters.positions.forEach { position ->
                     query.setParameter(position, args[position - 1])
                 }
             }
 
-            ParameterStyle.NONE -> Unit
+            QueryParameterStyle.NONE -> Unit
         }
     }
 
     private fun bindAnnotatedParameters(
         query: Mutiny.MutationQuery,
-        prepared: PreparedQueryMethod,
+        prepared: PreparedRepositoryQuery,
         args: List<Any?>,
     ) {
         when (prepared.parameterStyle) {
-            ParameterStyle.NAMED -> {
-                prepared.annotatedParameters.names.forEach { name ->
+            QueryParameterStyle.NAMED -> {
+                prepared.parameters.names.forEach { name ->
                     query.setParameter(name, args[prepared.parameterNames.indexOf(name)])
                 }
             }
 
-            ParameterStyle.POSITIONAL -> {
-                prepared.annotatedParameters.positions.forEach { position ->
+            QueryParameterStyle.POSITIONAL -> {
+                prepared.parameters.positions.forEach { position ->
                     query.setParameter(position, args[position - 1])
                 }
             }
 
-            ParameterStyle.NONE -> { /* 파라미터 없음 */
+            QueryParameterStyle.NONE -> { /* 파라미터 없음 */
             }
         }
     }
@@ -271,8 +262,8 @@ internal class QueryOperations<T : Any>(
     // Sort 유틸리티
     // ============================================
 
-    internal fun applyDynamicSort(hql: String, sort: Sort): String {
-        if (sort.isUnsorted) return hql
+    internal fun applyDynamicSort(hql: String, sort: List<QueryOrder>): String {
+        if (sort.isEmpty()) return hql
 
         val baseHql = hql.replace(ORDER_BY_REGEX, "")
         val sortClause = buildSortClause(sort)
@@ -281,24 +272,27 @@ internal class QueryOperations<T : Any>(
     }
 
     /**
-     * `@Query`로 선언된 쿼리에 동적 [Sort]를 적용합니다.
+     * `@Query`로 선언된 쿼리에 동적 정렬을 적용합니다.
      *
      * 쿼리가 이미 `ORDER BY`를 갖고 있으면 뒤에 덧붙여 작성자의 정렬 의도를 보존합니다.
      * 안전하게 적용할 수 없으면 조용히 무시하지 않고 예외를 던집니다.
      */
-    internal fun applyAnnotatedQuerySort(prepared: PreparedQueryMethod, sort: Sort): String {
-        if (sort.isUnsorted) return prepared.hql
+    internal fun applyAnnotatedQuerySort(
+        prepared: PreparedRepositoryQuery,
+        sort: List<QueryOrder>,
+    ): String {
+        if (sort.isEmpty()) return prepared.hql
 
         if (prepared.isNativeQuery) {
             throw UnsupportedOperationException(
-                "Sorting a native @Query is not supported for method '${prepared.method.name}'. " +
+                "Sorting a native @Query is not supported for method '${prepared.methodName}'. " +
                         "Declare the ORDER BY clause inside the query instead.",
             )
         }
 
         val alias = QueryAliasResolver.resolve(prepared.hql)
             ?: throw IllegalStateException(
-                "Cannot apply Sort to @Query method '${prepared.method.name}' because its root alias " +
+                "Cannot apply Sort to @Query method '${prepared.methodName}' because its root alias " +
                         "could not be determined. Declare the ORDER BY clause inside the query instead.",
             )
 
@@ -312,10 +306,10 @@ internal class QueryOperations<T : Any>(
         }
     }
 
-    internal fun buildSortClause(sort: Sort, alias: String = "e"): String {
-        if (sort.isUnsorted) return ""
+    internal fun buildSortClause(sort: List<QueryOrder>, alias: String = "e"): String {
+        if (sort.isEmpty()) return ""
         return sort.map { order ->
-            val direction = if (order.isAscending) "ASC" else "DESC"
+            val direction = order.direction.name
             val segments = order.property.split('.')
             require(QueryPropertyPathValidator.isSafe(order.property)) {
                 "Invalid sort property"
@@ -346,7 +340,7 @@ internal class QueryOperations<T : Any>(
                     leafType = attribute.javaType
                 }
             }
-            val expression = if (order.isIgnoreCase) {
+            val expression = if (order.ignoreCase) {
                 require(leafType == String::class.java) {
                     "Ignore-case sorting requires a String property"
                 }
@@ -359,8 +353,10 @@ internal class QueryOperations<T : Any>(
     }
 
     private fun managedType(javaType: Class<*>): ManagedType<*> = try {
-        (metamodel ?: sessionProvider.metamodel).managedType(javaType)
+        metamodel.managedType(javaType)
     } catch (_: IllegalArgumentException) {
         throw IllegalArgumentException("Unknown sort property")
     }
 }
+
+private val ORDER_BY_REGEX = Regex(" ORDER BY .+$", RegexOption.IGNORE_CASE)

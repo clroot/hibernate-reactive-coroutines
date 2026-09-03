@@ -1,9 +1,8 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
-import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
-import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
-import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
+import io.clroot.hibernate.reactive.ReactiveSessionOperations
+import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
+import io.clroot.hibernate.reactive.repository.query.derived.QueryOrder
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -17,7 +16,6 @@ import jakarta.persistence.metamodel.Metamodel
 import jakarta.persistence.metamodel.PluralAttribute
 import jakarta.persistence.metamodel.SingularAttribute
 import jakarta.persistence.metamodel.Type
-import org.springframework.data.domain.Sort
 
 class QueryOperationsTest : DescribeSpec({
 
@@ -51,25 +49,23 @@ class QueryOperationsTest : DescribeSpec({
 
     val operations = QueryOperations(
         User::class.java,
-        mockk<TransactionalAwareSessionProvider>(),
+        mockk<ReactiveSessionOperations>(),
         metamodel,
     )
 
     describe("dynamic sort") {
         it("resolves a known nested property") {
-            val sort = Sort.by(Sort.Direction.ASC, "address.city")
-
-            operations.buildSortClause(sort) shouldBe "e.address.city ASC"
+            operations.buildSortClause(listOf(QueryOrder("address.city"))) shouldBe "e.address.city ASC"
         }
 
         it("applies ignoreCase with LOWER to a String property") {
-            operations.buildSortClause(Sort.by(Sort.Order.by("name").ignoreCase())) shouldBe
+            operations.buildSortClause(listOf(QueryOrder("name", ignoreCase = true))) shouldBe
                     "LOWER(e.name) ASC"
         }
 
         it("rejects ignoreCase on a non-String property") {
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by(Sort.Order.by("age").ignoreCase()))
+                operations.buildSortClause(listOf(QueryOrder("age", ignoreCase = true)))
             }
         }
 
@@ -83,34 +79,34 @@ class QueryOperationsTest : DescribeSpec({
             every { fieldAttribute.javaType } returns String::class.java
             val fieldOperations = QueryOperations(
                 FieldAccessUser::class.java,
-                mockk<TransactionalAwareSessionProvider>(),
+                mockk<ReactiveSessionOperations>(),
                 fieldMetamodel,
             )
 
-            fieldOperations.buildSortClause(Sort.by("name")) shouldBe "e.name ASC"
+            fieldOperations.buildSortClause(listOf(QueryOrder("name"))) shouldBe "e.name ASC"
         }
 
         it("rejects a syntactically valid property that is not part of the persistence model") {
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by("doesNotExist"))
+                operations.buildSortClause(listOf(QueryOrder("doesNotExist")))
             }
         }
 
         it("rejects a computed JavaBean property that is not persistent") {
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by("computed"))
+                operations.buildSortClause(listOf(QueryOrder("computed")))
             }
         }
 
         it("rejects a collection-valued sort property") {
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by("addresses"))
+                operations.buildSortClause(listOf(QueryOrder("addresses")))
             }
         }
 
         it("rejects traversal through a collection without an explicit join") {
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by("addresses.city"))
+                operations.buildSortClause(listOf(QueryOrder("addresses.city")))
             }
         }
 
@@ -118,12 +114,12 @@ class QueryOperationsTest : DescribeSpec({
             every { addressAttribute.persistentAttributeType } returns Attribute.PersistentAttributeType.MANY_TO_ONE
 
             shouldThrow<IllegalArgumentException> {
-                operations.buildSortClause(Sort.by("address"))
+                operations.buildSortClause(listOf(QueryOrder("address")))
             }
         }
 
         it("rejects a property that can be interpreted as HQL") {
-            val sort = Sort.by("name) desc, (select count(e2) from User e2")
+            val sort = listOf(QueryOrder("name) desc, (select count(e2) from User e2"))
 
             shouldThrow<IllegalArgumentException> {
                 operations.buildSortClause(sort)
@@ -134,14 +130,13 @@ class QueryOperationsTest : DescribeSpec({
     describe("annotated count parameters") {
         it("binds only parameters referenced by the count query") {
             val query = mockk<Mutiny.SelectionQuery<Long>>(relaxed = true)
-            val prepared = PreparedQueryMethod(
-                method = mockk(),
-                partTree = null,
+            val prepared = PreparedRepositoryQuery(
+                methodName = "findPage",
                 hql = "FROM User e ORDER BY CASE WHEN :priority = true THEN 0 ELSE 1 END",
                 countHql = "SELECT COUNT(e) FROM User e WHERE e.active = :active",
-                parameterBinders = emptyList(),
-                returnType = QueryReturnType.PAGE,
-                parameterStyle = ParameterStyle.NAMED,
+                parameterBindings = emptyList(),
+                returnType = RepositoryQueryReturnType.PAGE,
+                parameterStyle = QueryParameterStyle.NAMED,
                 parameterNames = listOf("active", "priority"),
             )
 
@@ -153,14 +148,13 @@ class QueryOperationsTest : DescribeSpec({
 
         it("binds only positional parameters referenced by the count query") {
             val query = mockk<Mutiny.SelectionQuery<Long>>(relaxed = true)
-            val prepared = PreparedQueryMethod(
-                method = mockk(),
-                partTree = null,
+            val prepared = PreparedRepositoryQuery(
+                methodName = "findPage",
                 hql = "FROM User e WHERE e.name = ?1 ORDER BY CASE WHEN ?2 = true THEN 0 ELSE 1 END",
                 countHql = "SELECT COUNT(e) FROM User e WHERE e.name = ?1",
-                parameterBinders = emptyList(),
-                returnType = QueryReturnType.PAGE,
-                parameterStyle = ParameterStyle.POSITIONAL,
+                parameterBindings = emptyList(),
+                returnType = RepositoryQueryReturnType.PAGE,
+                parameterStyle = QueryParameterStyle.POSITIONAL,
             )
 
             operations.bindAnnotatedCountParameters(query, prepared, listOf("alice", true))

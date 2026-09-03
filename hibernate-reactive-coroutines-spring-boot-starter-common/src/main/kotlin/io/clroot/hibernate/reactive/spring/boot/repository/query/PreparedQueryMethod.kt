@@ -2,6 +2,10 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query
 
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
+import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
+import io.clroot.hibernate.reactive.repository.runtime.PreparedRepositoryQuery
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryReturnType
 import kotlin.coroutines.Continuation
 import org.springframework.data.repository.query.parser.PartTree
 import java.lang.reflect.Method
@@ -119,3 +123,42 @@ private fun io.clroot.hibernate.reactive.repository.query.QueryParameters.toSpri
         names = names,
         positions = positions,
     )
+
+internal fun PreparedQueryMethod.toRuntimeQuery(): PreparedRepositoryQuery = PreparedRepositoryQuery(
+    methodName = method.name,
+    hql = hql,
+    countHql = countHql,
+    parameterBindings = parameterBinders.map { binder ->
+        when (binder) {
+            ParameterBinder.Direct -> ParameterBinding.DIRECT
+            ParameterBinder.Containing -> ParameterBinding.CONTAINING
+            ParameterBinder.StartingWith -> ParameterBinding.STARTING_WITH
+            ParameterBinder.EndingWith -> ParameterBinding.ENDING_WITH
+            ParameterBinder.InCollection -> ParameterBinding.IN_COLLECTION
+            ParameterBinder.NotInCollection -> ParameterBinding.NOT_IN_COLLECTION
+        }
+    },
+    returnType = when (returnType) {
+        QueryReturnType.SINGLE -> RepositoryQueryReturnType.SINGLE
+        QueryReturnType.LIST -> RepositoryQueryReturnType.LIST
+        QueryReturnType.BOOLEAN -> RepositoryQueryReturnType.BOOLEAN
+        QueryReturnType.LONG -> RepositoryQueryReturnType.LONG
+        QueryReturnType.VOID -> RepositoryQueryReturnType.VOID
+        QueryReturnType.PAGE -> RepositoryQueryReturnType.PAGE
+        QueryReturnType.SLICE -> RepositoryQueryReturnType.SLICE
+        QueryReturnType.MODIFYING -> RepositoryQueryReturnType.MODIFYING
+    },
+    queryKind = if (isAnnotatedQuery) RepositoryQueryKind.ANNOTATED else RepositoryQueryKind.DERIVED,
+    isNativeQuery = isNativeQuery,
+    isModifying = isModifying,
+    clearAutomatically = method.getAnnotation(Modifying::class.java)?.clearAutomatically == true,
+    parameterStyle = when (parameterStyle) {
+        ParameterStyle.NAMED -> QueryParameterStyle.NAMED
+        ParameterStyle.POSITIONAL -> QueryParameterStyle.POSITIONAL
+        ParameterStyle.NONE -> QueryParameterStyle.NONE
+    },
+    parameterNames = parameterNames,
+    resultClass = resultClass,
+    maxResults = maxResults,
+    isDelete = partTree?.isDelete == true,
+)

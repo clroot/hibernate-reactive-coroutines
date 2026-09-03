@@ -1,8 +1,8 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.reflect.jvm.jvmName
+import kotlin.jvm.JvmInline
 
 /**
  * Adapts repository identifier values to the JVM type used by Hibernate.
@@ -15,16 +15,16 @@ internal object RepositoryIdAdapter {
     }
 
     private fun createAdapter(idClass: Class<*>): IdAdapter {
-        if (!idClass.kotlin.isValue) {
+        if (!idClass.isAnnotationPresent(JvmInline::class.java)) {
             return IdentityAdapter
         }
 
         val unboxMethod = idClass.declaredMethods.singleOrNull {
             it.name == "unbox-impl" && it.parameterCount == 0
-        } ?: error("Cannot find value class unbox method for ${idClass.kotlin.jvmName}")
+        } ?: error("Cannot find value class unbox method for ${idClass.name}")
 
         check(unboxMethod.trySetAccessible()) {
-            "Cannot access value class unbox method for ${idClass.kotlin.jvmName}"
+            "Cannot access value class unbox method for ${idClass.name}"
         }
         return ValueClassAdapter(unboxMethod)
     }

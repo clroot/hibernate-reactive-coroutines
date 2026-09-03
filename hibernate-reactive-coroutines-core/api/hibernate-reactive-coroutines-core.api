@@ -29,10 +29,15 @@ public final class io/clroot/hibernate/reactive/ReactiveSessionContextKt {
 	public static final fun currentSessionOrNull (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
-public final class io/clroot/hibernate/reactive/ReactiveSessionProvider {
+public abstract interface class io/clroot/hibernate/reactive/ReactiveSessionOperations {
+	public abstract fun read (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun write (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/ReactiveSessionProvider : io/clroot/hibernate/reactive/ReactiveSessionOperations {
 	public fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
-	public final fun read (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun write (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun read (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
 public final class io/clroot/hibernate/reactive/ReactiveTransactionExecutor {

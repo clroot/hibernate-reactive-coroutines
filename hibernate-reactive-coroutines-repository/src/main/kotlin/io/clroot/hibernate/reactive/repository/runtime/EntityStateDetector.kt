@@ -1,9 +1,8 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
 import jakarta.persistence.EmbeddedId
 import jakarta.persistence.Id
 import jakarta.persistence.Version
-import org.springframework.data.domain.Persistable
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.util.concurrent.ConcurrentHashMap
@@ -11,20 +10,15 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Determines whether a repository entity should be persisted or merged.
  *
- * The rules follow Spring Data's default new-state semantics:
- * [Persistable] takes precedence, a nullable version is used when present,
- * and otherwise null or primitive-default identifiers represent a new entity.
+ * A nullable version takes precedence when present; otherwise null or primitive-default
+ * identifiers represent a new entity. Framework-specific state contracts are handled by
+ * [RepositoryEntityLifecycle] before this fallback is used.
  */
 internal object EntityStateDetector {
     private val cache = ConcurrentHashMap<Class<*>, EntityStateMetadata>()
 
-    fun isNew(entity: Any): Boolean {
-        if (entity is Persistable<*>) {
-            return entity.isNew
-        }
-
-        return cache.computeIfAbsent(entity.javaClass, ::inspect).isNew(entity)
-    }
+    fun isNew(entity: Any): Boolean =
+        cache.computeIfAbsent(entity.javaClass, ::inspect).isNew(entity)
 
     private fun inspect(entityClass: Class<*>): EntityStateMetadata {
         val identifiers = mutableListOf<ValueAccessor>()

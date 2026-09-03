@@ -38,14 +38,14 @@ public class ReadOnlyTransactionException(
  */
 public class ReactiveSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
-) {
+) : ReactiveSessionOperations {
     /**
      * 읽기 전용 작업을 수행합니다.
      *
      * - 컨텍스트에 세션이 있으면 재사용
      * - 없으면 `withSession`으로 새 세션 생성
      */
-    public suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
+    override suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
         val context = currentContextOrNull()
         return if (context != null) {
             block(context.session).awaitSuspending()
@@ -65,7 +65,7 @@ public class ReactiveSessionProvider(
      *
      * @throws io.clroot.hibernate.reactive.ReadOnlyTransactionException readOnly 컨텍스트 내에서 호출 시
      */
-    public suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
+    override suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
         val context = currentContextOrNull()
         return when {
             context?.isReadOnly == true -> {
