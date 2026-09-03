@@ -33,7 +33,7 @@ flowchart TB
 | `core` | `ReactiveSessionContext`, `ReactiveTransactionExecutor`, `ReactiveSessionProvider` | Hibernate Reactive, Mutiny Kotlin, Vert.x, kotlinx.coroutines |
 | `repository` | repository runtime, derived-query parser, `@Query` annotations, Jakarta Data-based `CoroutineCrudRepository` | `core`, Jakarta Data API |
 | `spring-boot-starter`, `-boot4` | auto-configuration, `@Transactional` integration, Spring Data type adapters, auditing | `repository`, Spring Boot BOM |
-| `ktor` | application plugin, resource ownership, Ktor DI bridge | `repository`, Ktor Server |
+| `ktor` | application plugin, resource ownership, Ktor DI bridge, user auditing | `repository`, Ktor Server |
 | `blockhound` | marks Vert.x event-loop threads as non-blocking for BlockHound | BlockHound, Vert.x |
 
 The two Spring starters share a single source tree, `spring-boot-starter-common/src`, compiled once
@@ -196,7 +196,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `PreparedRepositoryQuery` | per-method query metadata, parsed up front | `QueryMethodParser` | `JakartaDataQueryMethodParser` |
 | `RepositoryRuntimeAdapter` | translates paging and sorting types | `SpringRepositoryRuntimeAdapter` | `JakartaDataRepositoryRuntimeAdapter` |
-| `RepositoryEntityLifecycle` | new-entity detection and pre-save hook | `Persistable` first, then auditing | default |
+| `RepositoryEntityLifecycle` | new-entity detection and pre-save hook | `Persistable` first, then auditing | `AuditingEntityLifecycle` |
 
 When `RepositoryEntityLifecycle.isNew` returns null, `EntityStateDetector` decides: by whether
 `@Version` is null if present, otherwise by whether `@Id` is null or the primitive default.
@@ -283,8 +283,9 @@ On install, the `HibernateReactive` plugin builds its resources in this order:
 2. **Session factory**: if none was supplied, one is built from `database {}` and the registered
    entities through `ReactiveServiceRegistryBuilder`, and owned.
 3. **Shared resources**: `ReactiveSessionProvider` and `ReactiveTransactionExecutor`.
-4. **Repositories**: a proxy per registered interface via `JakartaDataRepositoryFactory`. The
-   entity name is the registered value, then `@Entity(name)`, then the class name.
+4. **Repositories**: a proxy per registered interface via `JakartaDataRepositoryFactory`, passing
+   the configured `ReactiveAuditorAware` to `AuditingEntityLifecycle`. The entity name is the
+   registered value, then `@Entity(name)`, then the class name.
 5. **DI**: with `dependencyInjection = true`, `KtorDependencyInjectionBridge` publishes
    repositories and resources to Ktor DI. `ktor-server-di` is `compileOnly`, so it is only needed
    if you use it.

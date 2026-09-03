@@ -262,7 +262,8 @@ install(HibernateReactive) {
 | 페이징·정렬 타입 | Spring Data `Pageable`, `Page`, `Slice`, `Sort` | Jakarta Data `PageRequest`, `Page`, `Sort`, `Order` |
 | 리포지토리 등록 | 클래스패스 스캔 | `repository<R, T, ID>()` |
 | 신규 엔티티 판별 | `Persistable` 우선, 없으면 공통 규칙 | 공통 규칙(`@Version` → ID 값) |
-| Auditing | 지원 | 미지원 |
+| 생성·수정 시각 | 지원 | Hibernate `@CreationTimestamp`, `@UpdateTimestamp` |
+| 생성·수정 사용자 | `ReactiveAuditorAware` 지원 | `ReactiveAuditorAware` 지원 |
 
 Ktor용 인터페이스는 Jakarta Data `DataRepository`를 확장한 코루틴 계약입니다. 완전한 Jakarta Data
 프로바이더는 아니므로 lifecycle 어노테이션, `@Find`, `Limit`, 동기식 인터페이스는 지원하지 않습니다.
@@ -443,7 +444,9 @@ Jakarta Data는 offset 기반 `PageRequest`만 지원하고 `CursoredPage`는 �
 suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
 ```
 
-### 3.7 Auditing (Spring Boot 전용)
+### 3.7 Auditing
+
+#### Spring Boot
 
 `@CreatedDate`와 `@LastModifiedDate`는 엔티티에 `AuditingEntityListener`를 등록하면 채워집니다.
 
@@ -465,6 +468,8 @@ ThreadLocal 기반 `SecurityContextHolder`가 비어 있으므로 반드시 `Rea
 읽어야 합니다.
 
 ```kotlin
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
+
 @Component
 class SecurityAuditorAware : ReactiveAuditorAware<String> {
     override suspend fun getCurrentAuditor(): String? =
@@ -474,6 +479,44 @@ class SecurityAuditorAware : ReactiveAuditorAware<String> {
             ?.name
 }
 ```
+
+#### Ktor
+
+Ktor에서는 Hibernate가 제공하는 `@CreationTimestamp`와 `@UpdateTimestamp`로 생성·수정 시각을
+기록합니다. 별도의 리스너나 Ktor 플러그인 설정은 필요하지 않습니다.
+
+```kotlin
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
+import io.clroot.hibernate.reactive.repository.auditing.CreatedBy
+import io.clroot.hibernate.reactive.repository.auditing.LastModifiedBy
+
+@Entity
+class User(
+    @Id @GeneratedValue val id: Long? = null,
+    var name: String,
+    @CreationTimestamp var createdAt: Instant? = null,
+    @UpdateTimestamp var updatedAt: Instant? = null,
+    @CreatedBy var createdBy: String? = null,
+    @LastModifiedBy var updatedBy: String? = null,
+)
+```
+
+사용자 필드를 채우려면 플러그인에 `ReactiveAuditorAware`를 등록합니다. 이 SPI는 Security
+라이브러리에 의존하지 않습니다. 인증된 사용자를 기록한다면 Ktor Authentication 등의 컨텍스트에서
+사용자 ID를 공급하고, 배치 작업이라면 `system` 같은 값을 공급할 수 있습니다.
+
+```kotlin
+install(HibernateReactive) {
+    auditorAware = ReactiveAuditorAware {
+        currentUserId()
+    }
+    repository<UserRepository, User, Long>()
+}
+```
+
+provider가 `null`을 반환하면 사용자 필드는 변경되지 않습니다. 벌크 UPDATE와 Native SQL은
+엔티티 생명주기를 거치지 않으므로 timestamp와 사용자 auditing 모두 적용되지 않습니다.
 
 ## 4. 트랜잭션
 

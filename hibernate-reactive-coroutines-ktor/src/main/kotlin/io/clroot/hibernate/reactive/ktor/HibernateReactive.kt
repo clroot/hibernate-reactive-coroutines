@@ -4,6 +4,7 @@ import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
 import io.clroot.hibernate.reactive.repository.JakartaDataRepositoryFactory
+import io.clroot.hibernate.reactive.repository.auditing.AuditingEntityLifecycle
 import io.ktor.server.application.ApplicationPlugin
 import io.ktor.server.application.ApplicationStopping
 import io.ktor.server.application.createApplicationPlugin
@@ -181,6 +182,7 @@ private fun createRepositories(
     val factory = JakartaDataRepositoryFactory(
         sessionOperations = sessionProvider,
         metamodel = sessionFactory.metamodel,
+        entityLifecycle = AuditingEntityLifecycle(config.auditorAware),
     )
     return config.repositoryRegistrations.values.associate { registration ->
         registration.repositoryInterface to RegisteredRepository(

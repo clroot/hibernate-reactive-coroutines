@@ -37,6 +37,22 @@ public final class io/clroot/hibernate/reactive/repository/JakartaDataRepository
 	public fun shouldRequestTotal (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)Z
 }
 
+public final class io/clroot/hibernate/reactive/repository/auditing/AuditingEntityLifecycle : io/clroot/hibernate/reactive/repository/runtime/RepositoryEntityLifecycle {
+	public fun <init> (Lio/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware;)V
+	public fun beforeSave (Ljava/lang/Object;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun isNew (Ljava/lang/Object;)Ljava/lang/Boolean;
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/auditing/CreatedBy : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/auditing/LastModifiedBy : java/lang/annotation/Annotation {
+}
+
+public abstract interface class io/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware {
+	public abstract fun getCurrentAuditor (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
 public final class io/clroot/hibernate/reactive/repository/query/CountQueryDeriver {
 	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/CountQueryDeriver;
 	public final fun derive (Ljava/lang/String;)Ljava/lang/String;

@@ -2,6 +2,7 @@ public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveConfigurat
 	public fun <init> ()V
 	public final fun database (Lkotlin/jvm/functions/Function1;)V
 	public final fun entities ([Lkotlin/reflect/KClass;)V
+	public final fun getAuditorAware ()Lio/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware;
 	public final fun getCloseExternalSessionFactory ()Z
 	public final fun getCloseExternalVertx ()Z
 	public final fun getDependencyInjection ()Z
@@ -10,6 +11,7 @@ public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveConfigurat
 	public final synthetic fun registerRepository (Lkotlin/reflect/KClass;Lio/ktor/util/reflect/TypeInfo;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;)V
 	public final fun repository (Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;)V
 	public static synthetic fun repository$default (Lio/clroot/hibernate/reactive/ktor/HibernateReactiveConfiguration;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun setAuditorAware (Lio/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware;)V
 	public final fun setCloseExternalSessionFactory (Z)V
 	public final fun setCloseExternalVertx (Z)V
 	public final fun setDependencyInjection (Z)V
