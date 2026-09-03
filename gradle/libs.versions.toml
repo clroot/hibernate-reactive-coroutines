@@ -14,6 +14,7 @@ spring-boot4 = "4.0.7"
 hibernate-orm = "7.4.5.Final"
 jakarta-persistence = "3.2.0"
 jakarta-data = "1.0.1"
+ktor = "3.5.2"
 
 [libraries]
 # Hibernate Reactive
@@ -27,6 +28,11 @@ spring-boot4-bom = { module = "org.springframework.boot:spring-boot-dependencies
 hibernate-orm-core = { module = "org.hibernate.orm:hibernate-core", version.ref = "hibernate-orm" }
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version.ref = "jakarta-persistence" }
 jakarta-data-api = { module = "jakarta.data:jakarta.data-api", version.ref = "jakarta-data" }
+
+# Ktor
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-di = { module = "io.ktor:ktor-server-di", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 
 # Mutiny
 mutiny-kotlin = { module = "io.smallrye.reactive:mutiny-kotlin", version.ref = "mutiny" }

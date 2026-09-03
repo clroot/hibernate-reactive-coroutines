@@ -351,6 +351,113 @@ println("현재 페이지 데이터: ${page.content}")
 | `Page`  |      O       | 전체 페이지 수 표시   |
 | `Slice` |      X       | 무한 스크롤, "더보기" |
 
+## Ktor 통합
+
+`io.clroot:hibernate-reactive-coroutines-ktor:<version>`과 사용할 데이터베이스용 Vert.x 클라이언트를
+추가합니다. Ktor 3.5를 지원합니다. 이 모듈은 위 Jakarta Data 코루틴 계약을 사용하며 Spring
+Framework 또는 Spring Data 런타임 의존성이 없습니다.
+
+### 플러그인 설정
+
+```kotlin
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByActive(
+        active: Boolean,
+        pageRequest: jakarta.data.page.PageRequest,
+        sort: jakarta.data.Sort<User>,
+    ): jakarta.data.page.Page<User>
+
+    @jakarta.data.repository.Query("FROM User u WHERE u.email = :email")
+    suspend fun findByEmail(email: String): User?
+}
+
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = "postgresql://localhost:5432/mydb"
+            username = "user"
+            password = "password"
+            schemaGeneration = "validate"
+            poolSize = 10
+            property("hibernate.format_sql", true)
+        }
+        entities(User::class)
+        repository<UserRepository, User, Long>()
+    }
+}
+```
+
+`entity`/`entities`와 `repository`는 의도적으로 명시 등록만 지원하며, 플러그인은 전체 클래스패스를
+스캔하지 않습니다. 등록된 프록시는 CRUD, 파생 쿼리, Jakarta Data `@Query`, offset 페이지네이션,
+정렬을 공용 프레임워크 독립 리포지토리 런타임에 위임합니다.
+
+설치 후 다음 애플리케이션 범위 접근자를 사용할 수 있습니다:
+
+```kotlin
+val sessionFactory = application.hibernateSessionFactory
+val sessions = application.hibernateSessionProvider
+val tx = application.hibernateTransactionExecutor
+val users = application.hibernateRepository<UserRepository>()
+```
+
+명시적 트랜잭션 밖에서 실행한 리포지토리 작업은 자체 세션 또는 쓰기 트랜잭션을 엽니다. Hibernate
+Reactive가 해당 데이터베이스 작업을 자체 격리된 Vert.x 컨텍스트에서 예약하므로 Ktor 서버 엔진과
+이벤트 루프를 공유할 필요가 없고, 플러그인은 HTTP 요청 전체를 트랜잭션으로 감싸지 않습니다.
+
+### 명시적 서비스 트랜잭션 경계
+
+여러 작업을 묶는 트랜잭션 경계는 서비스 계층에 둡니다:
+
+```kotlin
+class UserService(
+    private val tx: ReactiveTransactionExecutor,
+    private val users: UserRepository,
+) {
+    suspend fun rename(id: Long, name: String): User = tx.transactional {
+        val user = users.findById(id) ?: error("User not found")
+        user.name = name
+        users.save(user)
+    }
+
+    suspend fun find(id: Long): User? = tx.readOnly {
+        users.findById(id)
+    }
+}
+```
+
+이 블록 안에서 분리된 자식 코루틴을 실행하거나 블로킹/외부 I/O를 수행하지 마세요.
+`transactional` 블록 실패 시 롤백되며, `readOnly` 안에서 리포지토리 쓰기를 시도하면
+`ReadOnlyTransactionException`이 발생합니다.
+
+### 외부 리소스와 소유권
+
+데이터베이스 설정 대신 기존 인프라를 제공할 수 있습니다:
+
+```kotlin
+install(HibernateReactive) {
+    vertx = applicationVertx
+    sessionFactory = applicationSessionFactory
+    closeExternalVertx = false          // 기본값
+    closeExternalSessionFactory = false // 기본값
+
+    entity<User>()
+    repository<UserRepository, User, Long>()
+}
+```
+
+플러그인이 생성한 세션 팩토리와 Vert.x는 Ktor 애플리케이션 종료 시 이 순서로 항상 닫힙니다.
+외부 리소스는 해당 `closeExternal...` 플래그를 켜지 않는 한 보존됩니다. 표준 Hibernate Reactive
+Mutiny 구현에서는 외부 세션 팩토리가 사용하는 Vert.x를 자동으로 찾습니다. `vertx`도 설정했다면
+동일한 인스턴스여야 하며, 확인 가능한 불일치가 있으면 시작이 실패합니다. 커스텀 세션 팩토리 구현이
+Hibernate Reactive의 공개 `Implementor` SPI로 Vert.x를 노출하지 않는다면 일치하는 인스턴스를
+명시하세요.
+
+Ktor DI를 사용하려면 `io.ktor:ktor-server-di`를 추가하고 `dependencyInjection = true`로 설정합니다.
+`HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`, `Vertx`가
+등록됩니다. 세션 팩토리는 별도 DI 값 대신 `HibernateReactiveResources.sessionFactory`로 제공하여
+Ktor DI의 `AutoCloseable` 자동 정리가 위 소유권 규칙을 무시하지 않게 합니다. 기본 플러그인 사용에는
+DI 아티팩트가 필요하지 않습니다.
+
 ## 트랜잭션
 
 ### @Transactional (권장)

@@ -4,7 +4,7 @@
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
-> A **Hibernate Reactive Spring Boot Starter** that brings Spring Data JPA-like convenience to Kotlin Coroutines.
+> Coroutine repositories and transaction primitives for **Hibernate Reactive**, with Spring Boot and Ktor integrations.
 
 **[🇰🇷 한국어 문서](README.ko.md)**
 
@@ -12,13 +12,14 @@
 
 ## What is this?
 
-This library provides a **Spring Boot starter for Hibernate Reactive** with first-class Kotlin Coroutines support. If you're looking for a way to use Hibernate Reactive with Spring Boot while maintaining the familiar Spring Data JPA developer experience, this is it.
+This library provides first-class Kotlin Coroutines support for Hibernate Reactive. Use the Spring Boot starters for Spring Data-style auto-configuration, or the Ktor plugin with the framework-neutral Jakarta Data repository contract.
 
 ### Why use this?
 
 - **Spring Data JPA-like API**: Use familiar patterns like `findByEmail`, `existsByStatus`, and `@Query` annotations
 - **Native Kotlin Coroutines**: All repository methods are `suspend` functions - no `Uni`/`Mono` conversion needed
 - **Spring Boot Auto-configuration**: Just add the starter dependency and start coding
+- **Ktor application plugin**: Explicit registration, application accessors, and resource ownership
 - **Non-blocking Database Access**: Built on Hibernate Reactive and Vert.x for true reactive performance
 
 ## Features
@@ -38,13 +39,15 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 
 - `hibernate-reactive-coroutines-core`: coroutine session and transaction primitives
 - `hibernate-reactive-coroutines-repository`: framework-neutral query/runtime plus a Jakarta Data-facing coroutine repository contract
+- `hibernate-reactive-coroutines-ktor`: Ktor 3 application plugin with explicit entity/repository registration
 - `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 and 4 integrations
 - `hibernate-reactive-coroutines-blockhound`: optional blocking-call detection integration
 
 ## Requirements
 
 - Java 17 or later
-- Spring Boot 3.4.x or 4.x
+- Ktor 3.5.x for the Ktor integration
+- Spring Boot 3.4.x or 4.x for the Spring integrations
 
 > **Hibernate ORM 7 is required.** Hibernate Reactive 4.5 runs on Hibernate ORM 7.4, and this starter
 > publishes that as a dependency constraint. Because Spring Framework 6.x (Spring Boot 3.x) does not
@@ -190,6 +193,52 @@ spring:
         reactive:
           pool-size: 10  # Connection pool size (default: 10)
 ```
+
+## Ktor Quick Start
+
+Add the published Ktor integration and a Vert.x database client:
+
+```kotlin
+dependencies {
+    implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
+    implementation("io.vertx:vertx-pg-client:5.1.5")
+}
+```
+
+Register entities and Jakarta Data coroutine repositories explicitly. The plugin does not scan the
+classpath and does not create a request-wide session or transaction:
+
+```kotlin
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = "postgresql://localhost:5432/mydb"
+            username = "user"
+            password = "password"
+            schemaGeneration = "validate"
+        }
+        entity<User>()
+        repository<UserRepository, User, Long>()
+    }
+
+    routing {
+        post("/users") {
+            val users = hibernateRepository<UserRepository>()
+            val saved = hibernateTransactionExecutor.transactional {
+                users.save(User(name = "Alice", email = "alice@example.com"))
+            }
+            call.respond(saved.id!!)
+        }
+    }
+}
+```
+
+The plugin closes the session factory and Vert.x instances it creates. Externally supplied instances
+are preserved by default; set `closeExternalSessionFactory` or `closeExternalVertx` only when the
+plugin should take ownership. Set `dependencyInjection = true` to publish the resource registry,
+session provider, transaction executor, and Vert.x through the optional `ktor-server-di` module.
+See the [Usage Guide](docs/usage-guide.md#ktor-integration) for external-factory and transaction
+boundary details.
 
 ## Documentation
 

@@ -4,9 +4,9 @@
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
-> Hibernate Reactive를 Spring Data JPA처럼 사용하세요.
+> Hibernate Reactive를 Kotlin Coroutines로 사용하고 Spring Boot와 Ktor에 통합하세요.
 
-Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성을 제공하는 라이브러리입니다.
+Hibernate Reactive에 Kotlin Coroutines를 우선 지원하는 라이브러리입니다. Spring Boot에서는 Spring Data 스타일 자동 설정을, Ktor에서는 프레임워크 독립 Jakarta Data 리포지토리 계약을 제공합니다.
 
 ## 주요 기능
 
@@ -15,6 +15,7 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 - `@Query` 어노테이션으로 스칼라, 집계, 생성자 DTO 프로젝션을 포함한 커스텀 JPQL
 - 페이지네이션 (`Page`, `Slice`, `Pageable`)
 - Spring `@Transactional` 통합
+- 명시적 등록과 리소스 소유권을 제공하는 Ktor 애플리케이션 플러그인
 - Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
 - Vert.x 인스턴스를 Spring 빈으로 소유·공유, WebFlux 서버와의 이벤트 루프 통합(opt-in)
 - 블로킹 호출 탐지: BlockHound 통합 모듈 + Vert.x blocked-thread checker 설정 노출
@@ -25,13 +26,15 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 
 - `hibernate-reactive-coroutines-core`: 코루틴 세션 및 트랜잭션 기본 기능
 - `hibernate-reactive-coroutines-repository`: 프레임워크 독립 쿼리/런타임 및 Jakarta Data 기반 코루틴 리포지토리 계약
+- `hibernate-reactive-coroutines-ktor`: 엔티티/리포지토리 명시 등록을 지원하는 Ktor 3 애플리케이션 플러그인
 - `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 및 4 통합
 - `hibernate-reactive-coroutines-blockhound`: 선택적 블로킹 호출 탐지 통합
 
 ## 요구사항
 
 - Java 17 이상
-- Spring Boot 3.4.x 또는 4.x
+- Ktor 통합 사용 시 Ktor 3.5.x
+- Spring 통합 사용 시 Spring Boot 3.4.x 또는 4.x
 
 > **Hibernate ORM 7이 필요합니다.** Hibernate Reactive 4.5는 Hibernate ORM 7.4 위에서 동작하며,
 > 이 스타터는 해당 버전을 의존성 제약으로 발행합니다. Spring Framework 6.x(Spring Boot 3.x)는
@@ -137,6 +140,52 @@ spring:
         reactive:
           pool-size: 10
 ```
+
+## Ktor 빠른 시작
+
+배포된 Ktor 통합 모듈과 Vert.x 데이터베이스 클라이언트를 추가합니다:
+
+```kotlin
+dependencies {
+    implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
+    implementation("io.vertx:vertx-pg-client:5.1.5")
+}
+```
+
+엔티티와 Jakarta Data 코루틴 리포지토리를 명시적으로 등록합니다. 플러그인은 클래스패스를
+스캔하거나 요청 전체에 세션/트랜잭션을 자동으로 열지 않습니다:
+
+```kotlin
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = "postgresql://localhost:5432/mydb"
+            username = "user"
+            password = "password"
+            schemaGeneration = "validate"
+        }
+        entity<User>()
+        repository<UserRepository, User, Long>()
+    }
+
+    routing {
+        post("/users") {
+            val users = hibernateRepository<UserRepository>()
+            val saved = hibernateTransactionExecutor.transactional {
+                users.save(User(name = "Alice", email = "alice@example.com"))
+            }
+            call.respond(saved.id!!)
+        }
+    }
+}
+```
+
+플러그인이 만든 세션 팩토리와 Vert.x는 애플리케이션 종료 시 닫힙니다. 외부에서 제공한
+인스턴스는 기본적으로 보존되며, 플러그인에 소유권을 넘길 때만
+`closeExternalSessionFactory` 또는 `closeExternalVertx`를 설정하세요.
+`dependencyInjection = true`로 선택적 `ktor-server-di`에 리소스 레지스트리, 세션 프로바이더,
+트랜잭션 실행기와 Vert.x를 등록할 수 있습니다. 외부 세션 팩토리와 트랜잭션 경계에 대한 자세한
+내용은 [사용 가이드](docs/usage-guide.ko.md#ktor-통합)를 참고하세요.
 
 ## 문서
 

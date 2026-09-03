@@ -354,6 +354,115 @@ println("Current page data: ${page.content}")
 | `Page`  |      O      | Display total pages   |
 | `Slice` |      X      | Infinite scroll, "Load more" |
 
+## Ktor Integration
+
+Add `io.clroot:hibernate-reactive-coroutines-ktor:<version>` and the Vert.x client for your database.
+Ktor 3.5 is supported. The module uses the Jakarta Data coroutine contract above and has no Spring
+Framework or Spring Data runtime dependency.
+
+### Plugin configuration
+
+```kotlin
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByActive(
+        active: Boolean,
+        pageRequest: jakarta.data.page.PageRequest,
+        sort: jakarta.data.Sort<User>,
+    ): jakarta.data.page.Page<User>
+
+    @jakarta.data.repository.Query("FROM User u WHERE u.email = :email")
+    suspend fun findByEmail(email: String): User?
+}
+
+fun Application.module() {
+    install(HibernateReactive) {
+        database {
+            url = "postgresql://localhost:5432/mydb"
+            username = "user"
+            password = "password"
+            schemaGeneration = "validate"
+            poolSize = 10
+            property("hibernate.format_sql", true)
+        }
+        entities(User::class)
+        repository<UserRepository, User, Long>()
+    }
+}
+```
+
+`entity`/`entities` and `repository` are explicit by design; the plugin does not scan the whole
+classpath. Registered proxies delegate CRUD, derived queries, Jakarta Data `@Query`, offset
+pagination, and sorting to the shared framework-neutral repository runtime.
+
+The following application-scoped accessors are available after installation:
+
+```kotlin
+val sessionFactory = application.hibernateSessionFactory
+val sessions = application.hibernateSessionProvider
+val tx = application.hibernateTransactionExecutor
+val users = application.hibernateRepository<UserRepository>()
+```
+
+A repository operation made outside an explicit transaction opens its own session or write
+transaction. Hibernate Reactive schedules that database operation on its own isolated Vert.x
+context; Ktor's server engine does not need to share event loops, and the plugin never wraps the
+whole HTTP request.
+
+### Explicit service transaction boundaries
+
+Put multi-operation transaction boundaries in the service layer:
+
+```kotlin
+class UserService(
+    private val tx: ReactiveTransactionExecutor,
+    private val users: UserRepository,
+) {
+    suspend fun rename(id: Long, name: String): User = tx.transactional {
+        val user = users.findById(id) ?: error("User not found")
+        user.name = name
+        users.save(user)
+    }
+
+    suspend fun find(id: Long): User? = tx.readOnly {
+        users.findById(id)
+    }
+}
+```
+
+Do not launch detached child coroutines or perform blocking/external I/O inside these blocks. A
+failed `transactional` block rolls back, while writes attempted through a repository inside
+`readOnly` fail with `ReadOnlyTransactionException`.
+
+### External resources and ownership
+
+You may provide existing infrastructure instead of database settings:
+
+```kotlin
+install(HibernateReactive) {
+    vertx = applicationVertx
+    sessionFactory = applicationSessionFactory
+    closeExternalVertx = false          // default
+    closeExternalSessionFactory = false // default
+
+    entity<User>()
+    repository<UserRepository, User, Long>()
+}
+```
+
+Plugin-created session factories and Vert.x instances are always closed during Ktor application
+shutdown, in that order. Supplied resources are preserved unless their corresponding
+`closeExternal...` flag is enabled. For the standard Hibernate Reactive Mutiny implementation, the
+plugin discovers the Vert.x instance behind an external session factory. If `vertx` is also set, it
+must be that same instance and startup fails on a detectable mismatch. If a custom session-factory
+implementation does not expose Vert.x through Hibernate Reactive's public `Implementor` SPI,
+configure the matching instance explicitly.
+
+Set `dependencyInjection = true` and add `io.ktor:ktor-server-di` to opt into Ktor DI. This publishes
+`HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`, and `Vertx`.
+The session factory remains available as `HibernateReactiveResources.sessionFactory` instead of a
+separate DI value so Ktor DI's automatic `AutoCloseable` cleanup cannot override the ownership rules.
+Basic plugin use does not require the DI artifact.
+
 ## Transactions
 
 ### @Transactional (Recommended)
