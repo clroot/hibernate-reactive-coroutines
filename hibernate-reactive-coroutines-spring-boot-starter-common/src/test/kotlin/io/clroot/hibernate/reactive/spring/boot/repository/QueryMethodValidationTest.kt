@@ -81,12 +81,8 @@ class QueryMethodValidationTest : DescribeSpec({
     }
 
     describe("@Query result types") {
-        it("rejects scalar projections") {
-            val error = shouldThrow<IllegalStateException> {
-                parse("sumAges")
-            }
-
-            error.message shouldContain "only the entity type Member"
+        it("accepts scalar projections") {
+            parse("sumAges").resultClass shouldBe Long::class.javaObjectType
         }
 
         it("accepts entity results") {

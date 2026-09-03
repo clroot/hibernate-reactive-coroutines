@@ -18,6 +18,7 @@ Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입
 | LIKE 검색                            |  ✅  | Containing, StartingWith, EndingWith                  |
 | 비교 연산                            |  ✅  | GreaterThan, LessThan, Between 등                     |
 | `@Query` (JPQL)                      |  ✅  | Named/Positional Parameter                            |
+| `@Query` 스칼라/집계/DTO 반환        |  ✅  | 스칼라와 HQL 생성자 DTO                               |
 | `@Query` (Native)                    |  ✅  | 읽기만 지원, Page는 `countQuery` 필요                 |
 | `@Modifying`                         |  ✅  | JPQL UPDATE/DELETE, `Int`/`Unit`, 선택적 자동 clear   |
 | 페이지네이션 (`Page`, `Slice`)       |  ✅  | 스마트 COUNT 스킵 최적화                              |
@@ -58,7 +59,7 @@ Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입
 | Projection (인터페이스 기반)         | FETCH JOIN 후 Kotlin에서 매핑                               |
 | `@EntityGraph`                       | FETCH JOIN 또는 `fetch()` 메서드                            |
 | Native `@Modifying`                  | JPQL 사용                                                   |
-| `@Query`의 스칼라/집계/DTO 반환      | 엔티티 타입 반환, 또는 `count…`/`exists…` 파생 메서드 사용  |
+| `@Query`의 Tuple/배열 반환           | 스칼라 또는 HQL 생성자 DTO 프로젝션 사용                    |
 | suspend가 아닌(`Flow` 포함) 쿼리 메서드 | `suspend fun … : List<T>` 로 선언                        |
 | 이름과 인자 개수가 같은 오버로드     | 서로 다른 이름 사용                                         |
 | `Top`/`First` + `Pageable` 조합      | 둘 중 하나만 사용                                           |

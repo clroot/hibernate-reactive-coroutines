@@ -133,14 +133,15 @@ internal class QueryOperations<T : Any>(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
         sort: Sort = Sort.unsorted(),
-    ): List<T> {
+    ): List<Any> {
         val hql = applyAnnotatedQuerySort(prepared, sort)
+        val resultClass = annotatedResultClass(prepared)
 
         return sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(hql, entityClass)
+                session.createNativeQuery(hql, resultClass)
             } else {
-                session.createQuery(hql, entityClass)
+                session.createQuery(hql, resultClass)
             }
 
             bindAnnotatedParameters(query, prepared, args)
@@ -151,17 +152,32 @@ internal class QueryOperations<T : Any>(
     suspend fun executeSingleAnnotatedQuery(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
-    ): T? {
+    ): Any? {
+        val resultClass = annotatedResultClass(prepared)
+
         return sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(prepared.hql, entityClass)
+                session.createNativeQuery(prepared.hql, resultClass)
             } else {
-                session.createQuery(prepared.hql, entityClass)
+                session.createQuery(prepared.hql, resultClass)
             }
 
             bindAnnotatedParameters(query, prepared, args)
             query.singleResultOrNull
         }
+    }
+
+    /**
+     * @Query의 선언된 결과 클래스를 typed query에 사용할 형태로 반환합니다.
+     * 엔티티의 상위 타입을 선언한 기존 메서드는 실제 엔티티 클래스를 유지합니다.
+     */
+    @Suppress("UNCHECKED_CAST")
+    internal fun annotatedResultClass(prepared: PreparedQueryMethod): Class<Any> {
+        val declaredClass = checkNotNull(prepared.resultClass) {
+            "Missing result type for @Query method '${prepared.method.name}'"
+        }
+        val queryClass = if (declaredClass.isAssignableFrom(entityClass)) entityClass else declaredClass
+        return queryClass as Class<Any>
     }
 
     // ============================================
