@@ -1,4 +1,4 @@
-package io.clroot.hibernate.reactive.spring.boot.repository.query
+package io.clroot.hibernate.reactive.repository.query
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
@@ -11,7 +11,7 @@ class QueryParameterParserTest : DescribeSpec({
                 "SELECT e FROM User e WHERE e.name = :name " +
                         "AND e.note = ':ignored' /* :alsoIgnored */ OR e.alias = :name",
             ) shouldBe QueryParameters(
-                style = ParameterStyle.NAMED,
+                style = QueryParameterStyle.NAMED,
                 names = listOf("name"),
             )
         }
@@ -20,7 +20,7 @@ class QueryParameterParserTest : DescribeSpec({
             QueryParameterParser.parse(
                 "SELECT e FROM User e WHERE e.first = ?2 AND e.second = ?1",
             ) shouldBe QueryParameters(
-                style = ParameterStyle.POSITIONAL,
+                style = QueryParameterStyle.POSITIONAL,
                 positions = listOf(2, 1),
             )
         }
@@ -29,7 +29,7 @@ class QueryParameterParserTest : DescribeSpec({
             QueryParameterParser.parse(
                 "SELECT created_at::text FROM users WHERE status = :status",
             ) shouldBe QueryParameters(
-                style = ParameterStyle.NAMED,
+                style = QueryParameterStyle.NAMED,
                 names = listOf("status"),
             )
         }
@@ -46,7 +46,7 @@ class QueryParameterParserTest : DescribeSpec({
             QueryParameterParser.parse(
                 "SELECT foo\$tag\$bar FROM users WHERE status = :status",
             ) shouldBe QueryParameters(
-                style = ParameterStyle.NAMED,
+                style = QueryParameterStyle.NAMED,
                 names = listOf("status"),
             )
         }

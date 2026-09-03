@@ -1,16 +1,21 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
+import io.clroot.hibernate.reactive.repository.query.QueryParameters
+import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
+import io.clroot.hibernate.reactive.repository.query.QueryStatementType
+import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryHqlCompiler
+import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
+import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
+import io.clroot.hibernate.reactive.repository.query.derived.QuerySubject
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Param
+import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterBinder
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
-import io.clroot.hibernate.reactive.spring.boot.repository.query.PartTreeHqlBuilder
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameterParser
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryStatementType
 import jakarta.persistence.Tuple
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -29,7 +34,7 @@ import kotlin.reflect.jvm.kotlinFunction
 /**
  * Repository 인터페이스의 쿼리 메서드를 파싱하여 [PreparedQueryMethod]를 생성하는 파서.
  *
- * @Query 어노테이션 메서드와 PartTree 기반 메서드 모두 처리합니다.
+ * @Query 어노테이션 메서드와 메서드명 기반 파생 쿼리를 모두 처리합니다.
  *
  * @param entityClass 엔티티 클래스
  */
@@ -61,7 +66,7 @@ internal class QueryMethodParser(
         return if (queryAnnotation != null) {
             parseAnnotatedQueryMethod(method, queryAnnotation)
         } else {
-            parsePartTreeMethod(method)
+            parseDerivedQueryMethod(method)
         }
     }
 
@@ -129,7 +134,7 @@ internal class QueryMethodParser(
         val queryParameters = QueryParameterParser.parse(query)
         val countParameters = countHql
             ?.let(QueryParameterParser::parse)
-            ?: QueryParameters(ParameterStyle.NONE)
+            ?: QueryParameters(QueryParameterStyle.NONE)
         val argumentNames = extractParameterNames(method)
         validateQueryParameters(method, queryParameters, countParameters, argumentNames)
 
@@ -143,7 +148,7 @@ internal class QueryMethodParser(
             isAnnotatedQuery = true,
             isNativeQuery = queryAnnotation.nativeQuery,
             isModifying = isModifying,
-            parameterStyle = queryParameters.style,
+            parameterStyle = queryParameters.style.toSpringParameterStyle(),
             parameterNames = argumentNames,
         )
         validateAnnotatedResultType(prepared)
@@ -215,15 +220,17 @@ internal class QueryMethodParser(
     }
 
     // ============================================
-    // PartTree 기반 메서드 파싱
+    // 메서드명 기반 파생 쿼리 파싱
     // ============================================
 
-    private fun parsePartTreeMethod(method: Method): PreparedQueryMethod {
+    private fun parseDerivedQueryMethod(method: Method): PreparedQueryMethod {
         val hasPageable = hasPageableParameter(method)
-        val hasSort = hasSortParameter(method)
 
+        // Parse with PartTree first to preserve Spring-facing validation exceptions and retain the
+        // public compatibility value. Query generation uses only the neutral representation below.
         val partTree = PartTree(method.name, entityClass)
-        val returnType = determinePartTreeReturnType(method, partTree)
+        val derivedQuery = DerivedQueryParser.parse(method.name, entityClass)
+        val returnType = determineDerivedQueryReturnType(method, derivedQuery.subject)
 
         if ((returnType == QueryReturnType.PAGE || returnType == QueryReturnType.SLICE) && !hasPageable) {
             throw IllegalStateException(
@@ -231,7 +238,7 @@ internal class QueryMethodParser(
             )
         }
 
-        val maxResults = partTree.maxResults
+        val maxResults = derivedQuery.limit
         if (maxResults != null && hasPageable) {
             throw IllegalStateException(
                 "Method '${method.name}' combines a Top/First limit with a Pageable parameter, " +
@@ -239,23 +246,20 @@ internal class QueryMethodParser(
             )
         }
 
-        val builder = PartTreeHqlBuilder(entityName, partTree)
-        val buildResult = if (hasPageable || hasSort) {
-            builder.buildWithSort(null)
-        } else {
-            builder.build()
-        }
+        val compiler = DerivedQueryHqlCompiler(entityName)
+        val compiled = compiler.compile(derivedQuery)
+        val parameterBinders = compiled.parameterBindings.map(ParameterBinding::toSpringBinder)
 
         val declaredArgumentCount = queryArgumentCount(method)
-        if (buildResult.parameterBinders.size != declaredArgumentCount) {
+        if (parameterBinders.size != declaredArgumentCount) {
             throw IllegalStateException(
-                "Method '${method.name}' derives ${buildResult.parameterBinders.size} query parameter(s) " +
+                "Method '${method.name}' derives ${parameterBinders.size} query parameter(s) " +
                         "from its name but declares $declaredArgumentCount argument(s)",
             )
         }
 
         val countHql = if (returnType == QueryReturnType.PAGE) {
-            builder.buildCountHql()
+            compiler.compileCount(derivedQuery).hql
         } else {
             null
         }
@@ -263,9 +267,9 @@ internal class QueryMethodParser(
         return PreparedQueryMethod(
             method = method,
             partTree = partTree,
-            hql = buildResult.hql,
+            hql = compiled.hql,
             countHql = countHql,
-            parameterBinders = buildResult.parameterBinders,
+            parameterBinders = parameterBinders,
             returnType = returnType,
             isAnnotatedQuery = false,
             isNativeQuery = false,
@@ -276,17 +280,18 @@ internal class QueryMethodParser(
         )
     }
 
-    private fun determinePartTreeReturnType(method: Method, partTree: PartTree): QueryReturnType {
-        return when {
-            partTree.isExistsProjection -> QueryReturnType.BOOLEAN
-            partTree.isCountProjection -> QueryReturnType.LONG
-            partTree.isDelete -> determineDeleteReturnType(method)
-            isPageReturnType(method) -> QueryReturnType.PAGE
-            isSliceReturnType(method) -> QueryReturnType.SLICE
-            isListReturnType(method) -> QueryReturnType.LIST
-            else -> QueryReturnType.SINGLE
+    private fun determineDerivedQueryReturnType(method: Method, subject: QuerySubject): QueryReturnType =
+        when (subject) {
+            QuerySubject.EXISTS -> QueryReturnType.BOOLEAN
+            QuerySubject.COUNT -> QueryReturnType.LONG
+            QuerySubject.DELETE -> determineDeleteReturnType(method)
+            QuerySubject.FIND -> when {
+                isPageReturnType(method) -> QueryReturnType.PAGE
+                isSliceReturnType(method) -> QueryReturnType.SLICE
+                isListReturnType(method) -> QueryReturnType.LIST
+                else -> QueryReturnType.SINGLE
+            }
         }
-    }
 
     /**
      * 파생 `deleteBy...` 메서드의 반환 타입을 결정합니다.
@@ -327,7 +332,7 @@ internal class QueryMethodParser(
             )
         }
 
-        if (query.style != ParameterStyle.NONE && count.style != ParameterStyle.NONE &&
+        if (query.style != QueryParameterStyle.NONE && count.style != QueryParameterStyle.NONE &&
             query.style != count.style
         ) {
             throw IllegalStateException(
@@ -432,13 +437,6 @@ internal class QueryMethodParser(
         return Pageable::class.java.isAssignableFrom(params[lastNonContinuationIndex])
     }
 
-    private fun hasSortParameter(method: Method): Boolean {
-        val params = method.parameterTypes
-        val lastNonContinuationIndex = params.size - 2
-        if (lastNonContinuationIndex < 0) return false
-        return Sort::class.java.isAssignableFrom(params[lastNonContinuationIndex])
-    }
-
     // ============================================
     // 반환 타입 분석
     // ============================================
@@ -498,4 +496,19 @@ internal class QueryMethodParser(
         }
     }
 
+}
+
+private fun ParameterBinding.toSpringBinder(): ParameterBinder = when (this) {
+    ParameterBinding.DIRECT -> ParameterBinder.Direct
+    ParameterBinding.CONTAINING -> ParameterBinder.Containing
+    ParameterBinding.STARTING_WITH -> ParameterBinder.StartingWith
+    ParameterBinding.ENDING_WITH -> ParameterBinder.EndingWith
+    ParameterBinding.IN_COLLECTION -> ParameterBinder.InCollection
+    ParameterBinding.NOT_IN_COLLECTION -> ParameterBinder.NotInCollection
+}
+
+private fun QueryParameterStyle.toSpringParameterStyle(): ParameterStyle = when (this) {
+    QueryParameterStyle.NAMED -> ParameterStyle.NAMED
+    QueryParameterStyle.POSITIONAL -> ParameterStyle.POSITIONAL
+    QueryParameterStyle.NONE -> ParameterStyle.NONE
 }

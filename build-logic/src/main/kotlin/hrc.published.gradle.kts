@@ -42,7 +42,10 @@ publishing {
 
             pom {
                 name = project.name
-                description = "Spring Data JPA-like convenience for Hibernate Reactive + Kotlin Coroutines"
+                description.set(project.providers.provider {
+                    project.description
+                        ?: "Spring Data JPA-like convenience for Hibernate Reactive + Kotlin Coroutines"
+                })
                 url = "https://github.com/clroot/hibernate-reactive-coroutines"
 
                 licenses {

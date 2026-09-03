@@ -1,4 +1,4 @@
-package io.clroot.hibernate.reactive.spring.boot.repository.query
+package io.clroot.hibernate.reactive.repository.query
 
 import java.util.Locale
 
@@ -9,7 +9,7 @@ import java.util.Locale
  * 별칭을 확신할 수 없으면 null을 반환하여 호출자가 정렬을 조용히 무시하는 대신
  * 명확히 실패하도록 합니다.
  */
-internal object QueryAliasResolver {
+public object QueryAliasResolver {
 
     private const val IDENTIFIER = "[\\p{L}_$][\\p{L}\\p{N}_$]*"
 
@@ -34,7 +34,7 @@ internal object QueryAliasResolver {
     /**
      * 루트 별칭을 반환합니다. 판별할 수 없으면 null을 반환합니다.
      */
-    fun resolve(query: String): String? {
+    public fun resolve(query: String): String? {
         val normalizedQuery = query.trim()
 
         SELECTED_ALIAS.find(normalizedQuery)

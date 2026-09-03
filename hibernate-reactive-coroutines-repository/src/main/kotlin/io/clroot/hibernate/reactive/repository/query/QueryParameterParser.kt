@@ -1,12 +1,12 @@
-package io.clroot.hibernate.reactive.spring.boot.repository.query
+package io.clroot.hibernate.reactive.repository.query
 
-internal data class QueryParameters(
-    val style: ParameterStyle,
-    val names: List<String> = emptyList(),
-    val positions: List<Int> = emptyList(),
+public data class QueryParameters(
+    public val style: QueryParameterStyle,
+    public val names: List<String> = emptyList(),
+    public val positions: List<Int> = emptyList(),
 )
 
-internal object QueryParameterParser {
+public object QueryParameterParser {
     private enum class State {
         DEFAULT,
         SINGLE_QUOTE,
@@ -15,7 +15,7 @@ internal object QueryParameterParser {
         BLOCK_COMMENT,
     }
 
-    fun parse(query: String): QueryParameters {
+    public fun parse(query: String): QueryParameters {
         val names = linkedSetOf<String>()
         val positions = linkedSetOf<Int>()
         var state = State.DEFAULT
@@ -131,9 +131,9 @@ internal object QueryParameterParser {
         }
 
         return when {
-            names.isNotEmpty() -> QueryParameters(ParameterStyle.NAMED, names = names.toList())
-            positions.isNotEmpty() -> QueryParameters(ParameterStyle.POSITIONAL, positions = positions.toList())
-            else -> QueryParameters(ParameterStyle.NONE)
+            names.isNotEmpty() -> QueryParameters(QueryParameterStyle.NAMED, names = names.toList())
+            positions.isNotEmpty() -> QueryParameters(QueryParameterStyle.POSITIONAL, positions = positions.toList())
+            else -> QueryParameters(QueryParameterStyle.NONE)
         }
     }
 

@@ -34,6 +34,13 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 
 **Spring Data JPA feature coverage: ~85-90%** — See [Migration Guide](docs/migration.md) for details.
 
+## Modules
+
+- `hibernate-reactive-coroutines-core`: coroutine session and transaction primitives
+- `hibernate-reactive-coroutines-repository`: framework-neutral query AST, method-name parser, and HQL compiler
+- `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 and 4 integrations
+- `hibernate-reactive-coroutines-blockhound`: optional blocking-call detection integration
+
 ## Requirements
 
 - Java 17 or later

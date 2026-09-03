@@ -1,4 +1,4 @@
-package io.clroot.hibernate.reactive.spring.boot.repository.query
+package io.clroot.hibernate.reactive.repository.query
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec

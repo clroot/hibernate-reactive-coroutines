@@ -1,0 +1,240 @@
+public final class io/clroot/hibernate/reactive/repository/query/CountQueryDeriver {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/CountQueryDeriver;
+	public final fun derive (Ljava/lang/String;)Ljava/lang/String;
+	public final fun hasOrderBy (Ljava/lang/String;)Z
+	public final fun statementType (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryAliasResolver {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryAliasResolver;
+	public final fun resolve (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryParameterParser {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryParameterParser;
+	public final fun parse (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryParameters;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryParameterStyle : java/lang/Enum {
+	public static final field NAMED Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public static final field NONE Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public static final field POSITIONAL Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryParameters {
+	public fun <init> (Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;Ljava/util/List;Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/query/QueryParameters;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/QueryParameters;Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/QueryParameters;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getNames ()Ljava/util/List;
+	public final fun getPositions ()Ljava/util/List;
+	public final fun getStyle ()Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryPropertyPathValidator {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryPropertyPathValidator;
+	public final fun isSafe (Ljava/lang/String;)Z
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/QueryStatementType : java/lang/Enum {
+	public static final field MODIFYING Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+	public static final field SELECT Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+	public static final field UNKNOWN Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/QueryStatementType;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/CompiledQuery {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHql ()Ljava/lang/String;
+	public final fun getParameterBindings ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/Conjunction {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/query/derived/Conjunction;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/Conjunction;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/Conjunction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPredicates ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/DerivedQuery {
+	public fun <init> (Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;ZLio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;Ljava/util/List;Ljava/lang/Integer;)V
+	public final fun component1 ()Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public final fun component2 ()Z
+	public final fun component3 ()Lio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;ZLio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;Ljava/util/List;Ljava/lang/Integer;)Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;ZLio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;Ljava/util/List;Ljava/lang/Integer;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDistinct ()Z
+	public final fun getLimit ()Ljava/lang/Integer;
+	public final fun getOrderBy ()Ljava/util/List;
+	public final fun getPredicate ()Lio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;
+	public final fun getSubject ()Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/DerivedQueryHqlCompiler {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun compile (Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;
+	public static synthetic fun compile$default (Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQueryHqlCompiler;Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;
+	public final fun compileCount (Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;)Lio/clroot/hibernate/reactive/repository/query/derived/CompiledQuery;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/DerivedQueryParser {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQueryParser;
+	public final fun parse (Ljava/lang/String;Ljava/lang/Class;)Lio/clroot/hibernate/reactive/repository/query/derived/DerivedQuery;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode : java/lang/Enum {
+	public static final field ALWAYS Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public static final field NEVER Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public static final field WHEN_POSSIBLE Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/ParameterBinding : java/lang/Enum {
+	public static final field CONTAINING Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static final field DIRECT Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static final field ENDING_WITH Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static final field IN_COLLECTION Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static final field NOT_IN_COLLECTION Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static final field STARTING_WITH Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public final fun bind (Ljava/lang/Object;)Ljava/lang/Object;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/derived/ParameterBinding;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/PredicateGroup {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;Ljava/util/List;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/PredicateGroup;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDisjuncts ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/PredicateOperator : java/lang/Enum {
+	public static final field AFTER Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field BEFORE Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field BETWEEN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field CONTAINING Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field ENDING_WITH Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field EQUALS Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field EXISTS Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field FALSE Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field GREATER_THAN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field GREATER_THAN_EQUAL Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field IN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field IS_EMPTY Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field IS_NOT_EMPTY Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field IS_NOT_NULL Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field IS_NULL Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field LESS_THAN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field LESS_THAN_EQUAL Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field LIKE Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field NEAR Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field NOT_CONTAINING Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field NOT_EQUALS Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field NOT_IN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field NOT_LIKE Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field REGEX Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field STARTING_WITH Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field TRUE Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static final field WITHIN Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public final fun getArgumentCount ()I
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/PropertyPath {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Class;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/Class;
+	public final fun copy (Ljava/lang/String;Ljava/lang/Class;)Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;Ljava/lang/String;Ljava/lang/Class;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLeafType ()Ljava/lang/Class;
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/QueryOrder {
+	public fun <init> (Ljava/lang/String;Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;Z)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+	public final fun component3 ()Z
+	public final fun copy (Ljava/lang/String;Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;Z)Lio/clroot/hibernate/reactive/repository/query/derived/QueryOrder;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/QueryOrder;Ljava/lang/String;Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;ZILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/QueryOrder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDirection ()Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+	public final fun getIgnoreCase ()Z
+	public final fun getProperty ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/QueryPredicate {
+	public fun <init> (Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;)V
+	public final fun component1 ()Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;
+	public final fun component2 ()Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public final fun component3 ()Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public final fun copy (Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;)Lio/clroot/hibernate/reactive/repository/query/derived/QueryPredicate;
+	public static synthetic fun copy$default (Lio/clroot/hibernate/reactive/repository/query/derived/QueryPredicate;Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/query/derived/QueryPredicate;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIgnoreCase ()Lio/clroot/hibernate/reactive/repository/query/derived/IgnoreCaseMode;
+	public final fun getOperator ()Lio/clroot/hibernate/reactive/repository/query/derived/PredicateOperator;
+	public final fun getProperty ()Lio/clroot/hibernate/reactive/repository/query/derived/PropertyPath;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/QuerySubject : java/lang/Enum {
+	public static final field COUNT Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public static final field DELETE Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public static final field EXISTS Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public static final field FIND Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/derived/QuerySubject;
+}
+
+public final class io/clroot/hibernate/reactive/repository/query/derived/SortDirection : java/lang/Enum {
+	public static final field ASC Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+	public static final field DESC Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+	public static fun values ()[Lio/clroot/hibernate/reactive/repository/query/derived/SortDirection;
+}
+
