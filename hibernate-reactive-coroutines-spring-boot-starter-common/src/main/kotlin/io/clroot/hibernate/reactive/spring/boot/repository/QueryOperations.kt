@@ -1,11 +1,12 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.QueryAliasResolver
+import io.clroot.hibernate.reactive.repository.query.QueryPropertyPathValidator
+import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Modifying
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterStyle
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryAliasResolver
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
-import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryConstants.ORDER_BY_REGEX
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
 import jakarta.persistence.metamodel.Attribute
@@ -21,7 +22,7 @@ import org.springframework.data.domain.Sort
 /**
  * 쿼리 실행을 담당하는 내부 헬퍼 클래스.
  *
- * PartTree 기반 쿼리와 @Query 어노테이션 쿼리의 실행을 처리합니다.
+ * 메서드명 기반 파생 쿼리와 @Query 어노테이션 쿼리의 실행을 처리합니다.
  * 페이징 관련 쿼리는 PaginationOperations에서 처리합니다.
  *
  * @param T 엔티티 타입
@@ -31,12 +32,9 @@ internal class QueryOperations<T : Any>(
     private val sessionProvider: TransactionalAwareSessionProvider,
     private val metamodel: Metamodel? = null,
 ) {
-    companion object {
-        private val VALID_SORT_PATH = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
-    }
 
     // ============================================
-    // PartTree 쿼리 실행
+    // 파생 쿼리 실행
     // ============================================
 
     suspend fun executeSingleQuery(hql: String, args: List<Any?>, maxResults: Int? = null): T? =
@@ -319,7 +317,7 @@ internal class QueryOperations<T : Any>(
         return sort.map { order ->
             val direction = if (order.isAscending) "ASC" else "DESC"
             val segments = order.property.split('.')
-            require(VALID_SORT_PATH.matches(order.property) && "class" !in segments) {
+            require(QueryPropertyPathValidator.isSafe(order.property)) {
                 "Invalid sort property"
             }
 

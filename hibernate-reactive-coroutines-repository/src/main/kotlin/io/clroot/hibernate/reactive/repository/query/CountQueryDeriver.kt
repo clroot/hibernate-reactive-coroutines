@@ -1,14 +1,14 @@
-package io.clroot.hibernate.reactive.spring.boot.repository.query
+package io.clroot.hibernate.reactive.repository.query
 
 import java.util.Locale
 
-internal enum class QueryStatementType {
+public enum class QueryStatementType {
     SELECT,
     MODIFYING,
     UNKNOWN,
 }
 
-internal object CountQueryDeriver {
+public object CountQueryDeriver {
     private val selectClauseRegex = Regex(
         "^SELECT\\s+(?:(DISTINCT)\\s+)?(.+?)\\s+FROM\\s+",
         setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
@@ -69,7 +69,7 @@ internal object CountQueryDeriver {
         BLOCK_COMMENT,
     }
 
-    fun derive(query: String): String {
+    public fun derive(query: String): String {
         val normalized = query.trim()
         val scan = scan(normalized)
         val tokens = scan.tokens
@@ -186,13 +186,13 @@ internal object CountQueryDeriver {
      *
      * 문자열 리터럴과 주석 안의 키워드는 [scan]이 걸러내므로 오탐이 없습니다.
      */
-    fun hasOrderBy(query: String): Boolean =
+    public fun hasOrderBy(query: String): Boolean =
         scan(query).tokens.findSequence(query, "ORDER", "BY") != null
 
     /**
      * Finds the executable top-level statement while ignoring leading block comments and CTE bodies.
      */
-    fun statementType(query: String): QueryStatementType {
+    public fun statementType(query: String): QueryStatementType {
         val tokens = scan(query.trim()).tokens.filterNot { it.qualified }
         val first = tokens.firstOrNull() ?: return QueryStatementType.UNKNOWN
         val statement = if (first.value == "WITH") {

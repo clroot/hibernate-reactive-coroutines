@@ -1,12 +1,10 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.query.PartTreeHqlBuilder
 import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import org.springframework.data.repository.query.parser.PartTree
 
 /**
  * 예전에는 시작 시점을 통과한 뒤 런타임에 조용히 오동작하던 선언들이
@@ -21,25 +19,21 @@ class QueryMethodValidationTest : DescribeSpec({
 
     describe("IgnoreCase") {
         it("compares both sides in lower case") {
-            val partTree = PartTree("findByName", Member::class.java)
-            PartTreeHqlBuilder("Member", PartTree("findByNameIgnoreCase", Member::class.java))
-                .build()
-                .hql shouldBe "FROM Member e WHERE LOWER(e.name) = LOWER(:p0)"
+            parse("findByNameIgnoreCase").hql shouldBe
+                "FROM Member e WHERE LOWER(e.name) = LOWER(:p0)"
 
             // 대조군: IgnoreCase가 없으면 그대로 비교합니다.
-            PartTreeHqlBuilder("Member", partTree).build().hql shouldBe
-                    "FROM Member e WHERE e.name = :p0"
+            parse("findByName").hql shouldBe "FROM Member e WHERE e.name = :p0"
         }
 
         it("applies to LIKE conditions as well") {
-            PartTreeHqlBuilder("Member", PartTree("findByNameContainingIgnoreCase", Member::class.java))
-                .build()
-                .hql shouldBe "FROM Member e WHERE LOWER(e.name) LIKE LOWER(:p0) ESCAPE '\\'"
+            parse("findByNameContainingIgnoreCase").hql shouldBe
+                "FROM Member e WHERE LOWER(e.name) LIKE LOWER(:p0) ESCAPE '\\'"
         }
 
         it("rejects IgnoreCase on a non-String property") {
             val error = shouldThrow<IllegalStateException> {
-                PartTreeHqlBuilder("Member", PartTree("findByAgeIgnoreCase", Member::class.java)).build()
+                parse("findByAgeIgnoreCase")
             }
 
             error.message shouldContain "non-String property"
@@ -48,9 +42,8 @@ class QueryMethodValidationTest : DescribeSpec({
 
     describe("Distinct") {
         it("emits SELECT DISTINCT") {
-            PartTreeHqlBuilder("Member", PartTree("findDistinctByName", Member::class.java))
-                .build()
-                .hql shouldBe "SELECT DISTINCT e FROM Member e WHERE e.name = :p0"
+            parse("findDistinctByName").hql shouldBe
+                "SELECT DISTINCT e FROM Member e WHERE e.name = :p0"
         }
     }
 
@@ -107,6 +100,14 @@ private class Member(
 
 private interface MemberRepository {
     suspend fun findByName(name: String): Member?
+
+    suspend fun findByNameIgnoreCase(name: String): Member?
+
+    suspend fun findByNameContainingIgnoreCase(name: String): List<Member>
+
+    suspend fun findByAgeIgnoreCase(age: Int): Member?
+
+    suspend fun findDistinctByName(name: String): List<Member>
 
     suspend fun findTop3ByOrderByAgeDesc(): List<Member>
 

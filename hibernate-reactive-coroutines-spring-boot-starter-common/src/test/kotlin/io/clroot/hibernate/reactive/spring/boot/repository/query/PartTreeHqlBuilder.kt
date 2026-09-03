@@ -6,10 +6,10 @@ import org.springframework.data.repository.query.parser.Part
 import org.springframework.data.repository.query.parser.PartTree
 
 /**
- * PartTree를 HQL 쿼리로 변환하는 빌더.
+ * Issue #54 이전 동작을 고정한 테스트 전용 parity oracle.
  *
- * Spring Data Commons의 PartTree를 순회하며 Hibernate HQL을 생성합니다.
- * 각 조건 타입의 HQL 생성은 [ConditionBuilderRegistry]에 위임합니다.
+ * 프로덕션 쿼리 생성에는 사용하지 않습니다. 이 구현의 변경은 기존 Spring-facing 쿼리
+ * 동작을 의도적으로 변경할 때만 허용하여 새 중립 컴파일러의 회귀를 탐지합니다.
  */
 internal class PartTreeHqlBuilder(
     private val entityName: String,

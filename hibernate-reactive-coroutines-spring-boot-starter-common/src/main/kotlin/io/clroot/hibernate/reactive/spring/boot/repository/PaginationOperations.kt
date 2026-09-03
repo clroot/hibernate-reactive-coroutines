@@ -60,7 +60,7 @@ internal class PaginationOperations<T : Any>(
     }
 
     // ============================================
-    // PartTree 기반 Page/Slice 쿼리
+    // 파생 Page/Slice 쿼리
     // ============================================
 
     /**

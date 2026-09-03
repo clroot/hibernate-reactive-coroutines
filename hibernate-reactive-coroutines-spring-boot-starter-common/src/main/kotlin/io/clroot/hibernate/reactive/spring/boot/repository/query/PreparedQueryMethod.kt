@@ -1,5 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
+import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
+import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import kotlin.coroutines.Continuation
 import org.springframework.data.repository.query.parser.PartTree
 import java.lang.reflect.Method
@@ -10,10 +12,10 @@ import java.lang.reflect.WildcardType
 /**
  * 애플리케이션 시작 시 파싱된 쿼리 메서드 정보.
  *
- * PartTree 파싱 결과와 생성된 HQL을 캐싱하여 런타임 오버헤드를 제거합니다.
+ * 파생 쿼리 파싱 결과와 생성된 HQL을 캐싱하여 런타임 오버헤드를 제거합니다.
  *
  * @param method 원본 메서드
- * @param partTree 파싱된 PartTree (@Query 메서드면 null)
+ * @param partTree 호환성을 위해 보존된 PartTree (@Query 메서드면 null)
  * @param hql 생성된 HQL 쿼리 또는 @Query의 쿼리
  * @param countHql Page 반환 타입일 때 사용할 COUNT HQL (null이면 COUNT 불필요)
  * @param parameterBinders 파라미터별 바인더 (LIKE 패턴 변환 등, @Query면 빈 리스트)
@@ -40,12 +42,13 @@ public data class PreparedQueryMethod(
     val maxResults: Int? = null,
 ) {
     internal val annotatedParameters: QueryParameters by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        QueryParameterParser.parse(hql)
+        QueryParameterParser.parse(hql).toSpringParameters()
     }
 
     internal val countAnnotatedParameters: QueryParameters by lazy(LazyThreadSafetyMode.PUBLICATION) {
         countHql
             ?.let(QueryParameterParser::parse)
+            ?.toSpringParameters()
             ?: QueryParameters(ParameterStyle.NONE)
     }
 
@@ -99,3 +102,20 @@ private val RESULT_BEARING_TYPES = setOf(
     QueryReturnType.PAGE,
     QueryReturnType.SLICE,
 )
+
+internal data class QueryParameters(
+    val style: ParameterStyle,
+    val names: List<String> = emptyList(),
+    val positions: List<Int> = emptyList(),
+)
+
+private fun io.clroot.hibernate.reactive.repository.query.QueryParameters.toSpringParameters(): QueryParameters =
+    QueryParameters(
+        style = when (style) {
+            QueryParameterStyle.NAMED -> ParameterStyle.NAMED
+            QueryParameterStyle.POSITIONAL -> ParameterStyle.POSITIONAL
+            QueryParameterStyle.NONE -> ParameterStyle.NONE
+        },
+        names = names,
+        positions = positions,
+    )

@@ -53,6 +53,7 @@ tasks.named("check") {
 
 dependencies {
     api(project(":hibernate-reactive-coroutines-core"))
+    api(project(":hibernate-reactive-coroutines-repository"))
     constraints {
         // Keep the Hibernate Reactive stack ahead of whatever the Spring Boot platform pins.
         api(lib("hibernate-orm-core"))

@@ -22,7 +22,7 @@ import kotlin.coroutines.startCoroutine
  *
  * 실제 작업은 내부 헬퍼 클래스들에게 위임합니다:
  * - [CrudOperations]: 기본 CRUD 작업 (save, find, delete, count)
- * - [QueryOperations]: 쿼리 실행 (PartTree, @Query)
+ * - [QueryOperations]: 쿼리 실행 (파생 쿼리, @Query)
  * - [PaginationOperations]: 페이징 쿼리 (Page, Slice)
  * - [MethodSuggestionHelper]: 유사 메서드 추천
  *
@@ -202,7 +202,7 @@ public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
             return executeAnnotatedQuery(prepared, queryArgs, pageable, sort)
         }
 
-        // PartTree 기반 쿼리 처리
+        // 메서드명 기반 파생 쿼리 처리
         val boundArgs = queryArgs.mapIndexed { index, arg ->
             prepared.parameterBinders.getOrNull(index)?.bind(arg) ?: arg
         }
