@@ -175,7 +175,7 @@ private fun createRepositories(
     config: HibernateReactiveConfiguration,
     sessionProvider: ReactiveSessionProvider,
     sessionFactory: Mutiny.SessionFactory,
-): Map<Class<*>, Any> {
+): Map<Class<*>, RegisteredRepository> {
     if (config.repositoryRegistrations.isEmpty()) return emptyMap()
 
     val factory = JakartaDataRepositoryFactory(
@@ -183,7 +183,10 @@ private fun createRepositories(
         metamodel = sessionFactory.metamodel,
     )
     return config.repositoryRegistrations.values.associate { registration ->
-        registration.repositoryInterface to createRepository(factory, registration)
+        registration.repositoryInterface to RegisteredRepository(
+            type = registration.repositoryType,
+            instance = createRepository(factory, registration),
+        )
     }
 }
 

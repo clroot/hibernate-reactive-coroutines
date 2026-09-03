@@ -7,6 +7,7 @@ public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveConfigurat
 	public final fun getDependencyInjection ()Z
 	public final fun getSessionFactory ()Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;
 	public final fun getVertx ()Lio/vertx/core/Vertx;
+	public final synthetic fun registerRepository (Lkotlin/reflect/KClass;Lio/ktor/util/reflect/TypeInfo;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;)V
 	public final fun repository (Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;)V
 	public static synthetic fun repository$default (Lio/clroot/hibernate/reactive/ktor/HibernateReactiveConfiguration;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;ILjava/lang/Object;)V
 	public final fun setCloseExternalSessionFactory (Z)V

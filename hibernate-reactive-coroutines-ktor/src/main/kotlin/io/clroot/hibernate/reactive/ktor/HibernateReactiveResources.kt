@@ -4,6 +4,7 @@ import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.ktor.server.application.Application
 import io.ktor.util.AttributeKey
+import io.ktor.util.reflect.TypeInfo
 import io.vertx.core.Vertx
 import org.hibernate.reactive.mutiny.Mutiny
 import java.util.concurrent.TimeUnit
@@ -20,7 +21,7 @@ public class HibernateReactiveResources internal constructor(
     public val transactionExecutor: ReactiveTransactionExecutor,
     /** Vert.x instance used by Hibernate Reactive. */
     public val vertx: Vertx,
-    internal val repositories: Map<Class<*>, Any>,
+    internal val repositories: Map<Class<*>, RegisteredRepository>,
     private val closeSessionFactory: Boolean,
     private val closeVertx: Boolean,
 ) {
@@ -33,7 +34,7 @@ public class HibernateReactiveResources internal constructor(
     /** Returns the singleton proxy registered for [repositoryInterface]. */
     @Suppress("UNCHECKED_CAST")
     public fun <R : Any> repository(repositoryInterface: Class<R>): R =
-        repositories[repositoryInterface] as? R
+        repositories[repositoryInterface]?.instance as? R
             ?: throw IllegalArgumentException(
                 "Repository is not registered: ${repositoryInterface.name}",
             )
@@ -62,6 +63,11 @@ public class HibernateReactiveResources internal constructor(
         failure?.let { throw it }
     }
 }
+
+internal data class RegisteredRepository(
+    val type: TypeInfo,
+    val instance: Any,
+)
 
 internal fun Vertx.closeBlocking() {
     close()

@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.ktor
 
+import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
 import io.kotest.assertions.throwables.shouldThrow
@@ -14,6 +15,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import io.ktor.util.reflect.typeInfo
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.just
@@ -131,6 +133,45 @@ class HibernateReactivePluginTest : DescribeSpec({
             configuration.entityClasses shouldBe setOf(UnregisteredEntity::class.java)
         }
 
+        it("publishes generic repositories to Ktor dependency injection") {
+            val sessionFactory = mockk<Mutiny.SessionFactory>(relaxed = true)
+            val repository = mockk<GenericRepository<UnregisteredEntity>>()
+            val configuration = HibernateReactiveConfiguration().apply {
+                repository<GenericRepository<UnregisteredEntity>, UnregisteredEntity, Long>()
+            }
+            val repositoryType = configuration.repositoryRegistrations
+                .getValue(GenericRepository::class.java)
+                .repositoryType
+            repositoryType shouldBe typeInfo<GenericRepository<UnregisteredEntity>>()
+
+            val vertx = Vertx.vertx()
+            val resources = HibernateReactiveResources(
+                sessionFactory = sessionFactory,
+                sessionProvider = ReactiveSessionProvider(sessionFactory),
+                transactionExecutor = ReactiveTransactionExecutor(sessionFactory),
+                vertx = vertx,
+                repositories = mapOf(
+                    GenericRepository::class.java to RegisteredRepository(repositoryType, repository),
+                ),
+                closeSessionFactory = false,
+                closeVertx = false,
+            )
+
+            try {
+                testApplication {
+                    application {
+                        KtorDependencyInjectionBridge.install(this, resources)
+
+                        val injectedRepository: GenericRepository<UnregisteredEntity> by dependencies
+                        injectedRepository shouldBe repository
+                    }
+                    startApplication()
+                }
+            } finally {
+                vertx.close().toCompletionStage().toCompletableFuture().join()
+            }
+        }
+
         it("optionally publishes infrastructure to Ktor dependency injection") {
             val sessionFactory = mockk<Mutiny.SessionFactory>(relaxed = true)
             val vertx = Vertx.vertx()
@@ -164,3 +205,5 @@ class HibernateReactivePluginTest : DescribeSpec({
 private class UnregisteredEntity(val id: Long)
 
 private interface UnregisteredRepository : CoroutineCrudRepository<UnregisteredEntity, Long>
+
+private interface GenericRepository<T : Any> : CoroutineCrudRepository<T, Long>
