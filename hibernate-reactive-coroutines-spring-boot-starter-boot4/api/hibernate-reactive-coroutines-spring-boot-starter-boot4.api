@@ -155,14 +155,6 @@ public final class io/clroot/hibernate/reactive/spring/boot/repository/SimpleHib
 public final class io/clroot/hibernate/reactive/spring/boot/repository/SimpleHibernateReactiveRepository$Companion {
 }
 
-public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Modifying : java/lang/annotation/Annotation {
-	public abstract fun clearAutomatically ()Z
-}
-
-public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Param : java/lang/annotation/Annotation {
-	public abstract fun value ()Ljava/lang/String;
-}
-
 public abstract class io/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder {
 	public static final field Companion Lio/clroot/hibernate/reactive/spring/boot/repository/query/ParameterBinder$Companion;
 	public abstract fun bind (Ljava/lang/Object;)Ljava/lang/Object;
@@ -245,12 +237,6 @@ public final class io/clroot/hibernate/reactive/spring/boot/repository/query/Pre
 	public final fun isModifying ()Z
 	public final fun isNativeQuery ()Z
 	public fun toString ()Ljava/lang/String;
-}
-
-public abstract interface annotation class io/clroot/hibernate/reactive/spring/boot/repository/query/Query : java/lang/annotation/Annotation {
-	public abstract fun countQuery ()Ljava/lang/String;
-	public abstract fun nativeQuery ()Z
-	public abstract fun value ()Ljava/lang/String;
 }
 
 public final class io/clroot/hibernate/reactive/spring/boot/repository/query/QueryReturnType : java/lang/Enum {

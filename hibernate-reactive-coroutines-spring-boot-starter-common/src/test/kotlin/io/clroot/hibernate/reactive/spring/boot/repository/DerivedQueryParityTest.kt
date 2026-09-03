@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PartTreeHqlBuilder
-import io.clroot.hibernate.reactive.spring.boot.repository.query.Query
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.test.entity.RenamedEntity
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.RenamedEntityRepository

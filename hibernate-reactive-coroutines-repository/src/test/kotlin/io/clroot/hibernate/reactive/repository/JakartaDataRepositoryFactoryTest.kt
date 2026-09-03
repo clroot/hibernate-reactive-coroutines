@@ -1,7 +1,9 @@
 package io.clroot.hibernate.reactive.repository
 
 import io.clroot.hibernate.reactive.ReactiveSessionOperations
-import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -14,8 +16,6 @@ import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.PageRequest
 import jakarta.data.repository.DataRepository
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 import jakarta.persistence.Id
 import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
@@ -44,7 +44,7 @@ class JakartaDataRepositoryFactoryTest : DescribeSpec({
             verify { query.setParameter("name", "alice") }
         }
 
-        it("executes inferred modifying queries with a Long row count") {
+        it("executes modifying queries with a Long row count") {
             val session = mockk<Mutiny.Session>()
             val mutation = mockk<Mutiny.MutationQuery>(relaxed = true)
             val hql = "UPDATE FactoryEntity e SET e.active = false WHERE e.id = :id"
@@ -116,7 +116,7 @@ class JakartaDataRepositoryFactoryTest : DescribeSpec({
             }
         }
 
-        it("applies PageRequest offset and size to list-returning Jakarta queries") {
+        it("applies PageRequest offset and size to list-returning HRC queries") {
             val session = mockk<Mutiny.Session>()
             val query = mockk<Mutiny.SelectionQuery<FactoryEntity>>(relaxed = true)
             val expected = listOf(FactoryEntity(3, "carol", true))
@@ -137,7 +137,7 @@ class JakartaDataRepositoryFactoryTest : DescribeSpec({
             }
         }
 
-        it("executes native Jakarta queries through the shared runtime") {
+        it("executes native HRC queries through the shared runtime") {
             val session = mockk<Mutiny.Session>()
             val query = mockk<Mutiny.SelectionQuery<FactoryEntity>>(relaxed = true)
             val expected = listOf(FactoryEntity(1, "alice", true))
@@ -176,14 +176,14 @@ class JakartaDataRepositoryFactoryTest : DescribeSpec({
         @Query("FROM FactoryEntity e WHERE e.name = :name")
         suspend fun findNamed(@Param("name") value: String): List<FactoryEntity>
 
+        @Modifying
         @Query("UPDATE FactoryEntity e SET e.active = false WHERE e.id = :id")
         suspend fun deactivate(@Param("id") id: Long): Long
 
         @Query("FROM FactoryEntity e ORDER BY e.id")
         suspend fun findWindow(pageRequest: PageRequest): List<FactoryEntity>
 
-        @Query("SELECT * FROM factory_entity WHERE active = :active")
-        @QueryOptions(nativeQuery = true)
+        @Query(value = "SELECT * FROM factory_entity WHERE active = :active", nativeQuery = true)
         suspend fun findNative(active: Boolean): List<FactoryEntity>
     }
 }

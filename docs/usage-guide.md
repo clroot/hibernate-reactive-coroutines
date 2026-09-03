@@ -140,13 +140,13 @@ The framework-neutral repository module exposes a coroutine contract that extend
 
 ```kotlin
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
-import io.clroot.hibernate.reactive.repository.query.QueryOptions
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
-import jakarta.data.repository.Param
-import jakarta.data.repository.Query
 
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
@@ -158,6 +158,7 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
         order: Order<User>,
     ): Page<User>
 
+    @Modifying
     @Query("UPDATE User u SET u.status = 'INACTIVE' WHERE u.id = :id")
     suspend fun deactivate(@Param("id") id: Long): Int
 
@@ -165,18 +166,17 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
-`JakartaDataRepositoryFactory` parses Jakarta Data `@Query` and `@Param`, `Page`/`PageRequest`,
-`Sort`, and `Order` into the same neutral descriptors used by Spring repositories. Update and delete
-statements are inferred from the query text and may return `Unit`, `Int`, or `Long`. HRC method-name
-query derivation remains available as a coroutine-specific extension.
+`JakartaDataRepositoryFactory` parses the shared HRC `@Query`, `@Param`, and `@Modifying`
+metadata together with Jakarta Data `Page`/`PageRequest`, `Sort`, and `Order`. Spring repositories use
+the same query annotations while retaining Spring Data paging and sorting types. Update and delete
+queries require `@Modifying` and may return `Unit`, `Int`, or `Long` in non-Spring repositories. HRC
+method-name query derivation remains available as a coroutine-specific extension.
 
-Jakarta Data 1.0 has no metadata for a native query, explicit page count query, or clearing the
-persistence context. When one of these existing HRC capabilities is needed, add `@QueryOptions`
-alongside Jakarta Data `@Query`:
+Native SQL and an explicit page count query are configured directly on HRC `@Query`:
 
 ```kotlin
-@Query("SELECT * FROM users WHERE status = :status")
-@QueryOptions(
+@Query(
+    value = "SELECT * FROM users WHERE status = :status",
     nativeQuery = true,
     countQuery = "SELECT COUNT(*) FROM users WHERE status = :status",
 )
@@ -263,6 +263,18 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 | `OrderBy`                     | `findByStatusOrderByNameAsc` | `ORDER BY name ASC`            |
 
 ### @Query Annotation
+
+Spring and non-Spring repositories share HRC's query annotations from the repository module:
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
+```
+
+Pagination remains integration-native: Spring repositories use `Pageable`, `Page`, `Slice`, and
+Spring `Sort`, while non-Spring repositories use Jakarta Data `PageRequest`, `Page`, `Sort`, and
+`Order`.
 
 Write JPQL directly for complex queries.
 
@@ -370,7 +382,7 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
         sort: jakarta.data.Sort<User>,
     ): jakarta.data.page.Page<User>
 
-    @jakarta.data.repository.Query("FROM User u WHERE u.email = :email")
+    @io.clroot.hibernate.reactive.repository.query.Query("FROM User u WHERE u.email = :email")
     suspend fun findByEmail(email: String): User?
 }
 
@@ -392,7 +404,7 @@ fun Application.module() {
 
 `repository` registration implicitly adds its entity to Hibernate. Use `entity`/`entities` only for
 managed entities that do not have a repository. The plugin deliberately avoids classpath scanning.
-Registered proxies delegate CRUD, derived queries, Jakarta Data `@Query`, offset pagination, and
+Registered proxies delegate CRUD, derived queries, HRC `@Query`, offset pagination, and
 sorting to the shared framework-neutral repository runtime.
 
 With `io.ktor:ktor-server-di` installed and `dependencyInjection = true`, resolve repositories and

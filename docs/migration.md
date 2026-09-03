@@ -25,6 +25,15 @@ A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
 | `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE; `Int`/`Unit`, optional auto-clear    |
 | Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
 
+HRC 2 uses shared query annotations for both Spring and non-Spring repositories. Replace Spring
+Data JPA or earlier HRC query imports with:
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
+```
+
 HQL/JPQL `@Query` methods returning `Page` derive COUNT automatically only for simple entity
 `SELECT`/`FROM` queries. Projections, joins, grouping, set operations, trailing selects,
 query-level pagination, and parameterized ordering require an explicit `countQuery`.
