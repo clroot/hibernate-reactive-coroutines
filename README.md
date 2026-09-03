@@ -45,7 +45,7 @@ This library provides first-class Kotlin Coroutines support for Hibernate Reacti
 
 ## Requirements
 
-- Java 17 or later
+- Java 21 or later
 - Ktor 3.5.x for the Ktor integration
 - Spring Boot 3.4.x or 4.x for the Spring integrations
 

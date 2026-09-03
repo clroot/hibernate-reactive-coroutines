@@ -32,7 +32,7 @@ Hibernate Reactive에 Kotlin Coroutines를 우선 지원하는 라이브러리�
 
 ## 요구사항
 
-- Java 17 이상
+- Java 21 이상
 - Ktor 통합 사용 시 Ktor 3.5.x
 - Spring 통합 사용 시 Spring Boot 3.4.x 또는 4.x
 
