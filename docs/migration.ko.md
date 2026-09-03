@@ -1,187 +1,174 @@
 # Spring Data JPA에서 마이그레이션
 
-Spring Data JPA에서 Hibernate Reactive Coroutines로 전환하는 가이드입니다.
+[1장](#1-호환-범위)에서 사용 중인 기능이 지원되는지 확인하고, [2장](#2-마이그레이션-단계) 순서대로
+코드를 바꾼 뒤, [3장](#3-동작-차이)에서 결과가 달라질 수 있는 동작을 점검하시면 됩니다.
 
----
+## 1. 호환 범위
 
-## JPA 기능 커버리지
+✅는 그대로 동작, ⚠️는 제한 있음, ❌는 미지원입니다.
 
-**전체 커버리지: ~85-90%** - 핵심 기능은 모두 지원됩니다.
+### 1.1 리포지토리
 
-### Repository 기능
+| 기능 | 지원 | 비고 |
+| --- | :---: | --- |
+| `CrudRepository` 메서드 | ✅ | |
+| `findBy*` 파생 쿼리 | ✅ | |
+| `countBy*`, `existsBy*`, `deleteBy*` | ✅ | `deleteBy*`는 삭제 건수를 `Int`나 `Long`으로 받을 수 있습니다. |
+| LIKE 검색, 비교 연산 | ✅ | `Containing`, `StartingWith`, `Between` 등 |
+| `@Query` (JPQL) | ✅ | 이름·위치 파라미터 |
+| `@Query` 스칼라·집계·DTO 반환 | ✅ | HQL 생성자 표현식 |
+| `@Query` (Native) | ⚠️ | 읽기만 지원하며 `Page` 반환 시 `countQuery` 필수 |
+| `@Modifying` | ⚠️ | JPQL만 지원 |
+| 페이지네이션 (`Page`, `Slice`), `Sort` | ✅ | |
+| Specification, Query by Example | ❌ | `@Query`로 작성 |
+| 인터페이스 프로젝션, `Tuple`·배열 반환 | ❌ | 생성자 DTO 사용 |
+| `@EntityGraph` | ❌ | FETCH JOIN 또는 `fetch()` |
 
-| 기능                                 | 지원 | 비고                                                  |
-| ------------------------------------ | :--: | ----------------------------------------------------- |
-| `CrudRepository` 메서드              |  ✅  | save, findById, findAll, delete, count, existsById 등 |
-| `findBy*` 쿼리 메서드                |  ✅  | PartTree 기반 자동 생성                               |
-| `countBy*`, `existsBy*`, `deleteBy*` |  ✅  |                                                       |
-| LIKE 검색                            |  ✅  | Containing, StartingWith, EndingWith                  |
-| 비교 연산                            |  ✅  | GreaterThan, LessThan, Between 등                     |
-| `@Query` (JPQL)                      |  ✅  | Named/Positional Parameter                            |
-| `@Query` 스칼라/집계/DTO 반환        |  ✅  | 스칼라와 HQL 생성자 DTO                               |
-| `@Query` (Native)                    |  ✅  | 읽기만 지원, Page는 `countQuery` 필요                 |
-| `@Modifying`                         |  ✅  | JPQL UPDATE/DELETE, `Int`/`Unit`, 선택적 자동 clear   |
-| 페이지네이션 (`Page`, `Slice`)       |  ✅  | 스마트 COUNT 스킵 최적화                              |
+### 1.2 트랜잭션
 
-HRC 2에서는 Spring과 Spring 외 리포지토리가 공용 쿼리 어노테이션을 사용합니다. Spring
-Data JPA 또는 이전 HRC 쿼리 import를 다음과 같이 바꾸세요.
+| 기능 | 지원 | 비고 |
+| --- | :---: | --- |
+| `@Transactional`, `readOnly`, `timeout` | ✅ | PostgreSQL에서는 `timeout`이 `statement_timeout`으로도 적용됩니다. |
+| `Propagation.REQUIRED` | ✅ | 기본값 |
+| `Propagation.REQUIRES_NEW` | ⚠️ | 단독 호출은 동작하지만 중첩 호출은 커넥션 풀 고갈 위험이 있어 지원하지 않습니다. |
+| 프로그래밍 방식 트랜잭션 | ✅ | `ReactiveTransactionExecutor` |
+| `@TransactionalEventListener` | ✅ | reactive `TransactionalEventPublisher`로 발행해야 합니다. |
+
+### 1.3 JPA 동작
+
+| 기능 | 지원 | 비고 |
+| --- | :---: | --- |
+| Dirty Checking, 1차 캐시 | ✅ | |
+| 낙관적 락 (`@Version`) | ✅ | |
+| 엔티티 생명주기 콜백 | ✅ | `@PrePersist`, `@PreUpdate` 등 |
+| Auditing | ✅ | `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy` |
+| Lazy Loading | ⚠️ | 동기 방식 불가. FETCH JOIN 또는 `fetch()` |
+| 비관적 락 | ❌ | |
+
+### 1.4 기동 시점 검증
+
+미지원 기능과 잘못된 리포지토리 선언은 첫 호출이 아니라 **기동 시점에** 거부됩니다. 마이그레이션 뒤
+애플리케이션을 한 번 띄우면 남은 문제를 대부분 찾을 수 있습니다.
+
+| 거부되는 선언 | 대체 방법 |
+| --- | --- |
+| `suspend`가 아닌 쿼리 메서드 (`Flow` 반환 포함) | `suspend fun ...: List<T>` |
+| 이름과 인자 개수가 같은 오버로드 | 다른 이름 사용 |
+| `Top`/`First`와 `Pageable`의 조합 | 둘 중 하나만 사용 |
+| Native `@Query`에 `Sort` 또는 정렬이 담긴 `Pageable` | 쿼리 안에 `ORDER BY` 작성 |
+| Native `@Modifying` | JPQL로 작성 |
+| String이 아닌 프로퍼티의 `IgnoreCase` | 키워드 제거 |
+| COUNT를 자동 생성할 수 없는 `Page` 반환 `@Query` | `countQuery` 지정 |
+
+## 2. 마이그레이션 단계
+
+### 2.1 의존성 변경
+
+Spring Boot 3에서는 `spring-boot-starter-data-jpa`를 반드시 제거합니다. Spring Framework 6가
+Hibernate ORM 7을 지원하지 않아 두 스타터가 공존하면 기동에 실패합니다. Spring Boot 4에서는 공존할 수
+있습니다.
 
 ```kotlin
-import io.clroot.hibernate.reactive.repository.query.Modifying
-import io.clroot.hibernate.reactive.repository.query.Param
-import io.clroot.hibernate.reactive.repository.query.Query
+val hrcVersion = "2.0.0"
+
+dependencies {
+    // 제거
+    // implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+    // 추가
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:$hrcVersion")
+    runtimeOnly("io.vertx:vertx-pg-client:5.1.5") // MySQL은 vertx-mysql-client
+}
 ```
 
-`Page`를 반환하는 HQL/JPQL `@Query` 메서드는 단순 엔티티 `SELECT`/`FROM` 쿼리만 COUNT를 자동
-생성합니다. 프로젝션, 조인, 그룹화, 집합 연산, 후행 SELECT, 쿼리 자체 페이지 제한,
-파라미터가 있는 정렬은 `countQuery`를 명시해야 합니다.
+`spring.datasource`와 `spring.jpa` 설정은 그대로 둡니다.
 
-### 트랜잭션
+### 2.2 리포지토리 인터페이스 수정
 
-| 기능                     | 지원 | 비고                           |
-| ------------------------ | :--: | ------------------------------ |
-| `@Transactional`         |  ✅  | suspend 함수 지원              |
-| readOnly / timeout       |  ✅  |                                |
-| Propagation.REQUIRED     |  ✅  | 기본값                         |
-| Propagation.REQUIRES_NEW |  ⚠️  | 커넥션 풀 고갈 위험, 중첩 제한 |
-| Programmatic Transaction |  ✅  | ReactiveTransactionExecutor    |
-
-### JPA 동작
-
-| 기능                       | 지원 | 비고                       |
-| -------------------------- | :--: | -------------------------- |
-| Dirty Checking             |  ✅  | 커밋 시 자동 저장          |
-| First-level Cache          |  ✅  | 트랜잭션 내 동일 인스턴스  |
-| Optimistic Locking         |  ✅  | `@Version`                 |
-| Entity Lifecycle Callbacks |  ✅  | @PrePersist, @PreUpdate 등 |
-| Lazy Loading               |  ✅  | `fetch()` 메서드 사용      |
-| Pessimistic Locking        |  ❌  |                            |
-
-### 미지원 기능
-
-아래 항목들은 첫 호출 시점이 아니라 **애플리케이션 기동 시점에** 원인을 설명하는 메시지와 함께 거부됩니다.
-
-| 기능                                 | 대체 방안                                                   |
-| ------------------------------------ | ----------------------------------------------------------- |
-| Specification (동적 쿼리)            | `@Query`로 직접 작성                                        |
-| QueryByExample                       | 조건별 메서드 조합                                          |
-| Projection (인터페이스 기반)         | FETCH JOIN 후 Kotlin에서 매핑                               |
-| `@EntityGraph`                       | FETCH JOIN 또는 `fetch()` 메서드                            |
-| Native `@Modifying`                  | JPQL 사용                                                   |
-| `@Query`의 Tuple/배열 반환           | 스칼라 또는 HQL 생성자 DTO 프로젝션 사용                    |
-| suspend가 아닌(`Flow` 포함) 쿼리 메서드 | `suspend fun … : List<T>` 로 선언                        |
-| 이름과 인자 개수가 같은 오버로드     | 서로 다른 이름 사용                                         |
-| `Top`/`First` + `Pageable` 조합      | 둘 중 하나만 사용                                           |
-| 네이티브 `@Query` 정렬               | 쿼리 안에 `ORDER BY` 작성                                   |
-
----
-
-## 동작 상 주의점
-
-위 기능 표 외에, 마이그레이션 전에 알아둘 동작 차이입니다.
-
-**삭제는 조회 후 제거합니다.** `deleteById`, `delete`, `deleteAll`, `deleteAllById`와 파생
-`deleteBy…` 메서드는 대상 엔티티를 조회한 뒤 하나씩 제거합니다(`SimpleJpaRepository`와 동일).
-따라서 cascade, `@Version` 검사, `@PreRemove` 콜백이 모두 동작하고 영속성 컨텍스트도 일관되게
-유지됩니다. 대신 `DELETE` 전에 `SELECT`가 한 번 실행됩니다. cascade 없이 대량 삭제가 필요하면
-`@Modifying @Query("DELETE …")`를 명시적으로 작성하세요.
-
-**파생 `deleteBy…`는 삭제 건수를 반환할 수 있습니다.** 반환 타입을 `Unit`, `Int`, `Long` 중 하나로
-선언하면 됩니다.
-
-**`LIKE` 값은 이스케이프됩니다.** `Containing`, `StartingWith`, `EndingWith`는 바인딩되는 값의
-`%`, `_`, `\`를 이스케이프하므로 `findByNameContaining("%")`는 전체 행이 아니라 퍼센트 문자를
-포함한 행만 매칭합니다. 명시적 `Like` 키워드는 사용자가 직접 패턴을 넘기는 것이므로
-이스케이프하지 않습니다.
-
-**`IgnoreCase`는 양쪽을 소문자로 비교합니다.** String이 아닌 프로퍼티에 `IgnoreCase`를 쓰면 기동
-시점에 거부되고, `AllIgnoreCase`는 String 프로퍼티에만 적용됩니다.
-
-**`Sort`가 `@Query` 메서드에도 적용됩니다.** `Sort` 파라미터나 정렬이 담긴 `Pageable`은 쿼리에
-이미 있는 `ORDER BY` 뒤에 덧붙습니다. 즉 쿼리에 작성한 정렬이 우선합니다.
-
-**엔티티 이름은 JPA 메타모델에서 가져옵니다.** `@Entity(name = "…")`으로 이름을 바꾼 엔티티나
-패키지가 다른 동명 엔티티도 정상 동작합니다.
-
-**`Flow`는 스트리밍이 아닙니다.** `findAll()` 등 `Flow`를 반환하는 메서드는 전체 결과를 메모리에
-적재한 뒤 방출합니다. 큰 테이블에는 `Pageable`을 사용하세요.
-
-**`@Transactional`과 `tx.transactional {}`을 섞어 써도 안전합니다.** `tx.transactional {}`은 활성
-Spring 트랜잭션이 있으면 새 세션을 열지 않고 그 트랜잭션에 참여하며,
-`@Transactional(readOnly = true)` 트랜잭션을 쓰기로 승격하려 하면 예외를 던집니다.
-
----
-
-## 마이그레이션 단계
-
-### 1. 의존성 변경
+상속 인터페이스를 바꾸고, 모든 메서드에 `suspend`를 붙이고, 쿼리 어노테이션의 import를 바꿉니다.
 
 ```kotlin
-// 제거
-implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+// 변경 전
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 
-// 추가
-implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
-implementation("io.vertx:vertx-pg-client:5.1.5")  // 또는 MySQL
-```
-
-### 2. Repository 인터페이스 수정
-
-```kotlin
-// Before (Spring Data JPA)
 interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
+
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    fun findByStatus(status: Status): List<User>
 }
 
-// After (Hibernate Reactive Coroutines)
+// 변경 후
+import io.clroot.hibernate.reactive.repository.query.Query
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
+
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    suspend fun findByStatus(status: Status): List<User>
 }
 ```
 
-**변경:** `JpaRepository` → `CoroutineCrudRepository`, 모든 메서드에 `suspend` 추가
+`flush()`, `saveAndFlush()`, `getReferenceById()`는 없습니다. flush는 트랜잭션 종료 시 자동으로
+일어나고, 참조 프록시는 `findById()`로 대체합니다.
 
-### 3. Service 레이어 수정
+### 2.3 서비스 계층 수정
+
+리포지토리를 호출하는 메서드에 `suspend`를 붙입니다. `findById()`가 `Optional` 대신 nullable을
+반환하므로 `orElseThrow`를 `?:`로 바꿉니다. 컨트롤러까지 `suspend`로 이어져야 합니다.
 
 ```kotlin
-// Before
+// 변경 전
 @Transactional
-fun createUser(name: String): User {
-    return userRepository.save(User(name = name))
+fun rename(id: Long, name: String): User {
+    val user = userRepository.findById(id).orElseThrow { NotFoundException() }
+    user.name = name
+    return user
 }
 
-// After
+// 변경 후
 @Transactional
-suspend fun createUser(name: String): User {
-    return userRepository.save(User(name = name))
+suspend fun rename(id: Long, name: String): User {
+    val user = userRepository.findById(id) ?: throw NotFoundException()
+    user.name = name
+    return user
 }
 ```
 
-**변경:** `suspend` 추가, `findById().orElse(null)` → `findById()` (nullable 반환)
+### 2.4 Lazy Loading 변환
 
-### 4. Lazy Loading 변환
+연관관계에 접근하기만 하면 로딩되던 코드는 모두 바꿔야 합니다. 초기화되지 않은 연관관계에 접근하면
+`HR000069` 오류가 발생합니다.
 
 ```kotlin
-// Before - Hibernate Reactive에서 작동하지 않음
-parent.children.size  // HR000069 에러
+// 변경 전
+val parent = parentRepository.findById(id).orElseThrow()
+parent.children.size
 
-// After - 방법 1: FETCH JOIN (권장)
+// 변경 후 (권장): FETCH JOIN
 @Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
 suspend fun findByIdWithChildren(id: Long): Parent?
 
-// After - 방법 2: fetch() 메서드
+// 변경 후 (대안): fetch()
+val parent = parentRepository.findById(id) ?: throw NotFoundException()
 sessionProvider.fetch(parent, Parent::children)
 ```
 
-### 5. 미지원 기능 대체
+자세한 내용은 [사용 가이드 5장](usage-guide.ko.md#5-연관관계-로딩)을 참고하세요.
 
-**@EntityGraph → FETCH JOIN:**
+### 2.5 미지원 기능 대체
+
+**`@EntityGraph` → FETCH JOIN**
+
 ```kotlin
-// Before
+// 변경 전
 @EntityGraph(attributePaths = ["children", "address"])
 fun findById(id: Long): Parent?
 
-// After
+// 변경 후
 @Query("""
     SELECT p FROM Parent p
     LEFT JOIN FETCH p.children
@@ -191,37 +178,81 @@ fun findById(id: Long): Parent?
 suspend fun findByIdWithDetails(id: Long): Parent?
 ```
 
-**REQUIRES_NEW → 이벤트 기반:**
+**`REQUIRES_NEW` → 트랜잭션 이벤트.** 부모와 무관하게 커밋되어야 하는 작업은 커밋 후 실행되는
+리스너로 옮깁니다.
+
 ```kotlin
-// Before
+// 변경 전
 @Transactional(propagation = Propagation.REQUIRES_NEW)
 fun audit(event: AuditEvent) { ... }
 
-// After
-@EventListener
-suspend fun handleAudit(event: AuditEvent) { ... }
+// 변경 후
+@Transactional
+suspend fun placeOrder(command: PlaceOrderCommand) {
+    orders.save(Order.create(command))
+    events.publishEvent(OrderPlaced(command.orderId)).awaitSingleOrNull()
+}
+
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+fun audit(event: OrderPlaced) { ... }
 ```
 
-**Native @Modifying → JPQL:**
+발행 조건은 [사용 가이드 4.4절](usage-guide.ko.md#44-트랜잭션-이벤트-spring-boot-전용)에 있습니다.
+
+**Native `@Modifying` → JPQL**
+
 ```kotlin
-// Before
+// 변경 전
+@Modifying
 @Query(value = "UPDATE users SET status = ?1", nativeQuery = true)
 fun updateStatus(status: String): Int
 
-// After
+// 변경 후
+@Modifying
 @Query("UPDATE User u SET u.status = :status")
 suspend fun updateStatus(status: Status): Int
 ```
 
----
+**Specification, Query by Example → `@Query`.** 조건 조합이 많다면 nullable 파라미터를 받는
+JPQL을 작성합니다.
 
-## 체크리스트
+```kotlin
+@Query("""
+    SELECT u FROM User u
+    WHERE (:status IS NULL OR u.status = :status)
+      AND (:name IS NULL OR u.name LIKE CONCAT('%', :name, '%'))
+""")
+suspend fun search(status: Status?, name: String?, pageable: Pageable): Page<User>
+```
 
-- [ ] 의존성 변경
-- [ ] Repository 인터페이스에 `suspend` 추가
-- [ ] Service 메서드에 `suspend` 추가
-- [ ] Lazy Loading → FETCH JOIN 또는 `fetch()` 변환
-- [ ] `@EntityGraph` → FETCH JOIN 변환
-- [ ] `REQUIRES_NEW` → 이벤트 기반 변환
-- [ ] Native @Modifying → JPQL 변환
-- [ ] 테스트 업데이트 (`runBlocking` 또는 `runTest` 사용)
+### 2.6 테스트 수정
+
+테스트는 `runTest` 또는 `runBlocking` 안에서 실행합니다. 트랜잭션 안에 블로킹 호출이 남아 있는지
+확인하려면 [사용 가이드 6장](usage-guide.ko.md#6-블로킹-호출-탐지)의 BlockHound 모듈을 추가하세요.
+
+## 3. 동작 차이
+
+기능 표에는 없지만 결과가 달라질 수 있는 동작입니다.
+
+| 항목 | Spring Data JPA | 이 라이브러리 |
+| --- | --- | --- |
+| `findAll()` 반환 타입 | `List<T>` | `Flow<T>`. 스트리밍이 아니라 전체 결과를 메모리에 올린 뒤 방출합니다. |
+| `Containing` 등의 와일드카드 | `%`, `_` 이스케이프 | `\`도 이스케이프합니다. `Like`는 이스케이프하지 않습니다. |
+| `IgnoreCase` | 방언에 따름 | 양쪽을 `LOWER()`로 비교합니다. String 프로퍼티 전용입니다. |
+| `@Query`와 `Sort`의 조합 | `ORDER BY` 뒤에 덧붙임 | 같습니다. Native 쿼리에는 `Sort`를 줄 수 없습니다. |
+| `@Transactional` 안의 프로그래밍 방식 트랜잭션 | 기존 트랜잭션에 참여 | 같습니다. 단, `readOnly = true` 안에서 쓰기 트랜잭션을 열면 예외가 발생합니다. |
+| 트랜잭션 안의 블로킹 호출 | 허용 | 이벤트 루프를 멈추므로 금지합니다. |
+
+삭제 방식(조회 후 제거), `save()` 반환값, 벌크 `@Modifying` 이후의 세션 처리는 Spring Data JPA와
+같습니다.
+
+## 4. 체크리스트
+
+- [ ] `spring-boot-starter-data-jpa`를 제거하고 스타터와 Vert.x 클라이언트를 추가했다.
+- [ ] 리포지토리가 `CoroutineCrudRepository`를 상속하고 모든 메서드에 `suspend`가 붙어 있다.
+- [ ] `@Query`, `@Param`, `@Modifying`의 import를 바꿨다.
+- [ ] 서비스와 컨트롤러에 `suspend`를 붙이고 `Optional` 처리를 nullable 처리로 바꿨다.
+- [ ] 연관관계 접근을 FETCH JOIN 또는 `fetch()`로 바꿨다.
+- [ ] `@EntityGraph`, `REQUIRES_NEW`, Native `@Modifying`, Specification을 대체했다.
+- [ ] 테스트를 `runTest`로 감쌌고 BlockHound를 추가했다.
+- [ ] 애플리케이션을 기동해 리포지토리 검증 오류가 없음을 확인했다.

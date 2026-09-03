@@ -1,133 +1,102 @@
 # Hibernate Reactive Coroutines
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines-core.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines-core)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Ktor](https://img.shields.io/badge/Ktor-3.5-purple.svg)](https://ktor.io)
 
-> Hibernate Reactive를 Kotlin Coroutines로 사용하고 Spring Boot와 Ktor에 통합하세요.
+[English](README.md) | **한국어**
 
-Hibernate Reactive에 Kotlin Coroutines를 우선 지원하는 라이브러리입니다. Spring Boot에서는 Spring Data 스타일 자동 설정을, Ktor에서는 프레임워크 독립 Jakarta Data 리포지토리 계약을 제공합니다.
+> Hibernate Reactive를 Kotlin Coroutines답게 사용하는 리포지토리와 트랜잭션 도구입니다.
 
-## 주요 기능
+`Uni`·`CompletionStage` 같은 리액티브 타입을 직접 다루지 않고, `suspend` 함수와 `Flow`만으로 데이터베이스에 접근합니다.
+Spring Boot에서는 자동 설정을, Ktor에서는 명시적으로 구성하는 애플리케이션 플러그인을 제공합니다.
 
-- `CoroutineCrudRepository` 인터페이스 지원
-- 쿼리 메서드 자동 생성 (`findByEmail`, `existsByStatus` 등)
-- `@Query` 어노테이션으로 스칼라, 집계, 생성자 DTO 프로젝션을 포함한 커스텀 JPQL
-- 페이지네이션 (`Page`, `Slice`, `Pageable`)
-- Spring `@Transactional` 통합
-- 명시적 등록과 리소스 소유권을 제공하는 Ktor 애플리케이션 플러그인
-- Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
-- Vert.x 인스턴스를 Spring 빈으로 소유·공유, WebFlux 서버와의 이벤트 루프 통합(opt-in)
-- 블로킹 호출 탐지: BlockHound 통합 모듈 + Vert.x blocked-thread checker 설정 노출
+## 핵심 기능
 
-**Spring Data JPA 기능 커버리지: ~85-90%** - 자세한 내용은 [마이그레이션 가이드](docs/migration.ko.md)를 참고하세요.
+- 코루틴 기반 CRUD와 Spring Data 방식의 파생 쿼리(`findByEmail`, `existsByStatus` 등)
+- `@Query`, `@Param`, `@Modifying`을 이용한 JPQL/HQL 및 Native SQL
+- 페이지네이션, 정렬, Auditing(생성·수정 시각 자동 기록)
+- Spring `@Transactional`과 명시적 `ReactiveTransactionExecutor`
+- Spring Boot 3/4 및 Ktor 3 통합
 
-## 모듈
+## 아키텍처
 
-- `hibernate-reactive-coroutines-core`: 코루틴 세션 및 트랜잭션 기본 기능
-- `hibernate-reactive-coroutines-repository`: 프레임워크 독립 쿼리/런타임 및 Jakarta Data 기반 코루틴 리포지토리 계약
-- `hibernate-reactive-coroutines-ktor`: 엔티티/리포지토리 명시 등록을 지원하는 Ktor 3 애플리케이션 플러그인
-- `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 및 4 통합
-- `hibernate-reactive-coroutines-blockhound`: 선택적 블로킹 호출 탐지 통합
+```mermaid
+flowchart TB
+    App["애플리케이션<br/>suspend 함수"] --> Spring["Spring Boot<br/>자동 설정 · @Transactional"]
+    App --> Ktor["Ktor<br/>명시적 등록 · 트랜잭션 실행기"]
+    Spring --> Repository
+    Ktor --> Repository
 
-## 요구사항
+    subgraph HRC["Hibernate Reactive Coroutines"]
+        Repository["Repository Runtime<br/>CRUD · 파생 쿼리 · @Query"]
+        Core["Core<br/>세션 · 트랜잭션 · 코루틴 컨텍스트"]
+        Repository --> Core
+    end
 
-- Java 21 이상
-- Ktor 통합 사용 시 Ktor 3.5.x
-- Spring 통합 사용 시 Spring Boot 3.4.x 또는 4.x
+    Core --> Hibernate["Hibernate Reactive · Mutiny"]
+    Hibernate --> Vertx["Vert.x SQL Client"]
+    Vertx --> Database[("PostgreSQL / MySQL")]
+```
 
-> **Hibernate ORM 7이 필요합니다.** Hibernate Reactive 4.5는 Hibernate ORM 7.4 위에서 동작하며,
-> 이 스타터는 해당 버전을 의존성 제약으로 발행합니다. Spring Framework 6.x(Spring Boot 3.x)는
-> Hibernate ORM 7을 지원하지 않으므로, **Spring Boot 3 애플리케이션에서 `spring-boot-starter-data-jpa`와
-> 함께 사용하지 마세요** — 블로킹 JPA 쪽이 기동에 실패합니다. Spring Boot 4에서는 공존할 수 있습니다.
-> Boot 3에서 둘 다 필요하다면 리액티브 영속성 계층과 블로킹 영속성 계층을 별도 모듈로 분리하세요.
+세션과 트랜잭션은 코루틴 컨텍스트를 따라 전파되며, 실제 데이터베이스 I/O는 Hibernate Reactive와
+Vert.x가 논블로킹으로 처리합니다.
 
 ## 설치
 
-### Gradle (Kotlin DSL)
+| 환경 | 선택할 모듈 |
+| --- | --- |
+| Spring Boot 3 | `hibernate-reactive-coroutines-spring-boot-starter` |
+| Spring Boot 4 | `hibernate-reactive-coroutines-spring-boot-starter-boot4` |
+| Ktor 3 | `hibernate-reactive-coroutines-ktor` |
 
 ```kotlin
+val hrcVersion = "2.0.0"
+
 dependencies {
-    // Spring Boot 3.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
+    // 사용하는 환경에 맞는 모듈 하나를 선택합니다.
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-ktor:$hrcVersion")
 
-    // Spring Boot 4.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0")
-
-    // DB 드라이버
-    implementation("io.vertx:vertx-pg-client:5.1.5")
+    runtimeOnly("io.vertx:vertx-pg-client:5.1.5")
 }
 ```
 
-### Gradle (Groovy)
+최신 버전은 위 Maven Central 배지에서 확인할 수 있습니다.
+Java 21 이상이 필요하며, Spring Boot는 3.4.x와 4.x를, Ktor는 3.5.x를 지원합니다.
 
-```groovy
-dependencies {
-    // Spring Boot 3.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0'
+## Spring Boot 빠른 시작
 
-    // Spring Boot 4.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0'
-
-    // DB 드라이버
-    implementation 'io.vertx:vertx-pg-client:5.1.5'
-}
-```
-
-### Maven
-
-```xml
-<!-- Spring Boot 3.x -->
-<dependency>
-    <groupId>io.clroot</groupId>
-    <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
-    <version>1.3.0</version>
-</dependency>
-
-<!-- Spring Boot 4.x -->
-<dependency>
-    <groupId>io.clroot</groupId>
-    <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
-    <version>1.3.0</version>
-</dependency>
-```
-
-## 빠른 시작
-
-### 1. Repository 정의
+`User`는 일반적인 JPA 엔티티입니다. Spring Data의 `CoroutineCrudRepository`를 상속한 인터페이스는
+스타터가 자동으로 스캔하여 빈으로 등록하므로, `@Repository`를 붙일 필요가 없습니다.
 
 ```kotlin
+import io.clroot.hibernate.reactive.repository.query.Query
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
-    suspend fun findAllByStatus(status: Status): List<User>
 
-    @Query("SELECT u FROM User u WHERE u.role = :role")
-    suspend fun findByRole(role: Role): List<User>
+    @Query("FROM User u WHERE u.active = true ORDER BY u.name")
+    suspend fun findActiveUsers(): List<User>
 }
-```
 
-### 2. Service에서 사용
-
-```kotlin
 @Service
-class UserService(private val userRepository: UserRepository) {
-
+class UserService(private val users: UserRepository) {
     @Transactional
-    suspend fun createUser(name: String): User {
-        return userRepository.save(User(name = name))
-    }
+    suspend fun create(user: User): User = users.save(user)
 
     @Transactional(readOnly = true)
-    suspend fun findUser(id: Long): User? {
-        return userRepository.findById(id)
-    }
+    suspend fun findByEmail(email: String): User? = users.findByEmail(email)
 }
 ```
 
-### 3. 설정
-
 ```yaml
-# application.yml
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/mydb
@@ -135,29 +104,27 @@ spring:
     password: password
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    properties:
-      hibernate:
-        reactive:
-          pool-size: 10
+    hibernate:
+      ddl-auto: validate
 ```
+
+스타터가 리포지토리 빈, `SessionFactory`, Vert.x 인스턴스, 트랜잭션 관리자를 자동으로 구성합니다.
 
 ## Ktor 빠른 시작
 
-배포된 Ktor 통합 모듈과 Vert.x 데이터베이스 클라이언트를 추가합니다:
+Ktor에서는 Spring Data 대신 이 라이브러리가 제공하는 `CoroutineCrudRepository`를 상속하고,
+리포지토리를 플러그인에 명시적으로 등록합니다.
 
 ```kotlin
-dependencies {
-    implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
-    implementation("io.ktor:ktor-server-di:<ktor-version>")
-    implementation("io.vertx:vertx-pg-client:5.1.5")
+import io.clroot.hibernate.reactive.ktor.HibernateReactive
+import io.clroot.hibernate.reactive.ktor.hibernateRepository
+import io.clroot.hibernate.reactive.ktor.hibernateTransactionExecutor
+import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByEmail(email: String): User?
 }
-```
 
-Jakarta Data 코루틴 리포지토리를 명시적으로 등록합니다. 리포지토리를 등록하면 해당 엔티티도
-함께 등록되므로 플러그인이 클래스패스를 스캔할 필요가 없습니다. 요청 전체에 세션이나
-트랜잭션을 자동으로 열지도 않습니다:
-
-```kotlin
 fun Application.module() {
     install(HibernateReactive) {
         database {
@@ -166,89 +133,46 @@ fun Application.module() {
             password = "password"
             schemaGeneration = "validate"
         }
-        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 
-    val users: UserRepository by dependencies
-    val transactions: ReactiveTransactionExecutor by dependencies
+    val users = hibernateRepository<UserRepository>()
+    val tx = hibernateTransactionExecutor
 
     routing {
         post("/users") {
-            val saved = transactions.transactional {
-                users.save(User(name = "Alice", email = "alice@example.com"))
-            }
-            call.respond(saved.id!!)
+            val user = call.receive<User>()
+            val saved = tx.transactional { users.save(user) }
+            call.respond(saved)
+        }
+        get("/users/{email}") {
+            val found = tx.readOnly { users.findByEmail(call.parameters["email"]!!) }
+            call.respond(found ?: HttpStatusCode.NotFound)
         }
     }
 }
 ```
 
-플러그인이 만든 세션 팩토리와 Vert.x는 애플리케이션 종료 시 닫힙니다. 외부에서 제공한
-인스턴스는 기본적으로 보존되며, 플러그인에 소유권을 넘길 때만
-`closeExternalSessionFactory` 또는 `closeExternalVertx`를 설정하세요.
-`dependencyInjection = true`로 설정하면 선택형 `ktor-server-di` 모듈에 각 리포지토리와 리소스
-레지스트리, 세션 프로바이더, 트랜잭션 실행기, Vert.x가 등록됩니다. 외부 세션 팩토리와
-트랜잭션 경계에 대한 자세한 내용은 [사용 가이드](docs/usage-guide.ko.md#ktor-통합)를 참고하세요.
+Ktor 플러그인은 요청마다 트랜잭션을 자동으로 시작하지 않습니다. 위 예시처럼 `transactional {}` 또는
+`readOnly {}`로 트랜잭션 경계를 직접 지정해야 합니다.
+
+## 알아두기
+
+- Hibernate Reactive는 동기 방식의 Lazy Loading을 지원하지 않습니다. 연관 엔티티는 Fetch Join이나 `fetch()`로
+  명시적으로 불러와야 합니다.
+- `Propagation.REQUIRES_NEW`는 커넥션 풀이 고갈될 위험이 있어 지원하지 않습니다.
+- 트랜잭션 블록 안에서는 블로킹 I/O를 실행하지 않아야 합니다. 테스트에서 블로킹 호출을 탐지하려면
+  BlockHound 모듈을 사용할 수 있습니다.
+- Spring Boot 3(Spring Framework 6)는 Hibernate ORM 7을 지원하지 않기 때문에, 같은 애플리케이션에서
+  `spring-boot-starter-data-jpa`와 함께 사용할 수 없습니다. 두 영속성 방식을 함께 써야 한다면 모듈을
+  분리하거나 Spring Boot 4를 사용하세요.
 
 ## 문서
 
-| 문서 | 설명 |
-|------|------|
-| [사용 가이드](docs/usage-guide.ko.md) | 설정, 사용법 및 예제 |
-| [마이그레이션](docs/migration.ko.md) | JPA 호환성 및 Spring Data JPA 전환 가이드 |
-| [내부 동작](docs/internals.ko.md) | 아키텍처 및 동작 원리 |
-
-## 주의사항
-
-### Lazy Loading
-
-Hibernate Reactive에서는 동기적 Lazy Loading(`parent.children.size`)이 지원되지 않습니다.
-
-```kotlin
-// FETCH JOIN 사용 (권장)
-@Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
-suspend fun findByIdWithChildren(id: Long): Parent?
-
-// 또는 fetch() 메서드 사용
-val children = sessionProvider.fetch(parent, Parent::children)
-```
-
-### REQUIRES_NEW 미지원
-
-리액티브 환경에서 커넥션 풀 고갈 위험이 있어 지원하지 않습니다.
-
-### 블로킹 호출 탐지 (BlockHound)
-
-`transactional {}` 블록은 Vert.x 이벤트 루프에서 실행되므로, 블록 안의 블로킹 호출 하나
-(`Thread.sleep`, 동기 HTTP 클라이언트, 파일 I/O 등)가 해당 루프의 모든 트랜잭션을 멈추게 합니다.
-[BlockHound](https://github.com/reactor/BlockHound)로 테스트에서 이런 호출을 잡을 수 있지만,
-BlockHound는 "논블로킹으로 표시된 스레드"만 검사하며 Vert.x 이벤트 루프는 기본적으로 표시되지
-않습니다. `hibernate-reactive-coroutines-blockhound` 모듈이 이 표시를 자동으로 등록합니다:
-
-```kotlin
-dependencies {
-    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.3.0")
-}
-
-tasks.withType<Test>().configureEach {
-    // JDK 13+에서 BlockHound 런타임 계측에 필요
-    jvmArgs("-XX:+AllowRedefinitionToAddDeleteMethods", "-Djdk.attach.allowAttachSelf=true")
-}
-```
-
-```kotlin
-BlockHound.install() // ServiceLoader로 통합이 자동 등록됨
-
-tx.transactional {
-    Thread.sleep(100) // BlockingOperationError 발생
-}
-```
-
-코루틴 내부 동작의 allowlist를 위해 `org.jetbrains.kotlinx:kotlinx-coroutines-debug`와 함께 쓰는
-것을 권장합니다. BlockHound는 바이트코드 계측이므로 테스트·로컬 개발에서만 사용하고, 운영 환경
-탐지는 Vert.x 내장 blocked-thread checker를 사용하세요.
+- [사용 가이드](docs/usage-guide.ko.md): 설정, 쿼리, 트랜잭션, Spring/Ktor 사용법
+- [마이그레이션 가이드](docs/migration.ko.md): Spring Data JPA 호환 범위와 전환 방법
+- [내부 동작](docs/internals.ko.md): 세션, 트랜잭션, 리포지토리 런타임 구조
 
 ## 라이선스
 
-MIT License
+[MIT License](LICENSE)

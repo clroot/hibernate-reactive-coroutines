@@ -1,10 +1,16 @@
 # Usage Guide
 
-**[🇰🇷 한국어](usage-guide.ko.md)**
+Start with the setup chapter for your framework: [Spring Boot](#1-spring-boot-setup) or
+[Ktor](#2-ktor-setup). Everything from [chapter 3](#3-repositories) onward applies to both, and
+sections that only apply to one framework say so in their heading.
 
-## Configuration
+## 1. Spring Boot Setup
 
-### application.yml
+### 1.1 Basics
+
+The starter reads the usual `spring.datasource` and `spring.jpa` properties and translates the
+JDBC URL into the Vert.x form for you. Library-specific settings live under
+`spring.jpa.properties.hibernate.reactive`.
 
 ```yaml
 spring:
@@ -26,35 +32,37 @@ spring:
           trust-certificate: /run/secrets/postgres-ca.pem
 ```
 
-### Connection Pool
+### 1.2 Connection Pool
 
-| Property              | Description                         | Default        |
-| --------------------- | ----------------------------------- | -------------- |
-| `pool-size`           | Maximum connection pool size        | 10             |
-| `connect-timeout`     | Connection acquisition timeout (ms) | Vert.x default |
-| `idle-timeout`        | Idle connection timeout (ms)        | Vert.x default |
-| `max-wait-queue-size` | Maximum wait queue size             | Vert.x default |
+| Property | Description | Default |
+| --- | --- | --- |
+| `pool-size` | Maximum pool size | 10 |
+| `connect-timeout` | How long to wait for a connection (ms) | Vert.x default |
+| `idle-timeout` | How long an idle connection stays in the pool (ms) | Vert.x default |
+| `max-wait-queue-size` | Maximum number of requests waiting for a connection | Vert.x default |
 
-### Vert.x Instance
+Set `connect-timeout` and `max-wait-queue-size` together in production. Leave both unset and the
+wait queue is unbounded: when the database slows down, requests pile up instead of failing fast,
+and the whole application stalls.
 
-The starter creates the Vert.x instance Hibernate Reactive runs on, exposes it as a Spring `Vertx`
-bean, and injects it via the `VertxInstance` service. Define your own `Vertx` bean and the starter
-backs off and reuses yours — so the whole application can share a single Vert.x instance instead of
-Hibernate Reactive silently spinning up a second one.
+### 1.3 Vert.x Instance
 
-Settings under `spring.jpa.properties.hibernate.reactive.vertx` (applied only when the starter
-creates the instance):
+The starter creates a Vert.x instance and exposes it as a `Vertx` bean. If your application
+defines its own `Vertx` bean, the starter reuses it, so the whole app shares a single Vert.x.
 
-| Property                       | Description                                              | Default        |
-| ------------------------------ | -------------------------------------------------------- | -------------- |
-| `event-loop-pool-size`         | Number of event loop threads                             | 2 × CPU cores  |
-| `max-event-loop-execute-time`  | Loop occupancy before the blocked-thread checker warns   | 2s             |
-| `blocked-thread-check-interval`| How often the blocked-thread checker runs                | 1s             |
-| `warning-exception-time`       | Loop occupancy before warnings include a stack trace     | 5s             |
+The settings below go under `spring.jpa.properties.hibernate.reactive.vertx` and only take effect
+when the starter creates the instance.
 
-Duration properties accept Spring's duration syntax (`500ms`, `2s`). `transactional {}` blocks run
-on these event loops, so lowering `max-event-loop-execute-time` and `warning-exception-time` in
-production surfaces accidental blocking calls (and who made them) in the logs quickly.
+| Property | Description | Default |
+| --- | --- | --- |
+| `event-loop-pool-size` | Number of event-loop threads | 2 × CPU cores |
+| `max-event-loop-execute-time` | How long a loop may be held before the blocked-thread checker warns | 2s |
+| `blocked-thread-check-interval` | How often the blocked-thread checker runs | 1s |
+| `warning-exception-time` | Hold time after which the warning includes a stack trace | 5s |
+
+Durations use Spring's syntax (`500ms`, `2s`). Transaction blocks run on these event loops, so
+lowering the two time thresholds in production makes any accidental blocking call, and its
+location, show up in the logs right away.
 
 ```yaml
 spring:
@@ -68,11 +76,11 @@ spring:
             warning-exception-time: 2s
 ```
 
-### Event Loop Sharing (opt-in)
+### 1.4 Sharing Event Loops
 
-In a WebFlux application, reactor-netty and Vert.x each run their own Netty event loop pool by
-default. Setting `share-event-loops: true` runs the embedded Netty reactive web server on the
-starter's Vert.x event loops instead — one thread pool for HTTP serving and DB I/O:
+In a WebFlux application, reactor-netty and Vert.x each spin up their own event-loop pool by
+default. Set `share-event-loops: true` and the embedded Netty server runs on the Vert.x event loops
+instead, so HTTP handling and database I/O share one thread pool.
 
 ```yaml
 spring:
@@ -84,305 +92,67 @@ spring:
             share-event-loops: true
 ```
 
-Requests then start on Vert.x event loop threads, so entering `transactional {}` no longer hops to
-a different pool, and both the Vert.x blocked-thread checker and the
-`hibernate-reactive-coroutines-blockhound` integration cover the web layer too. Works on Spring
-Boot 3.x and 4.x; a user-defined `ReactorResourceFactory` bean takes precedence.
+Requests then start on a Vert.x thread, which removes the thread hop on entering a transaction and
+extends the blocked-thread checker and BlockHound ([chapter 6](#6-detecting-blocking-calls)) to the
+web layer. If your application defines its own `ReactorResourceFactory` bean, that bean wins.
 
-**Understand the trade-off before enabling.** Separate pools act as a bulkhead: a blocking call
-inside a `transactional {}` block stalls only the DB layer. With shared loops, that same mistake
-freezes every HTTP connection assigned to that loop — health checks included — and heavy DB event
-traffic competes with HTTP events on the same threads. Verify your code with BlockHound in tests
-and tighten the blocked-thread checker in production before turning this on. This is why it is
-opt-in.
+**There is a trade-off.** With separate pools, a blocking call inside a transaction only stalls the
+database layer. With shared loops, the same mistake freezes every HTTP connection on that loop,
+health checks included. Before enabling it, prove there are no blocking calls with BlockHound in
+tests, and lower the blocked-thread checker thresholds in production.
 
-### SSL
+### 1.5 SSL
 
-| Mode          | Description                              |
-| ------------- | ---------------------------------------- |
-| `disable`     | No SSL (default)                         |
-| `allow`       | Use SSL if server requires it            |
-| `prefer`      | Try SSL, fall back to unencrypted        |
-| `require`     | SSL required + default trust store validation |
-| `verify-ca`   | SSL + configured CA certificate validation    |
-| `verify-full` | SSL + configured CA + hostname validation     |
+| `ssl-mode` | Behavior |
+| --- | --- |
+| `disable` | No SSL (default). |
+| `allow` | SSL only if the server demands it. |
+| `prefer` | Try SSL first, fall back to plaintext. |
+| `require` | SSL required; certificate verified against the JVM default trust store. |
+| `verify-ca` | SSL required; certificate verified against the CA in `trust-certificate`. |
+| `verify-full` | `verify-ca` plus hostname verification. |
 
-`verify-ca` and `verify-full` require `trust-certificate`, which must point to a PEM CA certificate.
-`require` uses the JVM default trust store when no custom certificate is configured. Invalid modes,
-missing required certificates, unavailable PostgreSQL client classes, and TLS reflection failures
-stop startup instead of silently falling back to plaintext.
+`verify-ca` and `verify-full` require `trust-certificate`, the path to a PEM CA certificate. A
+misconfiguration fails startup rather than silently downgrading to plaintext.
 
-Legacy JDBC URL parameters `sslmode` and `currentSchema` are still recognized. After they are
-translated to Hibernate settings, they are removed from the Reactive connection URL so PostgreSQL
-does not receive them as startup parameters. Other URL parameters are preserved.
+The `sslmode` and `currentSchema` parameters of a JDBC URL are still honored. They are moved into
+Hibernate settings and stripped from the Vert.x URL; other parameters pass through untouched.
 
-### Repository Scanning
+### 1.6 Repository Scanning
+
+The starter scans the `@SpringBootApplication` package for interfaces that extend
+`CoroutineCrudRepository` and registers them as beans. No `@Repository` needed.
 
 ```kotlin
-// Default: scans from @SpringBootApplication location
+// Default: scan from the @SpringBootApplication package.
 @SpringBootApplication
 class MyApplication
 
-// Custom package scanning
+// Scan a different package.
 @SpringBootApplication
 @EnableHibernateReactiveRepositories(basePackages = ["com.example.repository"])
 class MyApplication
 ```
 
----
+## 2. Ktor Setup
 
-## Repository
+Add `io.clroot:hibernate-reactive-coroutines-ktor` and the Vert.x client for your database. Ktor
+3.5 is supported, and there is no runtime dependency on Spring.
 
-### Jakarta Data contract for non-Spring integrations
-
-The framework-neutral repository module exposes a coroutine contract that extends Jakarta Data's
-`DataRepository` marker without introducing synchronous/blocking CRUD methods:
+### 2.1 Installing the Plugin
 
 ```kotlin
+import io.clroot.hibernate.reactive.ktor.HibernateReactive
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
-import io.clroot.hibernate.reactive.repository.query.Modifying
-import io.clroot.hibernate.reactive.repository.query.Param
 import io.clroot.hibernate.reactive.repository.query.Query
-import jakarta.data.Order
 import jakarta.data.Sort
 import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
 
 interface UserRepository : CoroutineCrudRepository<User, Long> {
-    suspend fun findByEmail(email: String): User?
+    suspend fun findByActive(active: Boolean, pageRequest: PageRequest, sort: Sort<User>): Page<User>
 
-    @Query("where status = :status")
-    suspend fun findByStatus(
-        @Param("status") status: Status,
-        pageRequest: PageRequest,
-        order: Order<User>,
-    ): Page<User>
-
-    @Modifying
-    @Query("UPDATE User u SET u.status = 'INACTIVE' WHERE u.id = :id")
-    suspend fun deactivate(@Param("id") id: Long): Int
-
-    suspend fun findByNameContaining(name: String, sort: Sort<User>): List<User>
-}
-```
-
-`JakartaDataRepositoryFactory` parses the shared HRC `@Query`, `@Param`, and `@Modifying`
-metadata together with Jakarta Data `Page`/`PageRequest`, `Sort`, and `Order`. Spring repositories use
-the same query annotations while retaining Spring Data paging and sorting types. Update and delete
-queries require `@Modifying` and may return `Unit`, `Int`, or `Long` in non-Spring repositories. HRC
-method-name query derivation remains available as a coroutine-specific extension.
-
-Native SQL and an explicit page count query are configured directly on HRC `@Query`:
-
-```kotlin
-@Query(
-    value = "SELECT * FROM users WHERE status = :status",
-    nativeQuery = true,
-    countQuery = "SELECT COUNT(*) FROM users WHERE status = :status",
-)
-suspend fun findNative(status: String, pageRequest: PageRequest): Page<User>
-```
-
-Current compatibility boundary:
-
-- Offset `PageRequest` is supported; cursor requests and `CursoredPage` are not yet supported.
-- `PageRequest.withoutTotal()` avoids the count query, and `Page.totalElements()`/`totalPages()` then
-  throw as required by Jakarta Data.
-- This is not a complete Jakarta Data provider. Lifecycle annotations, parameter-based `@Find`,
-  `Limit`, and the synchronous built-in repository interfaces are outside the current scope.
-- No Spring Framework or Spring Data dependency is required by the repository module.
-
-### CoroutineCrudRepository
-
-Extend `CoroutineCrudRepository` to automatically use CRUD functionality.
-
-```kotlin
-interface UserRepository : CoroutineCrudRepository<User, Long>
-```
-
-**Available Methods:**
-
-| Method               | Return Type | Description          |
-| -------------------- | ----------- | -------------------- |
-| `save(entity)`       | `T`         | Save entity          |
-| `saveAll(entities)`  | `Flow<T>`   | Save multiple entities |
-| `findById(id)`       | `T?`        | Find by ID           |
-| `findAll()`          | `Flow<T>`   | Find all             |
-| `findAllById(ids)`   | `Flow<T>`   | Find by multiple IDs |
-| `count()`            | `Long`      | Count all            |
-| `existsById(id)`     | `Boolean`   | Check existence      |
-| `deleteById(id)`     | `Unit`      | Delete by ID         |
-| `delete(entity)`     | `Unit`      | Delete entity        |
-| `deleteAllById(ids)` | `Unit`      | Delete by multiple IDs |
-| `deleteAll()`        | `Unit`      | Delete all           |
-
-`save` persists a new entity as the same managed instance, so a generated identifier is visible
-on both the argument and the returned value. Existing or detached entities are merged; keep using
-the instance returned by `save` for subsequent work. Entities with assigned identifiers can
-implement Spring Data's `Persistable` to declare their new-state explicitly.
-
-Repository ID methods also accept Kotlin `@JvmInline` value classes and unwrap them to the
-underlying Hibernate identifier type.
-
-### Query Method Derivation
-
-Queries are automatically generated based on method names.
-
-```kotlin
-interface UserRepository : CoroutineCrudRepository<User, Long> {
-    // Single result
-    suspend fun findByEmail(email: String): User?
-    suspend fun findByNameAndStatus(name: String, status: Status): User?
-
-    // List results
-    suspend fun findAllByStatus(status: Status): List<User>
-    suspend fun findAllByNameContaining(name: String): List<User>
-
-    // Existence / Count
-    suspend fun existsByEmail(email: String): Boolean
-    suspend fun countByStatus(status: Status): Long
-
-    // Delete
-    suspend fun deleteByEmail(email: String)
-}
-```
-
-**Supported Keywords:**
-
-| Keyword                       | Example                      | HQL                            |
-| ----------------------------- | ---------------------------- | ------------------------------ |
-| `And`                         | `findByNameAndEmail`         | `WHERE name = ? AND email = ?` |
-| `Or`                          | `findByNameOrEmail`          | `WHERE name = ? OR email = ?`  |
-| `Between`                     | `findByAgeBetween`           | `WHERE age BETWEEN ? AND ?`    |
-| `LessThan` / `GreaterThan`    | `findByAgeLessThan`          | `WHERE age < ?`                |
-| `Like` / `Containing`         | `findByNameContaining`       | `WHERE name LIKE %?%`          |
-| `StartingWith` / `EndingWith` | `findByNameStartingWith`     | `WHERE name LIKE ?%`           |
-| `In` / `NotIn`                | `findByStatusIn`             | `WHERE status IN (?)`          |
-| `IsNull` / `IsNotNull`        | `findByDeletedAtIsNull`      | `WHERE deletedAt IS NULL`      |
-| `True` / `False`              | `findByActiveTrue`           | `WHERE active = TRUE`          |
-| `OrderBy`                     | `findByStatusOrderByNameAsc` | `ORDER BY name ASC`            |
-
-### @Query Annotation
-
-Spring and non-Spring repositories share HRC's query annotations from the repository module:
-
-```kotlin
-import io.clroot.hibernate.reactive.repository.query.Modifying
-import io.clroot.hibernate.reactive.repository.query.Param
-import io.clroot.hibernate.reactive.repository.query.Query
-```
-
-Pagination remains integration-native: Spring repositories use `Pageable`, `Page`, `Slice`, and
-Spring `Sort`, while non-Spring repositories use Jakarta Data `PageRequest`, `Page`, `Sort`, and
-`Order`.
-
-Write JPQL directly for complex queries.
-
-```kotlin
-interface UserRepository : CoroutineCrudRepository<User, Long> {
-    // Named Parameter
-    @Query("SELECT u FROM User u WHERE u.status = :status AND u.role = :role")
-    suspend fun findByStatusAndRole(status: Status, role: Role): List<User>
-
-    // Positional Parameter
-    @Query("SELECT u FROM User u WHERE u.age BETWEEN ?1 AND ?2")
-    suspend fun findByAgeBetween(minAge: Int, maxAge: Int): List<User>
-
-    // UPDATE/DELETE
-    @Modifying
-    @Query("UPDATE User u SET u.status = :newStatus WHERE u.status = :oldStatus")
-    suspend fun updateStatus(oldStatus: Status, newStatus: Status): Int
-}
-```
-
-Scalar, aggregate, and HQL constructor DTO projections use the declared return type:
-
-```kotlin
-data class UserSummary(val name: String, val age: Int)
-
-@Query("SELECT COUNT(u) FROM User u WHERE u.status = :status")
-suspend fun countByStatus(status: Status): Long
-
-@Query("SELECT u.name FROM User u ORDER BY u.name")
-suspend fun findNames(): List<String>
-
-@Query("SELECT new com.example.UserSummary(u.name, u.age) FROM User u ORDER BY u.name")
-suspend fun findSummaries(): List<UserSummary>
-```
-
-Interface-based and Tuple/array projections are not supported. Use a concrete constructor DTO instead.
-
-`@Modifying` methods must return either `Int` (the affected row count) or `Unit`.
-Bulk updates do not synchronize already managed entities. Use
-`@Modifying(clearAutomatically = true)` when subsequent reads in the same transaction must
-discard the current session cache and observe the database result.
-
-### Pagination
-
-```kotlin
-interface UserRepository : CoroutineCrudRepository<User, Long> {
-    suspend fun findAll(pageable: Pageable): Page<User>
-    suspend fun findAllByStatus(status: Status, pageable: Pageable): Page<User>
-    suspend fun findAllByStatus(status: Status, pageable: Pageable): Slice<User>  // No total count
-}
-```
-
-For `@Query` methods returning `Page`, a count query is derived automatically only for simple
-entity queries such as `SELECT u FROM User u ...` or `FROM User u ...`. Declare `countQuery`
-explicitly when the query contains projections, joins (including implicit joins), `GROUP BY`,
-`HAVING`, set operations, trailing `SELECT`, query-level pagination, or a parameterized
-`ORDER BY`. Automatic derivation accepts only simple root-property ordering such as
-`ORDER BY u.id DESC`; functions, collection indexing, and path navigation in an order expression
-require an explicit `countQuery`. Native page queries always require an explicit `countQuery`.
-`Slice` does not run a count query.
-
-Within each annotated query, positional parameters must start at `?1` and remain contiguous, as
-required by Hibernate; unlabeled `?` parameters are not supported. Every `countQuery` parameter
-must also appear in the content query. PostgreSQL dollar-quoted literals, line comments, and nested
-block comments are rejected because their parameter parsing is not consistent across Hibernate's
-HQL and native-query parsers.
-
-```kotlin
-@Query(
-    value = "SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.status = :status",
-    countQuery = "SELECT COUNT(u) FROM User u WHERE u.status = :status",
-)
-suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
-```
-
-**Usage Example:**
-
-```kotlin
-val pageable = PageRequest.of(0, 10, Sort.by("createdAt").descending())
-val page = userRepository.findAll(pageable)
-
-println("Total elements: ${page.totalElements}")
-println("Total pages: ${page.totalPages}")
-println("Current page data: ${page.content}")
-```
-
-| Type    | Total Count | Use Case              |
-| ------- | :---------: | --------------------- |
-| `Page`  |      O      | Display total pages   |
-| `Slice` |      X      | Infinite scroll, "Load more" |
-
-## Ktor Integration
-
-Add `io.clroot:hibernate-reactive-coroutines-ktor:<version>` and the Vert.x client for your database.
-Ktor 3.5 is supported. The module uses the Jakarta Data coroutine contract above and has no Spring
-Framework or Spring Data runtime dependency.
-
-### Plugin configuration
-
-```kotlin
-interface UserRepository : CoroutineCrudRepository<User, Long> {
-    suspend fun findByActive(
-        active: Boolean,
-        pageRequest: jakarta.data.page.PageRequest,
-        sort: jakarta.data.Sort<User>,
-    ): jakarta.data.page.Page<User>
-
-    @io.clroot.hibernate.reactive.repository.query.Query("FROM User u WHERE u.email = :email")
+    @Query("FROM User u WHERE u.email = :email")
     suspend fun findByEmail(email: String): User?
 }
 
@@ -394,22 +164,45 @@ fun Application.module() {
             password = "password"
             schemaGeneration = "validate"
             poolSize = 10
+            showSql = false
             property("hibernate.format_sql", true)
         }
-        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 }
 ```
 
-`repository` registration implicitly adds its entity to Hibernate. Use `entity`/`entities` only for
-managed entities that do not have a repository. The plugin deliberately avoids classpath scanning.
-Registered proxies delegate CRUD, derived queries, HRC `@Query`, offset pagination, and
-sorting to the shared framework-neutral repository runtime.
+| `database {}` option | Description | Default |
+| --- | --- | --- |
+| `url` | Vert.x connection URL (`postgresql://host:port/db`) | none |
+| `username`, `password` | Credentials | none |
+| `schemaGeneration` | Value for `hibernate.hbm2ddl.auto` | `none` |
+| `poolSize` | Maximum pool size | 10 |
+| `showSql` | Log executed SQL | `false` |
+| `property(name, value)` | Any other Hibernate property | |
 
-With `io.ktor:ktor-server-di` installed and `dependencyInjection = true`, resolve repositories and
-transaction infrastructure once while assembling the application, then pass application-specific
-services into routes:
+Registering a repository with `repository()` also registers its entity with Hibernate. Only
+entities without a repository need `entity<T>()`. The plugin never scans the classpath.
+
+Resources are exposed as `Application` extension properties:
+
+| Accessor | Returns |
+| --- | --- |
+| `hibernateRepository<R>()` | A registered repository |
+| `hibernateTransactionExecutor` | `ReactiveTransactionExecutor` |
+| `hibernateSessionProvider` | `ReactiveSessionProvider` |
+| `hibernateSessionFactory` | `Mutiny.SessionFactory` |
+| `hibernateReactive` | All of the above as `HibernateReactiveResources` |
+
+The plugin does not wrap HTTP requests in a transaction. A repository call made outside a
+transaction opens and closes its own session. To group several calls, use `transactional {}` from
+[section 4.1](#41-reactivetransactionexecutor).
+
+### 2.2 Ktor DI
+
+Add `io.ktor:ktor-server-di` and set `dependencyInjection = true` to publish the repositories,
+`ReactiveTransactionExecutor`, `ReactiveSessionProvider`, `Vertx`, and `HibernateReactiveResources`
+to Ktor's DI container.
 
 ```kotlin
 fun Application.module() {
@@ -425,8 +218,8 @@ fun Application.module() {
     }
 
     val users: UserRepository by dependencies
-    val transactions: ReactiveTransactionExecutor by dependencies
-    val userService = UserService(transactions, users)
+    val tx: ReactiveTransactionExecutor by dependencies
+    val userService = UserService(tx, users)
 
     routing {
         post("/users") {
@@ -437,17 +230,266 @@ fun Application.module() {
 }
 ```
 
-`Application.hibernateReactive` and the specialized application accessors remain available when DI
-is disabled or direct infrastructure access is appropriate.
+The session factory is deliberately not published on its own; reach it through
+`HibernateReactiveResources.sessionFactory`. This keeps Ktor DI's automatic `AutoCloseable`
+cleanup from bypassing the ownership rules below.
 
-A repository operation made outside an explicit transaction opens its own session or write
-transaction. Hibernate Reactive schedules that database operation on its own isolated Vert.x
-context; Ktor's server engine does not need to share event loops, and the plugin never wraps the
-whole HTTP request.
+### 2.3 External Resources and Ownership
 
-### Explicit service transaction boundaries
+If you already have a Vert.x instance or session factory, pass it in instead of `database {}`.
 
-Put multi-operation transaction boundaries in the service layer:
+```kotlin
+install(HibernateReactive) {
+    vertx = applicationVertx
+    sessionFactory = applicationSessionFactory
+    closeExternalVertx = false          // default
+    closeExternalSessionFactory = false // default
+
+    repository<UserRepository, User, Long>()
+}
+```
+
+- Resources the plugin created are closed on application shutdown, session factory first, then
+  Vert.x.
+- Resources you passed in are left alone unless the matching `closeExternal...` flag is set.
+- Passing only a session factory is enough; the plugin discovers its Vert.x. If you also set
+  `vertx`, it must be the same instance or startup fails.
+- A custom session factory that does not expose Vert.x through Hibernate Reactive's `Implementor`
+  SPI needs `vertx` set explicitly.
+
+## 3. Repositories
+
+### 3.1 Spring vs. Ktor
+
+| | Spring Boot | Ktor |
+| --- | --- | --- |
+| Base interface | `org.springframework.data.repository.kotlin.CoroutineCrudRepository` | `io.clroot.hibernate.reactive.repository.CoroutineCrudRepository` |
+| Query annotations | `io.clroot.hibernate.reactive.repository.query.{Query, Param, Modifying}` | same |
+| Paging and sorting types | Spring Data `Pageable`, `Page`, `Slice`, `Sort` | Jakarta Data `PageRequest`, `Page`, `Sort`, `Order` |
+| Registration | classpath scan | `repository<R, T, ID>()` |
+| New-entity detection | `Persistable` first, then the shared rule | shared rule (`@Version`, then ID) |
+| Auditing | yes | no |
+
+The Ktor-side interface is a coroutine contract that extends Jakarta Data's `DataRepository`. It is
+not a full Jakarta Data provider: lifecycle annotations, `@Find`, `Limit`, and the synchronous base
+interfaces are out of scope.
+
+### 3.2 Built-in CRUD
+
+| Method | Returns |
+| --- | --- |
+| `save(entity)` | `T` |
+| `saveAll(entities)` | `Flow<T>` |
+| `findById(id)` | `T?` |
+| `findAll()` | `Flow<T>` |
+| `findAllById(ids)` | `Flow<T>` |
+| `count()` | `Long` |
+| `existsById(id)` | `Boolean` |
+| `deleteById(id)`, `delete(entity)`, `deleteAllById(ids)`, `deleteAll()` | `Unit` |
+
+- **`save` persists a new entity in place.** The generated ID lands on the instance you passed in.
+  Existing entities are merged, so keep using the returned instance afterward.
+- **An entity is new when its `@Version` is null, or, without `@Version`, when its ID is null or
+  the primitive default.** Assigned IDs without `@Version` therefore always merge; on Spring,
+  implement `Persistable` to say otherwise.
+- **Deletes load first, then remove.** Cascades and `@PreRemove` fire, at the cost of one extra
+  `SELECT`. For bulk deletes, write `@Modifying @Query("DELETE ...")`.
+- **`Flow` is not streaming.** The whole result is loaded into memory and then emitted. Paginate
+  large tables.
+- **`@JvmInline` value classes work as ID types.**
+
+### 3.3 Derived Queries
+
+Method names alone define the query.
+
+```kotlin
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByEmail(email: String): User?
+    suspend fun findByNameAndStatus(name: String, status: Status): User?
+    suspend fun findAllByStatus(status: Status): List<User>
+    suspend fun findAllByNameContaining(name: String): List<User>
+    suspend fun existsByEmail(email: String): Boolean
+    suspend fun countByStatus(status: Status): Long
+    suspend fun deleteByEmail(email: String): Int   // Unit, Int, or Long
+}
+```
+
+| Keyword | Example | Condition |
+| --- | --- | --- |
+| `And` | `findByNameAndEmail` | `name = ? AND email = ?` |
+| `Or` | `findByNameOrEmail` | `name = ? OR email = ?` |
+| `Between` | `findByAgeBetween` | `age BETWEEN ? AND ?` |
+| `LessThan` / `GreaterThan` | `findByAgeLessThan` | `age < ?` |
+| `Like` / `Containing` | `findByNameContaining` | `name LIKE %?%` |
+| `StartingWith` / `EndingWith` | `findByNameStartingWith` | `name LIKE ?%` |
+| `In` / `NotIn` | `findByStatusIn` | `status IN (?)` |
+| `IsNull` / `IsNotNull` | `findByDeletedAtIsNull` | `deletedAt IS NULL` |
+| `True` / `False` | `findByActiveTrue` | `active = TRUE` |
+| `IgnoreCase` | `findByEmailIgnoreCase` | `LOWER(email) = LOWER(?)` |
+| `OrderBy` | `findByStatusOrderByNameAsc` | `ORDER BY name ASC` |
+
+- `Containing`, `StartingWith`, and `EndingWith` escape `%`, `_`, and `\` in the bound value.
+  `Like` passes your pattern through as-is.
+- `IgnoreCase` only works on `String` properties.
+- Entity names come from the JPA metamodel, so `@Entity(name = "...")` is respected.
+- Invalid method names, overloads with the same name and arity, and non-`suspend` query methods are
+  rejected at startup.
+
+### 3.4 @Query
+
+Both Spring and Ktor use this library's annotations:
+
+```kotlin
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
+```
+
+```kotlin
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    // Named parameters use the Kotlin parameter names.
+    @Query("SELECT u FROM User u WHERE u.status = :status AND u.role = :role")
+    suspend fun findByStatusAndRole(status: Status, role: Role): List<User>
+
+    // Use @Param to bind under a different name.
+    @Query("FROM User u WHERE u.status = :s")
+    suspend fun findByStatus(@Param("s") status: Status): List<User>
+
+    // Positional parameters start at ?1 and must be contiguous.
+    @Query("SELECT u FROM User u WHERE u.age BETWEEN ?1 AND ?2")
+    suspend fun findByAgeBetween(minAge: Int, maxAge: Int): List<User>
+
+    // Native SQL is read-only.
+    @Query("SELECT * FROM users WHERE status = :status", nativeQuery = true)
+    suspend fun findNative(status: String): List<User>
+}
+```
+
+- Named and positional parameters cannot be mixed, and bare `?` is not supported.
+- PostgreSQL dollar-quoted literals and comments are rejected because Hibernate's HQL parser and
+  native parser disagree on them.
+- A `Sort`, or a `Pageable` carrying one, is appended after any `ORDER BY` already in the query.
+  Native queries do not accept sort parameters.
+
+#### Projections
+
+Scalars, aggregates, and HQL constructor expressions are supported. Interface projections and
+`Tuple` or array results are not.
+
+```kotlin
+data class UserSummary(val name: String, val age: Int)
+
+@Query("SELECT COUNT(u) FROM User u WHERE u.status = :status")
+suspend fun countByStatus(status: Status): Long
+
+@Query("SELECT u.name FROM User u ORDER BY u.name")
+suspend fun findNames(): List<String>
+
+@Query("SELECT new com.example.UserSummary(u.name, u.age) FROM User u ORDER BY u.name")
+suspend fun findSummaries(): List<UserSummary>
+```
+
+### 3.5 @Modifying
+
+Mark `UPDATE` and `DELETE` queries with `@Modifying`. The return type is `Int`, `Long`, or `Unit`,
+and native SQL is not allowed.
+
+```kotlin
+@Modifying
+@Query("UPDATE User u SET u.status = :newStatus WHERE u.status = :oldStatus")
+suspend fun updateStatus(oldStatus: Status, newStatus: Status): Int
+```
+
+Bulk updates do not refresh entities already in the session. If a later read in the same
+transaction must see the new values, clear the session with
+`@Modifying(clearAutomatically = true)`.
+
+### 3.6 Pagination and Sorting
+
+```kotlin
+// Spring Boot
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findAllByStatus(status: Status, pageable: Pageable): Page<User>
+    suspend fun findAllByStatus(status: Status, pageable: Pageable): Slice<User>
+}
+
+val page = users.findAllByStatus(Status.ACTIVE, PageRequest.of(0, 10, Sort.by("createdAt").descending()))
+```
+
+```kotlin
+// Ktor
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findAllByStatus(status: Status, pageRequest: PageRequest, order: Order<User>): Page<User>
+    suspend fun findByNameContaining(name: String, sort: Sort<User>): List<User>
+}
+
+val page = users.findAllByStatus(Status.ACTIVE, PageRequest.ofPage(1, 10, true), Order.by(Sort.desc("createdAt")))
+```
+
+| Type | COUNT query |
+| --- | --- |
+| Spring `Page` | executed |
+| Spring `Slice` | skipped |
+| Jakarta `Page` | skipped for `PageRequest.withoutTotal()`, in which case `totalElements()` throws |
+
+Jakarta Data support is offset-based only; `CursoredPage` is not implemented.
+
+#### Automatic COUNT Queries
+
+A `@Query` returning `Page` gets an automatic COUNT query only when it is a simple entity query
+such as `SELECT u FROM User u ...`. Provide `countQuery` yourself when the query has any of:
+
+- projections, joins, `GROUP BY`, `HAVING`, set operations, or a trailing `SELECT`
+- its own page limit, or a parameter inside `ORDER BY`
+- a sort expression with a function or path navigation
+- `nativeQuery = true`
+
+```kotlin
+@Query(
+    value = "SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.status = :status",
+    countQuery = "SELECT COUNT(u) FROM User u WHERE u.status = :status",
+)
+suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
+```
+
+### 3.7 Auditing (Spring Boot only)
+
+`@CreatedDate` and `@LastModifiedDate` are filled in once the entity registers
+`AuditingEntityListener`.
+
+```kotlin
+import io.clroot.hibernate.reactive.spring.boot.auditing.AuditingEntityListener
+
+@Entity
+@EntityListeners(AuditingEntityListener::class)
+class User(
+    @Id @GeneratedValue val id: Long? = null,
+    var name: String,
+    @CreatedDate var createdAt: Instant? = null,
+    @LastModifiedDate var updatedAt: Instant? = null,
+)
+```
+
+`@CreatedBy` and `@LastModifiedBy` need a `ReactiveAuditorAware` bean. In WebFlux the thread-local
+`SecurityContextHolder` is empty, so read from `ReactiveSecurityContextHolder`.
+
+```kotlin
+@Component
+class SecurityAuditorAware : ReactiveAuditorAware<String> {
+    override suspend fun getCurrentAuditor(): String? =
+        ReactiveSecurityContextHolder.getContext()
+            .awaitSingleOrNull()
+            ?.authentication
+            ?.name
+}
+```
+
+## 4. Transactions
+
+### 4.1 ReactiveTransactionExecutor
+
+The programmatic transaction API, available on both frameworks. Inject it as a bean on Spring; on
+Ktor, use `hibernateTransactionExecutor`.
 
 ```kotlin
 class UserService(
@@ -466,102 +508,77 @@ class UserService(
 }
 ```
 
-Do not launch detached child coroutines or perform blocking/external I/O inside these blocks. A
-failed `transactional` block rolls back, while writes attempted through a repository inside
-`readOnly` fail with `ReadOnlyTransactionException`.
+- **`transactional {}`** opens a read-write transaction. It rolls back on exception and flushes
+  then commits on success. Inside an existing transaction, it joins instead.
+- **`readOnly {}`** opens a read-only session. Dirty checking and auto-flush are off, so entity
+  changes are never written, and a write through a repository throws
+  `ReadOnlyTransactionException`.
+- `timeout` defaults to 30 seconds. Nested blocks get the shorter of their own timeout and the
+  parent's remaining time.
+- The block runs on a Vert.x event loop, but the caller's coroutine context (MDC, tracing, Reactor
+  context) is carried along.
 
-### External resources and ownership
+Do not launch detached coroutines, perform blocking I/O, or call external services inside the
+block. BlockHound ([chapter 6](#6-detecting-blocking-calls)) catches blocking calls in tests.
 
-You may provide existing infrastructure instead of database settings:
+### 4.2 @Transactional (Spring Boot only)
 
-```kotlin
-install(HibernateReactive) {
-    vertx = applicationVertx
-    sessionFactory = applicationSessionFactory
-    closeExternalVertx = false          // default
-    closeExternalSessionFactory = false // default
-
-    repository<UserRepository, User, Long>()
-}
-```
-
-Plugin-created session factories and Vert.x instances are always closed during Ktor application
-shutdown, in that order. Supplied resources are preserved unless their corresponding
-`closeExternal...` flag is enabled. For the standard Hibernate Reactive Mutiny implementation, the
-plugin discovers the Vert.x instance behind an external session factory. If `vertx` is also set, it
-must be that same instance and startup fails on a detectable mismatch. If a custom session-factory
-implementation does not expose Vert.x through Hibernate Reactive's public `Implementor` SPI,
-configure the matching instance explicitly.
-
-Set `dependencyInjection = true` and add `io.ktor:ktor-server-di` to publish every registered
-repository, `HibernateReactiveResources`, `ReactiveSessionProvider`, `ReactiveTransactionExecutor`,
-and `Vertx`. The session factory remains available as `HibernateReactiveResources.sessionFactory`
-instead of a separate DI value so Ktor DI's automatic `AutoCloseable` cleanup cannot override the
-ownership rules. Basic plugin use does not require the DI artifact.
-
-## Transactions
-
-### @Transactional (Recommended)
-
-Use Spring's `@Transactional` with suspend functions.
+`@Transactional` works on `suspend` functions with no extra configuration.
 
 ```kotlin
 @Service
-class UserService(private val userRepository: UserRepository) {
+class UserService(private val users: UserRepository) {
 
     @Transactional
-    suspend fun createUser(name: String): User {
-        return userRepository.save(User(name = name))
-    }
+    suspend fun createUser(name: String): User = users.save(User(name = name))
 
     @Transactional(readOnly = true)
-    suspend fun findUser(id: Long): User? {
-        return userRepository.findById(id)
-    }
+    suspend fun findUser(id: Long): User? = users.findById(id)
 
     @Transactional
     suspend fun transfer(fromId: Long, toId: Long, amount: Int) {
-        val from = userRepository.findById(fromId)!!
-        val to = userRepository.findById(toId)!!
-
-        userRepository.save(from.copy(balance = from.balance - amount))
-        userRepository.save(to.copy(balance = to.balance + amount))
-        // All changes rolled back on exception
+        val from = users.findById(fromId) ?: error("sender not found")
+        val to = users.findById(toId) ?: error("receiver not found")
+        from.balance -= amount
+        to.balance += amount
+        // Both changes roll back if anything throws.
     }
 }
 ```
 
-#### Transaction timeouts
+Calling `tx.transactional {}` inside `@Transactional` joins the existing transaction. Opening a
+write transaction inside `readOnly = true`, however, throws.
 
-A finite `@Transactional(timeout = ...)` is enforced as a transaction deadline. On PostgreSQL, the
-starter also installs a transaction-scoped `statement_timeout` and refreshes it with the remaining
-deadline before repository operations and flush. A statement that exceeds the deadline is therefore
-cancelled by PostgreSQL instead of holding the pooled connection until normal completion. The
-setting uses `SET LOCAL`, so commit or rollback removes it automatically before the connection is
-reused. PostgreSQL applies this setting with millisecond granularity, so cancellation follows normal
-scheduler and network timing rather than a nanosecond-exact boundary.
+Nested `Propagation.REQUIRES_NEW` is unsupported: the parent holds its connection while the child
+asks for another, which drains the pool under load. Nothing stops you from writing it, so watch out.
+For work that must run after commit, use transaction events ([section 4.4](#44-transaction-events-spring-boot-only)).
 
-Hibernate Reactive has no portable public API for cancelling an in-flight query. Other database
-dialects retain the deadline checks before and after repository operations and mark expired
-transactions rollback-only, but a statement already executing in the database might still finish.
-`ReactiveTransactionExecutor` also uses coroutine cancellation rather than a database-specific
-statement timeout.
+### 4.3 Transaction Timeouts (Spring Boot only)
 
-### Transactional Events
+`@Transactional(timeout = ...)` becomes the transaction deadline.
 
-The starter auto-configures Spring's reactive `TransactionalEventPublisher`. Use it instead of
-`ApplicationEventPublisher` inside reactive transactions so the event carries the Reactor
-transaction context required by `@TransactionalEventListener`.
+On PostgreSQL, the starter also issues `SET LOCAL statement_timeout` and refreshes it with the
+remaining time before each repository call and flush. A statement that overruns the deadline is
+killed server-side, and the setting disappears when the transaction ends.
+
+On other databases, only the deadline checks around repository calls apply; a statement already
+running goes to completion, because Hibernate Reactive has no portable query-cancellation API.
+
+### 4.4 Transaction Events (Spring Boot only)
+
+To use `@TransactionalEventListener`, publish through the reactive `TransactionalEventPublisher`
+the starter registers, not through `ApplicationEventPublisher`.
 
 ```kotlin
 @Service
 class OrderService(
+    private val orders: OrderRepository,
     private val events: TransactionalEventPublisher,
 ) {
     @Transactional
     suspend fun placeOrder(command: PlaceOrderCommand) {
-        // Persist the order first...
-        events.publishEvent(OrderPlaced(command.orderId)).awaitSingleOrNull()
+        val order = orders.save(Order.create(command))
+        events.publishEvent(OrderPlaced(order.id)).awaitSingleOrNull()
     }
 }
 
@@ -574,40 +591,15 @@ class OrderPlacedHandler {
 }
 ```
 
-The returned `Mono` must be awaited inside the transactional suspend function. Publishing through
-the regular `ApplicationEventPublisher`, or subscribing to the reactive publisher separately,
-loses the reactive transaction context and does not register the after-commit callback.
+Always await the `Mono` returned by `publishEvent`. Otherwise the transaction context is lost and
+the after-commit callback never registers.
 
-### ReactiveTransactionExecutor
+## 5. Loading Associations
 
-Manage transactions programmatically.
+Hibernate Reactive has no synchronous lazy loading. Touching an uninitialized association raises
+`HR000069`, so load associations explicitly in one of two ways.
 
-```kotlin
-@Service
-class OrderService(
-    private val tx: ReactiveTransactionExecutor,
-    private val orderRepository: OrderRepository,
-) {
-    suspend fun placeOrder(command: PlaceOrderCommand): Order = tx.transactional {
-        orderRepository.save(Order.create(command))
-    }
-
-    suspend fun getOrder(id: Long): Order? = tx.readOnly {
-        orderRepository.findById(id)
-    }
-}
-```
-
-`transactional` and `readOnly` preserve caller coroutine context elements such as MDC/tracing
-adapters and Reactor context while moving database work onto the required Vert.x dispatcher.
-For a newly opened `readOnly` session, Hibernate dirty checking and automatic flush are disabled,
-so changes made to loaded entities are not written implicitly.
-
-## Lazy Loading
-
-Synchronous Lazy Loading is not supported in Hibernate Reactive.
-
-### Option 1: FETCH JOIN (Recommended)
+### 5.1 FETCH JOIN (recommended)
 
 ```kotlin
 interface ParentRepository : CoroutineCrudRepository<Parent, Long> {
@@ -616,29 +608,75 @@ interface ParentRepository : CoroutineCrudRepository<Parent, Long> {
 }
 ```
 
-### Option 2: fetch() Method
+### 5.2 fetch() (Spring Boot only)
 
-```kotlin
-@Transactional(readOnly = true)
-suspend fun getChildren(parentId: Long): List<Child> {
-    val parent = parentRepository.findById(parentId)!!
-    return sessionProvider.fetch(parent, Parent::children)
-}
-```
-
-### Option 3: fetchAll() - Multiple Associations
+For an entity you already hold, load associations through `TransactionalAwareSessionProvider`.
+This only works inside a transaction.
 
 ```kotlin
 @Transactional(readOnly = true)
 suspend fun getOrderDetails(orderId: Long): Order {
-    val order = orderRepository.findById(orderId)!!
+    val order = orders.findById(orderId) ?: error("Order not found")
     sessionProvider.fetchAll(order, Order::items, Order::payments)
     return order
 }
 ```
 
-| Method                                            | Use Case                         |
-| ------------------------------------------------- | -------------------------------- |
-| `fetch(entity, Property::ref)`                    | Load single association          |
-| `fetchAll(entity, vararg properties)`             | Load multiple associations       |
-| `fetchFromDetached(entity, Class, Property::ref)` | Load association from detached entity |
+| Method | Purpose |
+| --- | --- |
+| `fetch(entity, Entity::property)` | Load one association and return it |
+| `fetchAll(entity, vararg properties)` | Load several associations at once |
+| `fetchFromDetached(entity, Entity::class, Entity::property)` | Load an association of a detached entity |
+
+## 6. Detecting Blocking Calls
+
+Transaction blocks run on Vert.x event loops, so a blocking call inside one stalls everything else
+on that loop. The `hibernate-reactive-coroutines-blockhound` module adds Vert.x event-loop threads
+to [BlockHound](https://github.com/reactor/BlockHound)'s watch list; Reactor's own integration only
+covers reactor-netty threads.
+
+### 6.1 Setup
+
+Add the module to the test classpath and it registers itself through `ServiceLoader`. BlockHound
+comes along as a transitive dependency.
+
+```kotlin
+dependencies {
+    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:$hrcVersion")
+}
+
+tasks.withType<Test> {
+    // Required for BlockHound's instrumentation on JDK 13+.
+    jvmArgs(
+        "-XX:+AllowRedefinitionToAddDeleteMethods",
+        "-Djdk.attach.allowAttachSelf=true",
+    )
+}
+```
+
+### 6.2 Usage
+
+Call `BlockHound.install()` once when tests start. From then on, a blocking call on an event loop
+throws `BlockingOperationError`.
+
+```kotlin
+class BlockingDetectionTest {
+    companion object {
+        @JvmStatic
+        @BeforeAll
+        fun installBlockHound() = BlockHound.install()
+    }
+
+    @Test
+    fun `detects blocking calls inside a transaction`() = runTest {
+        assertThrows<BlockingOperationError> {
+            tx.transactional {
+                Thread.sleep(100)
+            }
+        }
+    }
+}
+```
+
+BlockHound instruments bytecode, so keep it to tests and development. In production, rely on the
+blocked-thread checker from [section 1.3](#13-vertx-instance).
