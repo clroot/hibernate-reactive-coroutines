@@ -39,10 +39,10 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 ```kotlin
 dependencies {
     // Spring Boot 3.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.2.1")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
 
     // Spring Boot 4.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.2.1")
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0")
 
     // DB 드라이버
     implementation("io.vertx:vertx-pg-client:5.1.5")
@@ -54,10 +54,10 @@ dependencies {
 ```groovy
 dependencies {
     // Spring Boot 3.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.2.1'
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0'
 
     // Spring Boot 4.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.2.1'
+    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0'
 
     // DB 드라이버
     implementation 'io.vertx:vertx-pg-client:5.1.5'
@@ -71,14 +71,14 @@ dependencies {
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
-    <version>1.2.1</version>
+    <version>1.3.0</version>
 </dependency>
 
 <!-- Spring Boot 4.x -->
 <dependency>
     <groupId>io.clroot</groupId>
     <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
-    <version>1.2.1</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 
@@ -168,7 +168,7 @@ BlockHound는 "논블로킹으로 표시된 스레드"만 검사하며 Vert.x �
 
 ```kotlin
 dependencies {
-    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.2.1")
+    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.3.0")
 }
 
 tasks.withType<Test>().configureEach {

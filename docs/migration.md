@@ -112,7 +112,7 @@ Spring transaction instead of opening a second session, and refuses to upgrade a
 implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 
 // Add
-implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.2.1")
+implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
 implementation("io.vertx:vertx-pg-client:5.1.5")  // or MySQL
 ```
 
