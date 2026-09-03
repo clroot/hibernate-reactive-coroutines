@@ -1,186 +1,102 @@
 # Hibernate Reactive Coroutines
 
+[![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines-core.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines-core)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Ktor](https://img.shields.io/badge/Ktor-3.5-purple.svg)](https://ktor.io)
 
-> Coroutine repositories and transaction primitives for **Hibernate Reactive**, with Spring Boot and Ktor integrations.
+**English** | [한국어](README.ko.md)
 
-**[🇰🇷 한국어 문서](README.ko.md)**
+> Coroutine-first repositories and transactions for Hibernate Reactive.
 
----
-
-## What is this?
-
-This library provides first-class Kotlin Coroutines support for Hibernate Reactive. Use the Spring Boot starters for Spring Data-style auto-configuration, or the Ktor plugin with the framework-neutral Jakarta Data repository contract.
-
-### Why use this?
-
-- **Spring Data JPA-like API**: Use familiar patterns like `findByEmail`, `existsByStatus`, and `@Query` annotations
-- **Native Kotlin Coroutines**: All repository methods are `suspend` functions - no `Uni`/`Mono` conversion needed
-- **Spring Boot Auto-configuration**: Just add the starter dependency and start coding
-- **Ktor application plugin**: Explicit registration, application accessors, and resource ownership
-- **Non-blocking Database Access**: Built on Hibernate Reactive and Vert.x for true reactive performance
+Write `suspend` functions and `Flow`s. Never touch `Uni` or `CompletionStage`.
+Spring Boot apps get auto-configuration out of the box; Ktor apps get a plugin with explicit wiring.
 
 ## Features
 
-- `CoroutineCrudRepository` interface with suspend functions
-- **Query method derivation** (`findByEmail`, `findAllByStatus`, `countByActive`, etc.)
-- **`@Query` annotation** for custom JPQL/HQL queries, including scalar, aggregate, and constructor DTO projections
-- **Pagination support** (`Page`, `Slice`, `Pageable`)
-- **Spring `@Transactional`** integration with coroutine context propagation
-- **Auditing** (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
-- **Application-owned Vert.x**: exposed as a Spring bean, with opt-in event-loop sharing for the WebFlux Netty server
-- **Blocking call detection**: BlockHound integration module + Vert.x blocked-thread checker settings
+- Coroutine CRUD plus Spring Data-style derived queries such as `findByEmail` and `existsByStatus`
+- JPQL/HQL and native SQL via `@Query`, `@Param`, and `@Modifying`
+- Pagination, sorting, and auditing with automatic created/modified timestamps
+- Spring `@Transactional` support, or an explicit `ReactiveTransactionExecutor` when you want control
+- First-class integrations for Spring Boot 3/4 and Ktor 3
 
-**Spring Data JPA feature coverage: ~85-90%** — See [Migration Guide](docs/migration.md) for details.
+## Architecture
 
-## Modules
+```mermaid
+flowchart TB
+    App["Application<br/>suspend functions"] --> Spring["Spring Boot<br/>auto-configuration · @Transactional"]
+    App --> Ktor["Ktor<br/>explicit registration · transaction executor"]
+    Spring --> Repository
+    Ktor --> Repository
 
-- `hibernate-reactive-coroutines-core`: coroutine session and transaction primitives
-- `hibernate-reactive-coroutines-repository`: framework-neutral query/runtime plus a Jakarta Data-facing coroutine repository contract
-- `hibernate-reactive-coroutines-ktor`: Ktor 3 application plugin with explicit entity/repository registration
-- `hibernate-reactive-coroutines-spring-boot-starter*`: Spring Boot 3 and 4 integrations
-- `hibernate-reactive-coroutines-blockhound`: optional blocking-call detection integration
+    subgraph HRC["Hibernate Reactive Coroutines"]
+        Repository["Repository Runtime<br/>CRUD · derived queries · @Query"]
+        Core["Core<br/>session · transaction · coroutine context"]
+        Repository --> Core
+    end
 
-## Requirements
+    Core --> Hibernate["Hibernate Reactive · Mutiny"]
+    Hibernate --> Vertx["Vert.x SQL Client"]
+    Vertx --> Database[("PostgreSQL / MySQL")]
+```
 
-- Java 21 or later
-- Ktor 3.5.x for the Ktor integration
-- Spring Boot 3.4.x or 4.x for the Spring integrations
-
-> **Hibernate ORM 7 is required.** Hibernate Reactive 4.5 runs on Hibernate ORM 7.4, and this starter
-> publishes that as a dependency constraint. Because Spring Framework 6.x (Spring Boot 3.x) does not
-> support Hibernate ORM 7, **do not combine this starter with `spring-boot-starter-data-jpa` in a
-> Spring Boot 3 application** — the blocking JPA half will fail to start. On Spring Boot 4 the two can
-> coexist. Run the reactive and blocking persistence layers in separate modules if you need both on
-> Boot 3.
+Sessions and transactions travel with the coroutine context. Hibernate Reactive and Vert.x handle
+the actual database I/O, so nothing blocks along the way.
 
 ## Installation
 
-### Gradle (Kotlin DSL)
+| Environment | Module |
+| --- | --- |
+| Spring Boot 3 | `hibernate-reactive-coroutines-spring-boot-starter` |
+| Spring Boot 4 | `hibernate-reactive-coroutines-spring-boot-starter-boot4` |
+| Ktor 3 | `hibernate-reactive-coroutines-ktor` |
 
 ```kotlin
+val hrcVersion = "2.0.0"
+
 dependencies {
-    // For Spring Boot 3.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
+    // Pick the module that matches your stack.
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-ktor:$hrcVersion")
 
-    // For Spring Boot 4.x
-    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0")
-
-    // Database driver (choose one)
-    implementation("io.vertx:vertx-pg-client:5.1.5")      // PostgreSQL
-    // implementation("io.vertx:vertx-mysql-client:5.1.5") // MySQL
+    runtimeOnly("io.vertx:vertx-pg-client:5.1.5")
 }
 ```
 
-### Gradle (Groovy)
+Check the Maven Central badge above for the latest release.
+Requires Java 21+. Supports Spring Boot 3.4.x and 4.x, and Ktor 3.5.x.
 
-```groovy
-dependencies {
-    // For Spring Boot 3.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0'
+## Spring Boot Quick Start
 
-    // For Spring Boot 4.x
-    implementation 'io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:1.3.0'
-
-    // Database driver
-    implementation 'io.vertx:vertx-pg-client:5.1.5'
-}
-```
-
-### Maven
-
-```xml
-<!-- For Spring Boot 3.x -->
-<dependency>
-    <groupId>io.clroot</groupId>
-    <artifactId>hibernate-reactive-coroutines-spring-boot-starter</artifactId>
-    <version>1.3.0</version>
-</dependency>
-
-<!-- For Spring Boot 4.x -->
-<dependency>
-    <groupId>io.clroot</groupId>
-    <artifactId>hibernate-reactive-coroutines-spring-boot-starter-boot4</artifactId>
-    <version>1.3.0</version>
-</dependency>
-```
-
-## Quick Start
-
-### 1. Define your Entity
+`User` is a plain JPA entity. The starter scans for interfaces that extend Spring Data's
+`CoroutineCrudRepository` and registers them as beans, so there is no need for `@Repository`.
 
 ```kotlin
-@Entity
-@Table(name = "users")
-class User(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+import io.clroot.hibernate.reactive.repository.query.Query
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
-    @Column(nullable = false)
-    var name: String,
-
-    @Column(unique = true)
-    var email: String,
-
-    @Enumerated(EnumType.STRING)
-    var status: Status = Status.ACTIVE
-)
-
-enum class Status { ACTIVE, INACTIVE }
-```
-
-### 2. Define your Repository
-
-```kotlin
 interface UserRepository : CoroutineCrudRepository<User, Long> {
-    // Query methods - automatically implemented!
     suspend fun findByEmail(email: String): User?
-    suspend fun findAllByStatus(status: Status): List<User>
-    suspend fun existsByEmail(email: String): Boolean
-    suspend fun countByStatus(status: Status): Long
 
-    // Custom JPQL query
-    @Query("SELECT u FROM User u WHERE u.name LIKE :pattern")
-    suspend fun searchByName(pattern: String): List<User>
-
-    // Pagination
-    suspend fun findAllByStatus(status: Status, pageable: Pageable): Page<User>
+    @Query("FROM User u WHERE u.active = true ORDER BY u.name")
+    suspend fun findActiveUsers(): List<User>
 }
-```
 
-### 3. Use in your Service
-
-```kotlin
 @Service
-class UserService(private val userRepository: UserRepository) {
-
+class UserService(private val users: UserRepository) {
     @Transactional
-    suspend fun createUser(name: String, email: String): User {
-        return userRepository.save(User(name = name, email = email))
-    }
+    suspend fun create(user: User): User = users.save(user)
 
     @Transactional(readOnly = true)
-    suspend fun findByEmail(email: String): User? {
-        return userRepository.findByEmail(email)
-    }
-
-    @Transactional(readOnly = true)
-    suspend fun listActiveUsers(page: Int, size: Int): Page<User> {
-        return userRepository.findAllByStatus(
-            Status.ACTIVE,
-            PageRequest.of(page, size)
-        )
-    }
+    suspend fun findByEmail(email: String): User? = users.findByEmail(email)
 }
 ```
-
-### 4. Configure
 
 ```yaml
-# application.yml
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/mydb
@@ -188,29 +104,28 @@ spring:
     password: password
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    properties:
-      hibernate:
-        reactive:
-          pool-size: 10  # Connection pool size (default: 10)
+    hibernate:
+      ddl-auto: validate
 ```
+
+The starter wires up everything else: repository beans, the `SessionFactory`, the Vert.x instance,
+and the transaction manager.
 
 ## Ktor Quick Start
 
-Add the published Ktor integration and a Vert.x database client:
+Ktor has no Spring Data, so repositories extend this library's own `CoroutineCrudRepository` and
+are registered with the plugin by hand.
 
 ```kotlin
-dependencies {
-    implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
-    implementation("io.ktor:ktor-server-di:<ktor-version>")
-    implementation("io.vertx:vertx-pg-client:5.1.5")
+import io.clroot.hibernate.reactive.ktor.HibernateReactive
+import io.clroot.hibernate.reactive.ktor.hibernateRepository
+import io.clroot.hibernate.reactive.ktor.hibernateTransactionExecutor
+import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+
+interface UserRepository : CoroutineCrudRepository<User, Long> {
+    suspend fun findByEmail(email: String): User?
 }
-```
 
-Register Jakarta Data coroutine repositories explicitly. A repository registration also registers
-its entity, so the plugin does not need to scan the classpath. It does not create a request-wide
-session or transaction:
-
-```kotlin
 fun Application.module() {
     install(HibernateReactive) {
         database {
@@ -219,108 +134,46 @@ fun Application.module() {
             password = "password"
             schemaGeneration = "validate"
         }
-        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 
-    val users: UserRepository by dependencies
-    val transactions: ReactiveTransactionExecutor by dependencies
+    val users = hibernateRepository<UserRepository>()
+    val tx = hibernateTransactionExecutor
 
     routing {
         post("/users") {
-            val saved = transactions.transactional {
-                users.save(User(name = "Alice", email = "alice@example.com"))
-            }
-            call.respond(saved.id!!)
+            val user = call.receive<User>()
+            val saved = tx.transactional { users.save(user) }
+            call.respond(saved)
+        }
+        get("/users/{email}") {
+            val found = tx.readOnly { users.findByEmail(call.parameters["email"]!!) }
+            call.respond(found ?: HttpStatusCode.NotFound)
         }
     }
 }
 ```
 
-The plugin closes the session factory and Vert.x instances it creates. Externally supplied instances
-are preserved by default; set `closeExternalSessionFactory` or `closeExternalVertx` only when the
-plugin should take ownership. Set `dependencyInjection = true` to publish each repository together
-with the resource registry, session provider, transaction executor, and Vert.x through the optional
-`ktor-server-di` module.
-See the [Usage Guide](docs/usage-guide.md#ktor-integration) for external-factory and transaction
-boundary details.
+The plugin never opens a transaction on its own. Wrap each unit of work in `transactional {}` or
+`readOnly {}`, as in the routes above.
+
+## Good to Know
+
+- There is no synchronous lazy loading in Hibernate Reactive. Fetch associations up front with a
+  fetch join, or call `fetch()` explicitly.
+- `Propagation.REQUIRES_NEW` is deliberately unsupported: it can starve the connection pool.
+- Keep blocking I/O out of transaction blocks. The BlockHound module catches accidental blocking
+  calls in your tests.
+- Spring Boot 3 (Spring Framework 6) cannot run Hibernate ORM 7, so this starter and
+  `spring-boot-starter-data-jpa` cannot share a Boot 3 application. Either split the two persistence
+  stacks into separate modules or move to Spring Boot 4.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Usage Guide](docs/usage-guide.md) | Configuration, usage, and examples |
-| [Migration Guide](docs/migration.md) | JPA compatibility and migration from Spring Data JPA |
-| [Internals](docs/internals.md) | Architecture and how it works |
-
-## Important Notes
-
-### Lazy Loading
-
-Synchronous lazy loading (`parent.children.size`) is not supported in Hibernate Reactive. Use one of these alternatives:
-
-```kotlin
-// Option 1: FETCH JOIN (recommended)
-@Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
-suspend fun findByIdWithChildren(id: Long): Parent?
-
-// Option 2: Explicit fetch
-val children = sessionProvider.fetch(parent, Parent::children)
-```
-
-### REQUIRES_NEW Not Supported
-
-`Propagation.REQUIRES_NEW` is not supported due to potential connection pool exhaustion in reactive environments.
-
-### Blocking Call Detection (BlockHound)
-
-`transactional {}` blocks run on Vert.x event loop threads, where a single blocking call
-(`Thread.sleep`, a synchronous HTTP client, file I/O, ...) stalls every transaction pinned to that
-loop. [BlockHound](https://github.com/reactor/BlockHound) can catch such calls in tests — but it only
-inspects threads that are *marked* non-blocking, and Vert.x event loop threads are not marked by
-default. The `hibernate-reactive-coroutines-blockhound` module registers that marking automatically:
-
-```kotlin
-dependencies {
-    testImplementation("io.clroot:hibernate-reactive-coroutines-blockhound:1.3.0")
-}
-
-tasks.withType<Test>().configureEach {
-    // Required for BlockHound's runtime instrumentation on JDK 13+
-    jvmArgs("-XX:+AllowRedefinitionToAddDeleteMethods", "-Djdk.attach.allowAttachSelf=true")
-}
-```
-
-```kotlin
-BlockHound.install() // picks up the integration via ServiceLoader
-
-tx.transactional {
-    Thread.sleep(100) // throws BlockingOperationError
-}
-```
-
-Pairing it with `org.jetbrains.kotlinx:kotlinx-coroutines-debug` is recommended so coroutine
-internals are allowlisted. BlockHound instruments bytecode, so keep it in tests and local
-development; for production detection rely on the Vert.x built-in blocked-thread checker.
-
-## Comparison with Alternatives
-
-| Feature | This Library | Spring Data R2DBC | Quarkus Panache |
-|---------|--------------|-------------------|-----------------|
-| JPA/Hibernate | ✅ Full JPA | ❌ No JPA | ✅ Hibernate ORM |
-| Kotlin Coroutines | ✅ Native | ⚠️ Requires conversion | ⚠️ Mutiny-based |
-| Spring Boot | ✅ Auto-config | ✅ Auto-config | ❌ Quarkus only |
-| Query Methods | ✅ Derived queries | ✅ Derived queries | ⚠️ Limited |
-| Entity Relationships | ✅ Full support | ⚠️ Limited | ✅ Full support |
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- [Usage Guide](docs/usage-guide.md): configuration, queries, transactions, and the Spring/Ktor APIs
+- [Migration Guide](docs/migration.md): what carries over from Spring Data JPA, and what changes
+- [Internals](docs/internals.md): how sessions, transactions, and the repository runtime fit together
 
 ## License
 
-MIT License
-
----
-
-**Keywords**: hibernate reactive, spring boot starter, kotlin coroutines, reactive repository, spring data jpa alternative, non-blocking database, suspend functions, reactive spring, vertx, mutiny
+[MIT License](LICENSE)

@@ -1,181 +1,169 @@
-# Migration from Spring Data JPA
+# Migrating from Spring Data JPA
 
-**[🇰🇷 한국어](migration.ko.md)**
+Check [chapter 1](#1-whats-supported) for the features you rely on, work through
+[chapter 2](#2-migration-steps) in order, then review [chapter 3](#3-behavioral-differences) for
+the places where results can differ.
 
-A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
+## 1. What's Supported
 
----
+✅ works as-is, ⚠️ works with limits, ❌ not supported.
 
-## JPA Feature Coverage
+### 1.1 Repositories
 
-**Overall Coverage: ~85-90%** - All core features are supported.
+| Feature | | Notes |
+| --- | :---: | --- |
+| `CrudRepository` methods | ✅ | |
+| `findBy*` derived queries | ✅ | |
+| `countBy*`, `existsBy*`, `deleteBy*` | ✅ | `deleteBy*` can return the count as `Int` or `Long` |
+| LIKE and comparison keywords | ✅ | `Containing`, `StartingWith`, `Between`, ... |
+| `@Query` (JPQL) | ✅ | named and positional parameters |
+| `@Query` scalar, aggregate, and DTO results | ✅ | HQL constructor expressions |
+| `@Query` (native) | ⚠️ | read-only; `Page` results need `countQuery` |
+| `@Modifying` | ⚠️ | JPQL only |
+| `Page`, `Slice`, `Sort` | ✅ | |
+| Specification, Query by Example | ❌ | write a `@Query` |
+| Interface projections, `Tuple` / array results | ❌ | use constructor DTOs |
+| `@EntityGraph` | ❌ | use FETCH JOIN or `fetch()` |
 
-### Repository Features
+### 1.2 Transactions
 
-| Feature                              | Supported | Notes                                                    |
-| ------------------------------------ | :-------: | -------------------------------------------------------- |
-| `CrudRepository` methods             |     ✅     | save, findById, findAll, delete, count, existsById, etc. |
-| `findBy*` query methods              |     ✅     | PartTree-based auto-generation                           |
-| `countBy*`, `existsBy*`, `deleteBy*` |     ✅     |                                                          |
-| LIKE search                          |     ✅     | Containing, StartingWith, EndingWith                     |
-| Comparison operators                 |     ✅     | GreaterThan, LessThan, Between, etc.                     |
-| `@Query` (JPQL)                      |     ✅     | Named/Positional Parameters                              |
-| `@Query` scalar/aggregate/DTO results |     ✅     | Scalars and HQL constructor DTOs                        |
-| `@Query` (Native)                    |     ✅     | Read-only; Page requires `countQuery`                    |
-| `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE; `Int`/`Unit`, optional auto-clear    |
-| Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
+| Feature | | Notes |
+| --- | :---: | --- |
+| `@Transactional`, `readOnly`, `timeout` | ✅ | on PostgreSQL, `timeout` also sets `statement_timeout` |
+| `Propagation.REQUIRED` | ✅ | default |
+| `Propagation.REQUIRES_NEW` | ⚠️ | works standalone; nested use is unsupported because it can drain the pool |
+| Programmatic transactions | ✅ | `ReactiveTransactionExecutor` |
+| `@TransactionalEventListener` | ✅ | publish through the reactive `TransactionalEventPublisher` |
 
-HRC 2 uses shared query annotations for both Spring and non-Spring repositories. Replace Spring
-Data JPA or earlier HRC query imports with:
+### 1.3 JPA Behavior
+
+| Feature | | Notes |
+| --- | :---: | --- |
+| Dirty checking, first-level cache | ✅ | |
+| Optimistic locking (`@Version`) | ✅ | |
+| Entity lifecycle callbacks | ✅ | `@PrePersist`, `@PreUpdate`, ... |
+| Auditing | ✅ | `@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy` |
+| Lazy loading | ⚠️ | not synchronous; use FETCH JOIN or `fetch()` |
+| Pessimistic locking | ❌ | |
+
+### 1.4 Startup Validation
+
+Unsupported features and invalid repository declarations are rejected **at startup**, not on first
+call. Booting the application once after migrating surfaces most of what is left.
+
+| Rejected declaration | Fix |
+| --- | --- |
+| Non-`suspend` query method (including `Flow` returns) | declare `suspend fun ...: List<T>` |
+| Overloads with the same name and arity | use distinct names |
+| `Top`/`First` combined with `Pageable` | pick one |
+| Native `@Query` with `Sort` or a sorted `Pageable` | put `ORDER BY` in the query |
+| Native `@Modifying` | rewrite in JPQL |
+| `IgnoreCase` on a non-`String` property | drop the keyword |
+| `Page`-returning `@Query` whose COUNT cannot be derived | add `countQuery` |
+
+## 2. Migration Steps
+
+### 2.1 Dependencies
+
+On Spring Boot 3, remove `spring-boot-starter-data-jpa`. Spring Framework 6 cannot run Hibernate
+ORM 7, so the two starters cannot coexist and the application will not boot. On Spring Boot 4 they
+can.
 
 ```kotlin
-import io.clroot.hibernate.reactive.repository.query.Modifying
-import io.clroot.hibernate.reactive.repository.query.Param
-import io.clroot.hibernate.reactive.repository.query.Query
+val hrcVersion = "2.0.0"
+
+dependencies {
+    // Remove
+    // implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+
+    // Add
+    implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:$hrcVersion")
+    // implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter-boot4:$hrcVersion")
+    runtimeOnly("io.vertx:vertx-pg-client:5.1.5") // or vertx-mysql-client
+}
 ```
 
-HQL/JPQL `@Query` methods returning `Page` derive COUNT automatically only for simple entity
-`SELECT`/`FROM` queries. Projections, joins, grouping, set operations, trailing selects,
-query-level pagination, and parameterized ordering require an explicit `countQuery`.
+Leave `spring.datasource` and `spring.jpa` as they are.
 
-### Transactions
+### 2.2 Repository Interfaces
 
-| Feature                   | Supported | Notes                                            |
-| ------------------------- | :-------: | ------------------------------------------------ |
-| `@Transactional`          |     ✅     | Supports suspend functions                       |
-| readOnly / timeout        |     ✅     |                                                  |
-| Propagation.REQUIRED      |     ✅     | Default                                          |
-| Propagation.REQUIRES_NEW  |     ⚠️     | Connection pool exhaustion risk, limited nesting |
-| Programmatic Transaction  |     ✅     | ReactiveTransactionExecutor                      |
-
-### JPA Behaviors
-
-| Feature                    | Supported | Notes                         |
-| -------------------------- | :-------: | ----------------------------- |
-| Dirty Checking             |     ✅     | Auto-persist on commit        |
-| First-level Cache          |     ✅     | Same instance within tx       |
-| Optimistic Locking         |     ✅     | `@Version`                    |
-| Entity Lifecycle Callbacks |     ✅     | @PrePersist, @PreUpdate, etc. |
-| Lazy Loading               |     ✅     | Use `fetch()` method          |
-| Pessimistic Locking        |     ❌     |                               |
-
-### Unsupported Features
-
-These are rejected at application startup with an explanatory message, not at first call.
-
-| Feature                                   | Alternative                                     |
-| ----------------------------------------- | ----------------------------------------------- |
-| Specification (dynamic queries)           | Write directly with `@Query`                    |
-| QueryByExample                            | Combine conditional methods                     |
-| Projection (interface-based)              | Use FETCH JOIN and map in Kotlin                |
-| `@EntityGraph`                            | FETCH JOIN or `fetch()` method                  |
-| Native `@Modifying`                       | Use JPQL instead                                |
-| Tuple/array results in `@Query`            | Use a scalar or HQL constructor DTO projection |
-| Non-suspend (including `Flow`) query methods | Declare `suspend fun … : List<T>`            |
-| Overloads with the same name and arity    | Give the methods distinct names                 |
-| `Top`/`First` combined with `Pageable`    | Use one or the other                            |
-| Sorting a native `@Query`                 | Put `ORDER BY` inside the query                 |
-
----
-
-## Behavior Notes
-
-Differences worth knowing before you migrate, beyond the feature table above.
-
-**Deletes load before removing.** `deleteById`, `delete`, `deleteAll`, `deleteAllById` and derived
-`deleteBy…` methods fetch the target entities and remove them one by one, matching
-`SimpleJpaRepository`. Cascades, `@Version` checks and `@PreRemove` callbacks all fire, and the
-persistence context stays consistent. The cost is a `SELECT` before the `DELETE`; for bulk deletion
-without cascade semantics, write an explicit `@Modifying @Query("DELETE …")`.
-
-**Derived `deleteBy…` can return the deleted count.** Declare the method as `Unit`, `Int` or `Long`.
-
-**`LIKE` values are escaped.** `Containing`, `StartingWith` and `EndingWith` escape `%`, `_` and `\`
-in the bound value, so `findByNameContaining("%")` matches a literal percent sign rather than every
-row. The explicit `Like` keyword does not escape — there you supply the pattern yourself.
-
-**`IgnoreCase` compares both sides in lower case.** `IgnoreCase` on a non-String property is rejected
-at startup; `AllIgnoreCase` applies only to String properties.
-
-**`Sort` applies to `@Query` methods.** A `Sort` parameter or a sorted `Pageable` is appended to the
-query's own `ORDER BY` clause, so an ordering written into the query keeps priority.
-
-**Entity names come from the JPA metamodel.** `@Entity(name = "…")` and same-simple-name entities in
-different packages work correctly.
-
-**`Flow` is not streaming.** `findAll()` and other `Flow`-returning methods load the full result set
-before emitting. Use `Pageable` for large tables.
-
-**Mixing `@Transactional` and `tx.transactional {}` is safe.** `tx.transactional {}` joins an active
-Spring transaction instead of opening a second session, and refuses to upgrade a
-`@Transactional(readOnly = true)` transaction to a writable one.
-
----
-
-## Migration Steps
-
-### 1. Change Dependencies
+Change the base interface, add `suspend` to every method, and switch the query-annotation imports.
 
 ```kotlin
-// Remove
-implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+// Before
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 
-// Add
-implementation("io.clroot:hibernate-reactive-coroutines-spring-boot-starter:1.3.0")
-implementation("io.vertx:vertx-pg-client:5.1.5")  // or MySQL
-```
-
-### 2. Modify Repository Interfaces
-
-```kotlin
-// Before (Spring Data JPA)
 interface UserRepository : JpaRepository<User, Long> {
     fun findByEmail(email: String): User?
+
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    fun findByStatus(status: Status): List<User>
 }
 
-// After (Hibernate Reactive Coroutines)
+// After
+import io.clroot.hibernate.reactive.repository.query.Query
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+
 interface UserRepository : CoroutineCrudRepository<User, Long> {
     suspend fun findByEmail(email: String): User?
+
+    @Query("SELECT u FROM User u WHERE u.status = :status")
+    suspend fun findByStatus(status: Status): List<User>
 }
 ```
 
-**Changes:** `JpaRepository` → `CoroutineCrudRepository`, add `suspend` to all methods
+`flush()`, `saveAndFlush()`, and `getReferenceById()` are gone. Flushing happens when the
+transaction ends, and reference proxies become plain `findById()` calls.
 
-### 3. Modify Service Layer
+### 2.3 Service Layer
+
+Add `suspend` to every method that calls a repository. `findById()` now returns a nullable instead
+of `Optional`, so `orElseThrow` becomes `?:`. The `suspend` chain has to reach the controller.
 
 ```kotlin
 // Before
 @Transactional
-fun createUser(name: String): User {
-    return userRepository.save(User(name = name))
+fun rename(id: Long, name: String): User {
+    val user = userRepository.findById(id).orElseThrow { NotFoundException() }
+    user.name = name
+    return user
 }
 
 // After
 @Transactional
-suspend fun createUser(name: String): User {
-    return userRepository.save(User(name = name))
+suspend fun rename(id: Long, name: String): User {
+    val user = userRepository.findById(id) ?: throw NotFoundException()
+    user.name = name
+    return user
 }
 ```
 
-**Changes:** Add `suspend`, `findById().orElse(null)` → `findById()` (nullable return)
+### 2.4 Lazy Loading
 
-### 4. Convert Lazy Loading
+Every place that relied on touching an association to load it has to change. Touching an
+uninitialized association now raises `HR000069`.
 
 ```kotlin
-// Before - Does NOT work in Hibernate Reactive
-parent.children.size  // HR000069 error
+// Before
+val parent = parentRepository.findById(id).orElseThrow()
+parent.children.size
 
-// After - Option 1: FETCH JOIN (Recommended)
+// After (recommended): FETCH JOIN
 @Query("SELECT p FROM Parent p LEFT JOIN FETCH p.children WHERE p.id = :id")
 suspend fun findByIdWithChildren(id: Long): Parent?
 
-// After - Option 2: fetch() method
+// After (alternative): fetch()
+val parent = parentRepository.findById(id) ?: throw NotFoundException()
 sessionProvider.fetch(parent, Parent::children)
 ```
 
-### 5. Replace Unsupported Features
+See [Usage Guide, chapter 5](usage-guide.md#5-loading-associations) for details.
 
-**@EntityGraph → FETCH JOIN:**
+### 2.5 Replacing Unsupported Features
+
+**`@EntityGraph` → FETCH JOIN**
+
 ```kotlin
 // Before
 @EntityGraph(attributePaths = ["children", "address"])
@@ -191,37 +179,82 @@ fun findById(id: Long): Parent?
 suspend fun findByIdWithDetails(id: Long): Parent?
 ```
 
-**REQUIRES_NEW → Event-based:**
+**`REQUIRES_NEW` → transaction events.** Work that must commit independently of the parent moves
+into a listener that runs after the parent commits.
+
 ```kotlin
 // Before
 @Transactional(propagation = Propagation.REQUIRES_NEW)
 fun audit(event: AuditEvent) { ... }
 
 // After
-@EventListener
-suspend fun handleAudit(event: AuditEvent) { ... }
+@Transactional
+suspend fun placeOrder(command: PlaceOrderCommand) {
+    orders.save(Order.create(command))
+    events.publishEvent(OrderPlaced(command.orderId)).awaitSingleOrNull()
+}
+
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+fun audit(event: OrderPlaced) { ... }
 ```
 
-**Native @Modifying → JPQL:**
+The publishing rules are in [Usage Guide, section 4.4](usage-guide.md#44-transaction-events-spring-boot-only).
+
+**Native `@Modifying` → JPQL**
+
 ```kotlin
 // Before
+@Modifying
 @Query(value = "UPDATE users SET status = ?1", nativeQuery = true)
 fun updateStatus(status: String): Int
 
 // After
+@Modifying
 @Query("UPDATE User u SET u.status = :status")
 suspend fun updateStatus(status: Status): Int
 ```
 
----
+**Specification, Query by Example → `@Query`.** For many optional criteria, write JPQL with
+nullable parameters.
 
-## Checklist
+```kotlin
+@Query("""
+    SELECT u FROM User u
+    WHERE (:status IS NULL OR u.status = :status)
+      AND (:name IS NULL OR u.name LIKE CONCAT('%', :name, '%'))
+""")
+suspend fun search(status: Status?, name: String?, pageable: Pageable): Page<User>
+```
 
-- [ ] Change dependencies
-- [ ] Add `suspend` to Repository interfaces
-- [ ] Add `suspend` to Service methods
-- [ ] Convert Lazy Loading → FETCH JOIN or `fetch()`
-- [ ] Convert `@EntityGraph` → FETCH JOIN
-- [ ] Convert `REQUIRES_NEW` → Event-based
-- [ ] Convert Native @Modifying → JPQL
-- [ ] Update tests (use `runBlocking` or `runTest`)
+### 2.6 Tests
+
+Run tests inside `runTest` or `runBlocking`. To make sure no blocking call survived inside a
+transaction, add the BlockHound module from
+[Usage Guide, chapter 6](usage-guide.md#6-detecting-blocking-calls).
+
+## 3. Behavioral Differences
+
+Not features, but places where the same code produces a different result.
+
+| | Spring Data JPA | This library |
+| --- | --- | --- |
+| `findAll()` return type | `List<T>` | `Flow<T>`, but not streaming: the full result is loaded, then emitted |
+| Wildcards in `Containing` etc. | escapes `%` and `_` | also escapes `\`; `Like` escapes nothing |
+| `IgnoreCase` | dialect-dependent | `LOWER()` on both sides; `String` properties only |
+| `@Query` plus `Sort` | appended after `ORDER BY` | same; native queries accept no `Sort` |
+| Programmatic transaction inside `@Transactional` | joins | joins; but a write transaction inside `readOnly = true` throws |
+| Blocking calls inside a transaction | allowed | forbidden; they stall the event loop |
+
+Delete semantics (load, then remove), the return value of `save()`, and session handling after a
+bulk `@Modifying` match Spring Data JPA.
+
+## 4. Checklist
+
+- [ ] Removed `spring-boot-starter-data-jpa`; added the starter and a Vert.x client
+- [ ] Repositories extend `CoroutineCrudRepository` and every method is `suspend`
+- [ ] `@Query`, `@Param`, `@Modifying` imports switched
+- [ ] Services and controllers are `suspend`; `Optional` handling replaced with nullable handling
+- [ ] Association access rewritten as FETCH JOIN or `fetch()`
+- [ ] `@EntityGraph`, `REQUIRES_NEW`, native `@Modifying`, and Specifications replaced
+- [ ] Tests wrapped in `runTest`; BlockHound added
+- [ ] Application boots with no repository validation errors
