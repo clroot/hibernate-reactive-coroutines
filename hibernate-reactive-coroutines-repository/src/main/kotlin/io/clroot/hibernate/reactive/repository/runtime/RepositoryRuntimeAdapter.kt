@@ -69,6 +69,12 @@ public interface RepositoryRuntimeAdapter {
         }
     }
 
+    /** Whether page execution should retrieve totals for this integration request. */
+    public fun shouldRequestTotal(request: RepositoryPageRequest): Boolean = true
+
+    /** Number of rows fetched to construct one page result. */
+    public fun pageQueryLimit(request: RepositoryPageRequest): Int = request.pageSize
+
     public fun createPage(
         content: List<*>,
         request: RepositoryPageRequest,

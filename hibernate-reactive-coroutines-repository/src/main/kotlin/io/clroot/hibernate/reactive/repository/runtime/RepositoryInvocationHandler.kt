@@ -149,10 +149,14 @@ public class RepositoryInvocationHandler<T : Any, ID : Any>(
         return when (prepared.returnType) {
             RepositoryQueryReturnType.SINGLE ->
                 query.executeSingleQuery(prepared.hql, boundArgs, prepared.maxResults)
-            RepositoryQueryReturnType.LIST -> if (invocation.sort.isNotEmpty()) {
-                query.executeListQueryWithSort(prepared, boundArgs, invocation.sort)
-            } else {
-                query.executeListQuery(prepared.hql, boundArgs, prepared.maxResults)
+            RepositoryQueryReturnType.LIST -> when {
+                invocation.pageRequest != null -> pagination.executeListQuery(
+                    prepared,
+                    boundArgs,
+                    invocation.pageRequest,
+                )
+                invocation.sort.isNotEmpty() -> query.executeListQueryWithSort(prepared, boundArgs, invocation.sort)
+                else -> query.executeListQuery(prepared.hql, boundArgs, prepared.maxResults)
             }
             RepositoryQueryReturnType.BOOLEAN -> query.executeExistsQuery(prepared.hql, boundArgs)
             RepositoryQueryReturnType.LONG -> query.executeCountQuery(prepared.hql, boundArgs)
@@ -179,25 +183,38 @@ public class RepositoryInvocationHandler<T : Any, ID : Any>(
         prepared: PreparedRepositoryQuery,
         args: List<Any?>,
         invocation: RepositoryInvocationArguments,
-    ): Any? = when (prepared.returnType) {
-        RepositoryQueryReturnType.MODIFYING -> query.executeModifyingAnnotatedQuery(prepared, args)
-        RepositoryQueryReturnType.VOID -> {
-            query.executeModifyingAnnotatedQuery(prepared, args)
-            Unit
+    ): Any? {
+        if (prepared.isModifying) {
+            val affectedRows = query.executeModifyingAnnotatedQuery(prepared, args)
+            return when (prepared.returnType) {
+                RepositoryQueryReturnType.MODIFYING -> affectedRows
+                RepositoryQueryReturnType.LONG -> affectedRows.toLong()
+                RepositoryQueryReturnType.VOID -> Unit
+                else -> throw IllegalStateException(
+                    "Unsupported update/delete @Query return type: ${prepared.returnType}",
+                )
+            }
         }
-        RepositoryQueryReturnType.PAGE -> pagination.executePageAnnotatedQuery(
-            prepared,
-            args,
-            checkNotNull(invocation.pageRequest),
-        )
-        RepositoryQueryReturnType.SLICE -> pagination.executeSliceAnnotatedQuery(
-            prepared,
-            args,
-            checkNotNull(invocation.pageRequest),
-        )
-        RepositoryQueryReturnType.LIST -> query.executeListAnnotatedQuery(prepared, args, invocation.sort)
-        RepositoryQueryReturnType.SINGLE -> query.executeSingleAnnotatedQuery(prepared, args)
-        else -> throw IllegalStateException("Unsupported return type for @Query: ${prepared.returnType}")
+
+        return when (prepared.returnType) {
+            RepositoryQueryReturnType.PAGE -> pagination.executePageAnnotatedQuery(
+                prepared,
+                args,
+                checkNotNull(invocation.pageRequest),
+            )
+            RepositoryQueryReturnType.SLICE -> pagination.executeSliceAnnotatedQuery(
+                prepared,
+                args,
+                checkNotNull(invocation.pageRequest),
+            )
+            RepositoryQueryReturnType.LIST -> if (invocation.pageRequest != null) {
+                pagination.executeListAnnotatedQuery(prepared, args, invocation.pageRequest)
+            } else {
+                query.executeListAnnotatedQuery(prepared, args, invocation.sort)
+            }
+            RepositoryQueryReturnType.SINGLE -> query.executeSingleAnnotatedQuery(prepared, args)
+            else -> throw IllegalStateException("Unsupported return type for @Query: ${prepared.returnType}")
+        }
     }
 
     public companion object {

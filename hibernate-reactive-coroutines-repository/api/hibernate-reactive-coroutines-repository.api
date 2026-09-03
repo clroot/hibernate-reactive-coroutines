@@ -1,3 +1,42 @@
+public abstract interface class io/clroot/hibernate/reactive/repository/CoroutineCrudRepository : jakarta/data/repository/DataRepository {
+	public abstract fun count (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun delete (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteAll (Ljava/lang/Iterable;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteAll (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteAll (Lkotlinx/coroutines/flow/Flow;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteAllById (Ljava/lang/Iterable;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteById (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun existsById (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAll ()Lkotlinx/coroutines/flow/Flow;
+	public abstract fun findAll (Ljakarta/data/Order;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAll (Ljakarta/data/Sort;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAll (Ljakarta/data/page/PageRequest;Ljakarta/data/Order;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAll (Ljakarta/data/page/PageRequest;Ljakarta/data/Sort;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAll (Ljakarta/data/page/PageRequest;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun findAllById (Ljava/lang/Iterable;)Lkotlinx/coroutines/flow/Flow;
+	public abstract fun findAllById (Lkotlinx/coroutines/flow/Flow;)Lkotlinx/coroutines/flow/Flow;
+	public abstract fun findById (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun save (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun saveAll (Ljava/lang/Iterable;)Lkotlinx/coroutines/flow/Flow;
+	public abstract fun saveAll (Lkotlinx/coroutines/flow/Flow;)Lkotlinx/coroutines/flow/Flow;
+}
+
+public final class io/clroot/hibernate/reactive/repository/JakartaDataRepositoryFactory {
+	public fun <init> (Lio/clroot/hibernate/reactive/ReactiveSessionOperations;Ljakarta/persistence/metamodel/Metamodel;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryEntityLifecycle;)V
+	public synthetic fun <init> (Lio/clroot/hibernate/reactive/ReactiveSessionOperations;Ljakarta/persistence/metamodel/Metamodel;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryEntityLifecycle;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun create (Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/CoroutineCrudRepository;
+	public static synthetic fun create$default (Lio/clroot/hibernate/reactive/repository/JakartaDataRepositoryFactory;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/String;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/CoroutineCrudRepository;
+}
+
+public final class io/clroot/hibernate/reactive/repository/JakartaDataRepositoryRuntimeAdapter : io/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/JakartaDataRepositoryRuntimeAdapter;
+	public fun adaptArguments (Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/runtime/RepositoryInvocationArguments;
+	public fun createPage (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;J)Ljava/lang/Object;
+	public fun createSlice (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;Z)Ljava/lang/Object;
+	public fun pageQueryLimit (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)I
+	public fun shouldRequestTotal (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)Z
+}
+
 public final class io/clroot/hibernate/reactive/repository/query/CountQueryDeriver {
 	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/CountQueryDeriver;
 	public final fun derive (Ljava/lang/String;)Ljava/lang/String;
@@ -8,6 +47,12 @@ public final class io/clroot/hibernate/reactive/repository/query/CountQueryDeriv
 public final class io/clroot/hibernate/reactive/repository/query/QueryAliasResolver {
 	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryAliasResolver;
 	public final fun resolve (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public abstract interface annotation class io/clroot/hibernate/reactive/repository/query/QueryOptions : java/lang/annotation/Annotation {
+	public abstract fun clearAutomatically ()Z
+	public abstract fun countQuery ()Ljava/lang/String;
+	public abstract fun nativeQuery ()Z
 }
 
 public final class io/clroot/hibernate/reactive/repository/query/QueryParameterParser {
@@ -386,6 +431,8 @@ public abstract interface class io/clroot/hibernate/reactive/repository/runtime/
 	public fun adaptArguments (Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/runtime/RepositoryInvocationArguments;
 	public fun createPage (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;J)Ljava/lang/Object;
 	public fun createSlice (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;Z)Ljava/lang/Object;
+	public fun pageQueryLimit (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)I
+	public fun shouldRequestTotal (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)Z
 }
 
 public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter$Companion {
@@ -396,6 +443,8 @@ public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryRun
 	public static fun adaptArguments (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter;Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/runtime/RepositoryInvocationArguments;
 	public static fun createPage (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter;Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;J)Ljava/lang/Object;
 	public static fun createSlice (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter;Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;Z)Ljava/lang/Object;
+	public static fun pageQueryLimit (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)I
+	public static fun shouldRequestTotal (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)Z
 }
 
 public final class io/clroot/hibernate/reactive/repository/runtime/RepositorySlice {
