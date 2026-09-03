@@ -24,6 +24,7 @@ import org.hibernate.reactive.vertx.impl.ProvidedVertxInstance
  *
  * The plugin does not open a request-wide session or transaction. Handlers and services should use
  * [HibernateReactiveResources.transactionExecutor] to define transaction boundaries explicitly.
+ * Resources and repositories can be published through the optional Ktor dependency injection module.
  */
 public val HibernateReactive: ApplicationPlugin<HibernateReactiveConfiguration> =
     createApplicationPlugin(
@@ -62,8 +63,6 @@ public val HibernateReactive: ApplicationPlugin<HibernateReactiveConfiguration> 
     }
 
 private fun createResources(config: HibernateReactiveConfiguration): HibernateReactiveResources {
-    validateRegistrations(config)
-
     val externalSessionFactory = config.sessionFactory
     val configuredVertx = config.vertx
     val discoveredVertx = externalSessionFactory?.let(::discoverVertx)
@@ -115,15 +114,6 @@ private fun createResources(config: HibernateReactiveConfiguration): HibernateRe
                 ?.let(exception::addSuppressed)
         }
         throw exception
-    }
-}
-
-private fun validateRegistrations(config: HibernateReactiveConfiguration) {
-    config.repositoryRegistrations.values.forEach { registration ->
-        require(registration.entityClass in config.entityClasses) {
-            "Repository entity must be registered explicitly with entity()/entities(): " +
-                registration.entityClass.name
-        }
     }
 }
 
@@ -185,7 +175,7 @@ private fun createRepositories(
     config: HibernateReactiveConfiguration,
     sessionProvider: ReactiveSessionProvider,
     sessionFactory: Mutiny.SessionFactory,
-): Map<Class<*>, Any> {
+): Map<Class<*>, RegisteredRepository> {
     if (config.repositoryRegistrations.isEmpty()) return emptyMap()
 
     val factory = JakartaDataRepositoryFactory(
@@ -193,7 +183,10 @@ private fun createRepositories(
         metamodel = sessionFactory.metamodel,
     )
     return config.repositoryRegistrations.values.associate { registration ->
-        registration.repositoryInterface to createRepository(factory, registration)
+        registration.repositoryInterface to RegisteredRepository(
+            type = registration.repositoryType,
+            instance = createRepository(factory, registration),
+        )
     }
 }
 

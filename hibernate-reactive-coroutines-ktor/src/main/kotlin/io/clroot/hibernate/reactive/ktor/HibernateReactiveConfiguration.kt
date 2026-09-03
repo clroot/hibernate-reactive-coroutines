@@ -1,11 +1,14 @@
 package io.clroot.hibernate.reactive.ktor
 
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.ktor.util.reflect.TypeInfo
+import io.ktor.util.reflect.typeInfo
 import io.ktor.utils.io.KtorDsl
 import io.vertx.core.Vertx
 import org.hibernate.reactive.mutiny.Mutiny
 import kotlin.jvm.javaObjectType
 import kotlin.reflect.KClass
+import kotlin.reflect.full.starProjectedType
 
 /** Database and Hibernate settings used when the plugin creates the session factory. */
 @KtorDsl
@@ -53,7 +56,7 @@ public class HibernateReactiveConfiguration {
     /** Whether to close an externally supplied session factory on shutdown. */
     public var closeExternalSessionFactory: Boolean = false
 
-    /** Whether to expose plugin resources through the optional `ktor-server-di` integration. */
+    /** Whether to expose plugin resources and repositories through optional Ktor dependency injection. */
     public var dependencyInjection: Boolean = false
 
     internal val databaseConfiguration: HibernateReactiveDatabaseConfiguration =
@@ -78,7 +81,7 @@ public class HibernateReactiveConfiguration {
 
     /**
      * Registers a coroutine repository and its entity/id contract explicitly.
-     * The entity must also be listed through [entity] or [entities].
+     * The repository's entity is added to the managed entity set automatically.
      */
     public fun <T : Any, ID : Any, R : CoroutineCrudRepository<T, ID>> repository(
         repositoryInterface: KClass<R>,
@@ -86,17 +89,11 @@ public class HibernateReactiveConfiguration {
         idClass: KClass<ID>,
         entityName: String? = null,
     ) {
-        val repositoryJavaClass = repositoryInterface.java
-        require(repositoryJavaClass.isInterface) {
-            "Repository type must be an interface: ${repositoryJavaClass.name}"
-        }
-        require(repositoryRegistrations[repositoryJavaClass] == null) {
-            "Repository is already registered: ${repositoryJavaClass.name}"
-        }
-        repositoryRegistrations[repositoryJavaClass] = RepositoryRegistration(
-            repositoryInterface = repositoryJavaClass,
-            entityClass = entityClass.java,
-            idClass = idClass.javaObjectType,
+        registerRepository(
+            repositoryInterface = repositoryInterface,
+            repositoryType = TypeInfo(repositoryInterface, repositoryInterface.starProjectedType),
+            entityClass = entityClass,
+            idClass = idClass,
             entityName = entityName,
         )
     }
@@ -107,11 +104,38 @@ public class HibernateReactiveConfiguration {
         reified T : Any,
         reified ID : Any,
     > repository(entityName: String? = null): Unit =
-        repository(R::class, T::class, ID::class, entityName)
+        registerRepository(R::class, typeInfo<R>(), T::class, ID::class, entityName)
+
+    @PublishedApi
+    @JvmSynthetic
+    internal fun <T : Any, ID : Any, R : CoroutineCrudRepository<T, ID>> registerRepository(
+        repositoryInterface: KClass<R>,
+        repositoryType: TypeInfo,
+        entityClass: KClass<T>,
+        idClass: KClass<ID>,
+        entityName: String?,
+    ) {
+        val repositoryJavaClass = repositoryInterface.java
+        require(repositoryJavaClass.isInterface) {
+            "Repository type must be an interface: ${repositoryJavaClass.name}"
+        }
+        require(repositoryRegistrations[repositoryJavaClass] == null) {
+            "Repository is already registered: ${repositoryJavaClass.name}"
+        }
+        entityClasses += entityClass.java
+        repositoryRegistrations[repositoryJavaClass] = RepositoryRegistration(
+            repositoryInterface = repositoryJavaClass,
+            repositoryType = repositoryType,
+            entityClass = entityClass.java,
+            idClass = idClass.javaObjectType,
+            entityName = entityName,
+        )
+    }
 }
 
 internal data class RepositoryRegistration(
     val repositoryInterface: Class<*>,
+    val repositoryType: TypeInfo,
     val entityClass: Class<*>,
     val idClass: Class<*>,
     val entityName: String?,

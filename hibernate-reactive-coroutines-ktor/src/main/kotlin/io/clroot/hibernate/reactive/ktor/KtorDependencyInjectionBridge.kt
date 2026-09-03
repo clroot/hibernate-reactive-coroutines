@@ -3,8 +3,11 @@ package io.clroot.hibernate.reactive.ktor
 import io.clroot.hibernate.reactive.ReactiveSessionProvider
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.ktor.server.application.Application
+import io.ktor.server.plugins.di.DependencyKey
+import io.ktor.server.plugins.di.DependencyRegistry
 import io.ktor.server.plugins.di.dependencies
 import io.ktor.server.plugins.di.provide
+import io.ktor.util.reflect.TypeInfo
 import io.vertx.core.Vertx
 
 internal object KtorDependencyInjectionBridge {
@@ -17,6 +20,15 @@ internal object KtorDependencyInjectionBridge {
             provide<ReactiveSessionProvider> { resources.sessionProvider } cleanup { }
             provide<ReactiveTransactionExecutor> { resources.transactionExecutor } cleanup { }
             provide<Vertx> { resources.vertx } cleanup { }
+            resources.repositories.values.forEach { repository ->
+                provideRepository(repository.type, repository.instance)
+            }
         }
+    }
+
+    private fun DependencyRegistry.provideRepository(repositoryType: TypeInfo, repository: Any) {
+        val key = DependencyKey(repositoryType)
+        set<Any>(key) { repository }
+        cleanup(key) { }
     }
 }

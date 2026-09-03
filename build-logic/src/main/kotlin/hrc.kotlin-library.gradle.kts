@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 /**
- * Kotlin library baseline: Java 17 target, explicit API, and a binary-compatibility gate.
+ * Kotlin library baseline: Java 21 target, explicit API, and a binary-compatibility gate.
  */
 
 plugins {
@@ -20,7 +20,7 @@ kotlin {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
     withSourcesJar()
     withJavadocJar()

@@ -45,7 +45,7 @@ This library provides first-class Kotlin Coroutines support for Hibernate Reacti
 
 ## Requirements
 
-- Java 17 or later
+- Java 21 or later
 - Ktor 3.5.x for the Ktor integration
 - Spring Boot 3.4.x or 4.x for the Spring integrations
 
@@ -201,12 +201,14 @@ Add the published Ktor integration and a Vert.x database client:
 ```kotlin
 dependencies {
     implementation("io.clroot:hibernate-reactive-coroutines-ktor:<version>")
+    implementation("io.ktor:ktor-server-di:<ktor-version>")
     implementation("io.vertx:vertx-pg-client:5.1.5")
 }
 ```
 
-Register entities and Jakarta Data coroutine repositories explicitly. The plugin does not scan the
-classpath and does not create a request-wide session or transaction:
+Register Jakarta Data coroutine repositories explicitly. A repository registration also registers
+its entity, so the plugin does not need to scan the classpath. It does not create a request-wide
+session or transaction:
 
 ```kotlin
 fun Application.module() {
@@ -217,14 +219,16 @@ fun Application.module() {
             password = "password"
             schemaGeneration = "validate"
         }
-        entity<User>()
+        dependencyInjection = true
         repository<UserRepository, User, Long>()
     }
 
+    val users: UserRepository by dependencies
+    val transactions: ReactiveTransactionExecutor by dependencies
+
     routing {
         post("/users") {
-            val users = hibernateRepository<UserRepository>()
-            val saved = hibernateTransactionExecutor.transactional {
+            val saved = transactions.transactional {
                 users.save(User(name = "Alice", email = "alice@example.com"))
             }
             call.respond(saved.id!!)
@@ -235,8 +239,9 @@ fun Application.module() {
 
 The plugin closes the session factory and Vert.x instances it creates. Externally supplied instances
 are preserved by default; set `closeExternalSessionFactory` or `closeExternalVertx` only when the
-plugin should take ownership. Set `dependencyInjection = true` to publish the resource registry,
-session provider, transaction executor, and Vert.x through the optional `ktor-server-di` module.
+plugin should take ownership. Set `dependencyInjection = true` to publish each repository together
+with the resource registry, session provider, transaction executor, and Vert.x through the optional
+`ktor-server-di` module.
 See the [Usage Guide](docs/usage-guide.md#ktor-integration) for external-factory and transaction
 boundary details.
 
