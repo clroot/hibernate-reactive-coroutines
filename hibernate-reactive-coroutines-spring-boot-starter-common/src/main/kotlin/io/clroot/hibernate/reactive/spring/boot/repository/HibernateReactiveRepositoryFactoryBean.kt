@@ -1,15 +1,16 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryFactory
 import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
+import io.clroot.hibernate.reactive.spring.boot.repository.query.toRuntimeQuery
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
 import org.springframework.beans.factory.FactoryBean
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.GenericTypeResolver
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import java.lang.reflect.Method
-import java.lang.reflect.Proxy
 
 /**
  * CoroutineCrudRepository 프록시를 생성하는 FactoryBean.
@@ -42,21 +43,18 @@ public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<
         // 커스텀 쿼리 메서드 파싱
         val queryMethods = parseQueryMethods(entityClass, entityName)
 
-        val handler = SimpleHibernateReactiveRepository(
+        return RepositoryFactory(
+            sessionOperations = sessionProvider,
+            metamodel = sessionProvider.metamodel,
+            runtimeAdapter = SpringRepositoryRuntimeAdapter,
+            entityLifecycle = SpringRepositoryEntityLifecycle(auditingHandler),
+        ).create(
+            repositoryInterface = repositoryInterface,
             entityClass = entityClass as Class<Any>,
             idClass = idClass as Class<Any>,
-            sessionProvider = sessionProvider,
-            transactionExecutor = transactionExecutor,
-            queryMethods = queryMethods,
-            auditingHandler = auditingHandler,
             entityName = entityName,
+            queryMethods = queryMethods.mapValues { (_, prepared) -> prepared.toRuntimeQuery() },
         )
-
-        return Proxy.newProxyInstance(
-            repositoryInterface.classLoader,
-            arrayOf(repositoryInterface),
-            handler,
-        ) as T
     }
 
     override fun getObjectType(): Class<*> = repositoryInterface

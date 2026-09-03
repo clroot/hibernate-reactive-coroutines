@@ -2,6 +2,7 @@ package io.clroot.hibernate.reactive.spring.boot.transaction
 
 import io.clroot.hibernate.reactive.ReadOnlyTransactionException
 import io.clroot.hibernate.reactive.ReactiveSessionContext
+import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import io.clroot.hibernate.reactive.currentContextOrNull
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.coroutines.awaitSuspending
@@ -37,7 +38,7 @@ import kotlin.time.Duration
  */
 public open class TransactionalAwareSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
-) {
+) : ReactiveSessionOperations {
     internal val metamodel
         get() = sessionFactory.metamodel
 
@@ -48,7 +49,7 @@ public open class TransactionalAwareSessionProvider(
      * - ReactiveSessionContext에 세션이 있으면 재사용
      * - 없으면 withSession으로 새 세션 생성
      */
-    public open suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
+    public override suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
         // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
@@ -77,7 +78,7 @@ public open class TransactionalAwareSessionProvider(
      *
      * @throws ReadOnlyTransactionException readOnly 컨텍스트 내에서 호출 시
      */
-    public open suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
+    public override suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
         // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {

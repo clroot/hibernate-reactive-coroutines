@@ -1,8 +1,6 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
-import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
-import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
-import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
+import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import io.smallrye.mutiny.Multi
 import io.smallrye.mutiny.Uni
 import kotlinx.coroutines.flow.Flow
@@ -23,20 +21,13 @@ import org.hibernate.reactive.mutiny.Mutiny
 internal class CrudOperations<T : Any, ID : Any>(
     private val entityClass: Class<T>,
     private val entityName: String,
-    private val sessionProvider: TransactionalAwareSessionProvider,
-    private val transactionExecutor: ReactiveTransactionExecutor,
-    private val auditingHandler: ReactiveAuditingHandler<*>?,
+    private val sessionOperations: ReactiveSessionOperations,
+    private val entityLifecycle: RepositoryEntityLifecycle,
 ) {
 
     private suspend fun prepareEntity(entity: T): Boolean {
-        val isNew = EntityStateDetector.isNew(entity)
-        if (auditingHandler != null) {
-            if (isNew) {
-                auditingHandler.markCreated(entity)
-            } else {
-                auditingHandler.markModified(entity)
-            }
-        }
+        val isNew = entityLifecycle.isNew(entity) ?: EntityStateDetector.isNew(entity)
+        entityLifecycle.beforeSave(entity, isNew)
         return isNew
     }
 
@@ -58,7 +49,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     suspend fun save(entity: T): T {
         val isNew = prepareEntity(entity)
 
-        return sessionProvider.write { session -> save(session, entity, isNew) }
+        return sessionOperations.write { session -> save(session, entity, isNew) }
     }
 
     fun saveAll(entities: Iterable<T>): Flow<T> = flow {
@@ -68,7 +59,7 @@ internal class CrudOperations<T : Any, ID : Any>(
         val preparedEntities = entityList.map { entity ->
             entity to prepareEntity(entity)
         }
-        val savedEntities = sessionProvider.write { session ->
+        val savedEntities = sessionOperations.write { session ->
             Multi.createFrom()
                 .iterable(preparedEntities)
                 .onItem()
@@ -90,12 +81,12 @@ internal class CrudOperations<T : Any, ID : Any>(
     // Find 작업
     // ============================================
 
-    suspend fun findById(id: ID): T? = sessionProvider.read { session ->
+    suspend fun findById(id: ID): T? = sessionOperations.read { session ->
         session.find(entityClass, RepositoryIdAdapter.unwrap(id))
     }
 
     fun findAll(): Flow<T> = flow {
-        val list = sessionProvider.read { session ->
+        val list = sessionOperations.read { session ->
             session.createQuery("FROM $entityName", entityClass).resultList
         }
         emitAll(list.asFlow())
@@ -105,7 +96,7 @@ internal class CrudOperations<T : Any, ID : Any>(
         val idList = ids.map(RepositoryIdAdapter::unwrap)
         if (idList.isEmpty()) return@flow
 
-        val list = sessionProvider.read { session ->
+        val list = sessionOperations.read { session ->
             session.createQuery("FROM $entityName e WHERE e.id IN :ids", entityClass)
                 .setParameter("ids", idList)
                 .resultList
@@ -122,7 +113,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     // Exists / Count 작업
     // ============================================
 
-    suspend fun existsById(id: ID): Boolean = sessionProvider.read { session ->
+    suspend fun existsById(id: ID): Boolean = sessionOperations.read { session ->
         session.createQuery("SELECT 1 FROM $entityName e WHERE e.id = :id", Int::class.javaObjectType)
             .setParameter("id", RepositoryIdAdapter.unwrap(id))
             .setMaxResults(1)
@@ -130,7 +121,7 @@ internal class CrudOperations<T : Any, ID : Any>(
             .map(List<Int>::isNotEmpty)
     }
 
-    suspend fun count(): Long = sessionProvider.read { session ->
+    suspend fun count(): Long = sessionOperations.read { session ->
         session.createQuery("SELECT COUNT(e) FROM $entityName e", Long::class.java)
             .singleResult
     }
@@ -147,7 +138,7 @@ internal class CrudOperations<T : Any, ID : Any>(
      * 대상이 없으면 조용히 무시합니다.
      */
     suspend fun deleteById(id: ID) {
-        sessionProvider.write<Unit> { session ->
+        sessionOperations.write<Unit> { session ->
             session.find(entityClass, RepositoryIdAdapter.unwrap(id))
                 .onItem()
                 .transformToUni { entity: T? -> removeIfPresent(session, entity) }
@@ -156,7 +147,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     }
 
     suspend fun delete(entity: T) {
-        sessionProvider.write<Unit> { session ->
+        sessionOperations.write<Unit> { session ->
             session.merge(entity)
                 .chain { merged -> session.remove(merged).replaceWith(Unit) }
         }
@@ -166,7 +157,7 @@ internal class CrudOperations<T : Any, ID : Any>(
         val idList = ids.map(RepositoryIdAdapter::unwrap)
         if (idList.isEmpty()) return
 
-        sessionProvider.write<Unit> { session ->
+        sessionOperations.write<Unit> { session ->
             session.createQuery("FROM $entityName e WHERE e.id IN :ids", entityClass)
                 .setParameter("ids", idList)
                 .resultList
@@ -179,8 +170,16 @@ internal class CrudOperations<T : Any, ID : Any>(
         val entityList = entities.toList()
         if (entityList.isEmpty()) return
 
-        transactionExecutor.transactional {
-            entityList.forEach { delete(it) }
+        sessionOperations.write<Unit> { session ->
+            Multi.createFrom()
+                .iterable(entityList)
+                .onItem()
+                .transformToUniAndConcatenate { entity ->
+                    session.merge(entity).chain { merged -> session.remove(merged) }
+                }
+                .collect()
+                .asList()
+                .replaceWith(Unit)
         }
     }
 
@@ -189,7 +188,7 @@ internal class CrudOperations<T : Any, ID : Any>(
     }
 
     suspend fun deleteAll() {
-        sessionProvider.write<Unit> { session ->
+        sessionOperations.write<Unit> { session ->
             session.createQuery("FROM $entityName e", entityClass)
                 .resultList
                 .chain { entities -> removeAll(session, entities) }

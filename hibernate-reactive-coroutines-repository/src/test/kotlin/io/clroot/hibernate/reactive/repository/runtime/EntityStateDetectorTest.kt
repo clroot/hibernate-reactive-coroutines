@@ -1,4 +1,4 @@
-package io.clroot.hibernate.reactive.spring.boot.repository
+package io.clroot.hibernate.reactive.repository.runtime
 
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.booleans.shouldBeFalse
@@ -7,7 +7,6 @@ import jakarta.persistence.Embeddable
 import jakarta.persistence.EmbeddedId
 import jakarta.persistence.Id
 import jakarta.persistence.Version
-import org.springframework.data.domain.Persistable
 
 class EntityStateDetectorTest : DescribeSpec({
     describe("repository entity state") {
@@ -34,11 +33,6 @@ class EntityStateDetectorTest : DescribeSpec({
         it("reads inherited identifiers") {
             EntityStateDetector.isNew(InheritedIdEntity(null)).shouldBeTrue()
             EntityStateDetector.isNew(InheritedIdEntity(1L)).shouldBeFalse()
-        }
-
-        it("honors Persistable overrides") {
-            EntityStateDetector.isNew(PersistableEntity(newState = true)).shouldBeTrue()
-            EntityStateDetector.isNew(PersistableEntity(newState = false)).shouldBeFalse()
         }
     }
 })
@@ -81,11 +75,3 @@ private open class IdBase(
 private class InheritedIdEntity(
     id: Long?,
 ) : IdBase(id)
-
-private class PersistableEntity(
-    private val newState: Boolean,
-) : Persistable<Long> {
-    override fun getId(): Long? = 1L
-
-    override fun isNew(): Boolean = newState
-}

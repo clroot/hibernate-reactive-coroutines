@@ -3,6 +3,7 @@ package io.clroot.hibernate.reactive
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
@@ -20,6 +21,10 @@ import java.util.function.Function
 class ReactiveSessionProviderTest : DescribeSpec({
 
     describe("ReactiveSessionProvider") {
+
+        it("implements the framework-neutral session operations contract") {
+            ReactiveSessionProvider(mockk()).shouldBeInstanceOf<ReactiveSessionOperations>()
+        }
 
         context("read 헬퍼") {
 
