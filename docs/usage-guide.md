@@ -268,7 +268,8 @@ install(HibernateReactive) {
 | Paging and sorting types | Spring Data `Pageable`, `Page`, `Slice`, `Sort` | Jakarta Data `PageRequest`, `Page`, `Sort`, `Order` |
 | Registration | classpath scan | `repository<R, T, ID>()` |
 | New-entity detection | `Persistable` first, then the shared rule | shared rule (`@Version`, then ID) |
-| Auditing | yes | no |
+| Created/modified timestamps | yes | Hibernate `@CreationTimestamp`, `@UpdateTimestamp` |
+| Created/modified users | `ReactiveAuditorAware` | `ReactiveAuditorAware` |
 
 The Ktor-side interface is a coroutine contract that extends Jakarta Data's `DataRepository`. It is
 not a full Jakarta Data provider: lifecycle annotations, `@Find`, `Limit`, and the synchronous base
@@ -452,7 +453,9 @@ such as `SELECT u FROM User u ...`. Provide `countQuery` yourself when the query
 suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
 ```
 
-### 3.7 Auditing (Spring Boot only)
+### 3.7 Auditing
+
+#### Spring Boot
 
 `@CreatedDate` and `@LastModifiedDate` are filled in once the entity registers
 `AuditingEntityListener`.
@@ -474,6 +477,8 @@ class User(
 `SecurityContextHolder` is empty, so read from `ReactiveSecurityContextHolder`.
 
 ```kotlin
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
+
 @Component
 class SecurityAuditorAware : ReactiveAuditorAware<String> {
     override suspend fun getCurrentAuditor(): String? =
@@ -483,6 +488,44 @@ class SecurityAuditorAware : ReactiveAuditorAware<String> {
             ?.name
 }
 ```
+
+#### Ktor
+
+On Ktor, use Hibernate's `@CreationTimestamp` and `@UpdateTimestamp` to record creation and
+modification times. No listener or Ktor plugin configuration is required.
+
+```kotlin
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
+import io.clroot.hibernate.reactive.repository.auditing.CreatedBy
+import io.clroot.hibernate.reactive.repository.auditing.LastModifiedBy
+
+@Entity
+class User(
+    @Id @GeneratedValue val id: Long? = null,
+    var name: String,
+    @CreationTimestamp var createdAt: Instant? = null,
+    @UpdateTimestamp var updatedAt: Instant? = null,
+    @CreatedBy var createdBy: String? = null,
+    @LastModifiedBy var updatedBy: String? = null,
+)
+```
+
+Register a `ReactiveAuditorAware` with the plugin to populate the user fields. This SPI has no
+dependency on a security library. For authenticated users, supply the user ID from a context such as
+Ktor Authentication; for batch work, it can return a value such as `system`.
+
+```kotlin
+install(HibernateReactive) {
+    auditorAware = ReactiveAuditorAware {
+        currentUserId()
+    }
+    repository<UserRepository, User, Long>()
+}
+```
+
+When the provider returns `null`, auditor fields remain unchanged. Bulk updates and native SQL bypass
+entity lifecycle handling, so neither timestamp nor user auditing is applied.
 
 ## 4. Transactions
 

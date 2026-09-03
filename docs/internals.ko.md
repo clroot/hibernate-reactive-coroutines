@@ -33,7 +33,7 @@ flowchart TB
 | `core` | `ReactiveSessionContext`, `ReactiveTransactionExecutor`, `ReactiveSessionProvider` | Hibernate Reactive, Mutiny Kotlin, Vert.x, kotlinx.coroutines |
 | `repository` | 리포지토리 런타임, 파생 쿼리 파서, `@Query` 어노테이션, Jakarta Data 기반 `CoroutineCrudRepository` | `core`, Jakarta Data API |
 | `spring-boot-starter`, `-boot4` | 자동 설정, `@Transactional` 통합, Spring Data 타입 어댑터, Auditing | `repository`, Spring Boot BOM |
-| `ktor` | 애플리케이션 플러그인, 리소스 소유권, Ktor DI 브리지 | `repository`, Ktor Server |
+| `ktor` | 애플리케이션 플러그인, 리소스 소유권, Ktor DI 브리지, 사용자 Auditing | `repository`, Ktor Server |
 | `blockhound` | Vert.x 이벤트 루프를 BlockHound 검사 대상으로 등록 | BlockHound, Vert.x |
 
 두 Spring 스타터는 `spring-boot-starter-common/src` 하나를 소스 세트로 공유하고, 각각 Boot 3 BOM과
@@ -190,7 +190,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | `PreparedRepositoryQuery` | 메서드마다 미리 파싱한 쿼리 메타데이터 | `QueryMethodParser` | `JakartaDataQueryMethodParser` |
 | `RepositoryRuntimeAdapter` | 페이징·정렬 타입 변환 | `SpringRepositoryRuntimeAdapter` | `JakartaDataRepositoryRuntimeAdapter` |
-| `RepositoryEntityLifecycle` | 신규 판별과 저장 직전 훅 | `Persistable` 우선, Auditing | 기본 구현 |
+| `RepositoryEntityLifecycle` | 신규 판별과 저장 직전 훅 | `Persistable` 우선, Auditing | `AuditingEntityLifecycle` |
 
 `RepositoryEntityLifecycle.isNew`가 null을 반환하면 `EntityStateDetector`가 판별합니다.
 `@Version`이 있으면 그 값이 null인지로, 없으면 `@Id`가 null이거나 기본값인지로 정합니다.
@@ -273,8 +273,9 @@ ORDER BY e.createdAt DESC
 2. **세션 팩토리**: `sessionFactory`가 없으면 `database {}` 설정과 등록된 엔티티로
    `ReactiveServiceRegistryBuilder`를 통해 만들어 소유합니다.
 3. **공통 리소스**: `ReactiveSessionProvider`와 `ReactiveTransactionExecutor`
-4. **리포지토리**: 등록된 인터페이스마다 `JakartaDataRepositoryFactory`로 프록시를 만듭니다. 엔티티
-   이름은 등록 시 지정한 값, `@Entity(name)`, 클래스 이름 순으로 결정합니다.
+4. **리포지토리**: 등록된 인터페이스마다 `JakartaDataRepositoryFactory`로 프록시를 만듭니다.
+   `AuditingEntityLifecycle`에는 설정된 `ReactiveAuditorAware`를 전달합니다. 엔티티 이름은 등록 시
+   지정한 값, `@Entity(name)`, 클래스 이름 순으로 결정합니다.
 5. **DI 등록**: `dependencyInjection = true`이면 `KtorDependencyInjectionBridge`가 리포지토리와
    리소스를 Ktor DI에 등록합니다. `ktor-server-di`는 `compileOnly`라 DI를 쓰지 않으면 필요 없습니다.
 

@@ -1,6 +1,6 @@
 package io.clroot.hibernate.reactive.test.auditing
 
-import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditorAware
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import org.springframework.stereotype.Component
 
 /**

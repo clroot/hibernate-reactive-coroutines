@@ -1,5 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.auditing
 
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
+
 /**
  * 엔티티의 감사자(사용자) 필드를 관리하는 핸들러.
  *

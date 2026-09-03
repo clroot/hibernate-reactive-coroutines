@@ -5,14 +5,10 @@ public final class io/clroot/hibernate/reactive/spring/boot/auditing/AuditingEnt
 }
 
 public final class io/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditingHandler {
-	public fun <init> (Lio/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditorAware;)V
+	public fun <init> (Lio/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware;)V
 	public final fun hasAuditorAware ()Z
 	public final fun markCreated (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun markModified (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-}
-
-public abstract interface class io/clroot/hibernate/reactive/spring/boot/auditing/ReactiveAuditorAware {
-	public abstract fun getCurrentAuditor (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
 public class io/clroot/hibernate/reactive/spring/boot/autoconfigure/AuditingAutoConfiguration {

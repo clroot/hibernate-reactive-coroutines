@@ -2,6 +2,9 @@ package io.clroot.hibernate.reactive.ktor
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.auditing.CreatedBy
+import io.clroot.hibernate.reactive.repository.auditing.LastModifiedBy
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import io.clroot.hibernate.reactive.repository.query.Param
 import io.clroot.hibernate.reactive.repository.query.Query
 import io.kotest.core.spec.style.DescribeSpec
@@ -26,8 +29,11 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.time.Instant
 
 class HibernateReactiveKtorIntegrationTest : DescribeSpec({
     val postgres = PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine")).apply {
@@ -42,6 +48,7 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
     describe("HibernateReactive Ktor plugin") {
         it("starts, serves repositories and explicit transactions, then closes owned resources") {
             lateinit var installedResources: HibernateReactiveResources
+            var currentAuditor = "system"
 
             testApplication {
                 application {
@@ -54,6 +61,7 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                             poolSize = 2
                         }
                         dependencyInjection = true
+                        auditorAware = ReactiveAuditorAware { currentAuditor }
                         repository<KtorUserRepository, KtorUser, Long>()
                     }
 
@@ -92,12 +100,25 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                         }
 
                         post("/crud") {
+                            currentAuditor = "creator"
                             val saved = repository.save(KtorUser(name = "dave", active = true))
+                            val createdAt = saved.createdAt
                             val found = repository.findById(saved.id!!)
                             found!!.name = "dave-updated"
+                            found.updatedAt = Instant.EPOCH
+                            currentAuditor = "modifier"
                             val updated = repository.save(found)
                             repository.deleteById(updated.id!!)
-                            call.respondText("${updated.name}|${repository.existsById(updated.id!!)}")
+                            call.respondText(
+                                listOf(
+                                    updated.name,
+                                    repository.existsById(updated.id!!).toString(),
+                                    updated.createdBy,
+                                    updated.updatedBy,
+                                    (createdAt != null && updated.updatedAt != Instant.EPOCH).toString(),
+                                    (createdAt == updated.createdAt).toString(),
+                                ).joinToString("|"),
+                            )
                         }
 
                         post("/rollback") {
@@ -124,7 +145,8 @@ class HibernateReactiveKtorIntegrationTest : DescribeSpec({
                 }
 
                 client.post("/exercise").bodyAsText() shouldBe "bob|alice|2|true|carol,bob,alice"
-                client.post("/crud").bodyAsText() shouldBe "dave-updated|false"
+                client.post("/crud").bodyAsText() shouldBe
+                    "dave-updated|false|creator|modifier|true|true"
                 client.post("/rollback").bodyAsText() shouldBe "3"
                 client.get("/count").bodyAsText() shouldBe "3"
                 installedResources.sessionFactory.isOpen shouldBe true
@@ -148,6 +170,14 @@ private class KtorUser(
     var name: String = "",
     @Column(nullable = false)
     var active: Boolean = true,
+    @CreationTimestamp
+    var createdAt: Instant? = null,
+    @UpdateTimestamp
+    var updatedAt: Instant? = null,
+    @CreatedBy
+    var createdBy: String? = null,
+    @LastModifiedBy
+    var updatedBy: String? = null,
 )
 
 private interface KtorUserRepository : CoroutineCrudRepository<KtorUser, Long> {

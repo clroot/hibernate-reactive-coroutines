@@ -1,6 +1,7 @@
 package io.clroot.hibernate.reactive.ktor
 
 import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import io.ktor.util.reflect.TypeInfo
 import io.ktor.util.reflect.typeInfo
 import io.ktor.utils.io.KtorDsl
@@ -58,6 +59,14 @@ public class HibernateReactiveConfiguration {
 
     /** Whether to expose plugin resources and repositories through optional Ktor dependency injection. */
     public var dependencyInjection: Boolean = false
+
+    /**
+     * Supplies the current auditor for repository saves.
+     *
+     * When configured, fields annotated with `@CreatedBy` and `@LastModifiedBy` are populated.
+     * The provider runs in the coroutine performing the save and must not block.
+     */
+    public var auditorAware: ReactiveAuditorAware<*>? = null
 
     internal val databaseConfiguration: HibernateReactiveDatabaseConfiguration =
         HibernateReactiveDatabaseConfiguration()

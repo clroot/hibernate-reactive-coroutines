@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.autoconfigure
 
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
-import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditorAware
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.AutoConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
