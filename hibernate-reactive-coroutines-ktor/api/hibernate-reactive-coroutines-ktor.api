@@ -1,0 +1,57 @@
+public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveConfiguration {
+	public fun <init> ()V
+	public final fun database (Lkotlin/jvm/functions/Function1;)V
+	public final fun entities ([Lkotlin/reflect/KClass;)V
+	public final fun getCloseExternalSessionFactory ()Z
+	public final fun getCloseExternalVertx ()Z
+	public final fun getDependencyInjection ()Z
+	public final fun getSessionFactory ()Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;
+	public final fun getVertx ()Lio/vertx/core/Vertx;
+	public final fun repository (Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;)V
+	public static synthetic fun repository$default (Lio/clroot/hibernate/reactive/ktor/HibernateReactiveConfiguration;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Lkotlin/reflect/KClass;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun setCloseExternalSessionFactory (Z)V
+	public final fun setCloseExternalVertx (Z)V
+	public final fun setDependencyInjection (Z)V
+	public final fun setSessionFactory (Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;)V
+	public final fun setVertx (Lio/vertx/core/Vertx;)V
+}
+
+public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveDatabaseConfiguration {
+	public fun <init> ()V
+	public final fun getPassword ()Ljava/lang/String;
+	public final fun getPoolSize ()I
+	public final fun getProperties ()Ljava/util/Map;
+	public final fun getSchemaGeneration ()Ljava/lang/String;
+	public final fun getShowSql ()Z
+	public final fun getUrl ()Ljava/lang/String;
+	public final fun getUsername ()Ljava/lang/String;
+	public final fun property (Ljava/lang/String;Ljava/lang/Object;)V
+	public final fun setPassword (Ljava/lang/String;)V
+	public final fun setPoolSize (I)V
+	public final fun setSchemaGeneration (Ljava/lang/String;)V
+	public final fun setShowSql (Z)V
+	public final fun setUrl (Ljava/lang/String;)V
+	public final fun setUsername (Ljava/lang/String;)V
+}
+
+public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveKt {
+	public static final fun getHibernateReactive ()Lio/ktor/server/application/ApplicationPlugin;
+}
+
+public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveResources {
+	public final fun getSessionFactory ()Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;
+	public final fun getSessionProvider ()Lio/clroot/hibernate/reactive/ReactiveSessionProvider;
+	public final fun getTransactionExecutor ()Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
+	public final fun getVertx ()Lio/vertx/core/Vertx;
+	public final fun repository (Ljava/lang/Class;)Ljava/lang/Object;
+	public final fun repository (Lkotlin/reflect/KClass;)Ljava/lang/Object;
+}
+
+public final class io/clroot/hibernate/reactive/ktor/HibernateReactiveResourcesKt {
+	public static final fun getHibernateReactive (Lio/ktor/server/application/Application;)Lio/clroot/hibernate/reactive/ktor/HibernateReactiveResources;
+	public static final fun getHibernateSessionFactory (Lio/ktor/server/application/Application;)Lorg/hibernate/reactive/mutiny/Mutiny$SessionFactory;
+	public static final fun getHibernateSessionProvider (Lio/ktor/server/application/Application;)Lio/clroot/hibernate/reactive/ReactiveSessionProvider;
+	public static final fun getHibernateTransactionExecutor (Lio/ktor/server/application/Application;)Lio/clroot/hibernate/reactive/ReactiveTransactionExecutor;
+	public static final fun hibernateRepository (Lio/ktor/server/application/Application;Lkotlin/reflect/KClass;)Ljava/lang/Object;
+}
+

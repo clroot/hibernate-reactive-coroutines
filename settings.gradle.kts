@@ -15,6 +15,7 @@ rootProject.name = "hibernate-reactive-coroutines"
 include(
     "hibernate-reactive-coroutines-core",
     "hibernate-reactive-coroutines-repository",
+    "hibernate-reactive-coroutines-ktor",
     "hibernate-reactive-coroutines-blockhound",
     "hibernate-reactive-coroutines-spring-boot-starter-common",
     "hibernate-reactive-coroutines-spring-boot-starter",

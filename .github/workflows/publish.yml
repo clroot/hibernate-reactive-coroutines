@@ -65,5 +65,6 @@ jobs:
             hibernate-reactive-coroutines-blockhound/build/libs/*.jar
             hibernate-reactive-coroutines-core/build/libs/*.jar
             hibernate-reactive-coroutines-repository/build/libs/*.jar
+            hibernate-reactive-coroutines-ktor/build/libs/*.jar
             hibernate-reactive-coroutines-spring-boot-starter/build/libs/*.jar
             hibernate-reactive-coroutines-spring-boot-starter-boot4/build/libs/*.jar
