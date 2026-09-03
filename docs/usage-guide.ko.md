@@ -222,6 +222,23 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+스칼라, 집계, HQL 생성자 DTO 프로젝션은 선언한 반환 타입을 사용합니다.
+
+```kotlin
+data class UserSummary(val name: String, val age: Int)
+
+@Query("SELECT COUNT(u) FROM User u WHERE u.status = :status")
+suspend fun countByStatus(status: Status): Long
+
+@Query("SELECT u.name FROM User u ORDER BY u.name")
+suspend fun findNames(): List<String>
+
+@Query("SELECT new com.example.UserSummary(u.name, u.age) FROM User u ORDER BY u.name")
+suspend fun findSummaries(): List<UserSummary>
+```
+
+인터페이스 기반 및 Tuple/배열 프로젝션은 지원하지 않습니다. 구체적인 생성자 DTO를 사용하세요.
+
 `@Modifying` 메서드는 영향받은 행 수를 받는 `Int` 또는 결과를 노출하지 않는 `Unit`을
 반환해야 합니다. 벌크 업데이트는 이미 관리 중인 엔티티를 동기화하지 않습니다.
 같은 트랜잭션의 후속 조회에서 현재 세션 캐시를 비우고 DB 결과를 읽어야 한다면

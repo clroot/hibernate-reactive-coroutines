@@ -20,6 +20,7 @@ A guide for migrating from Spring Data JPA to Hibernate Reactive Coroutines.
 | LIKE search                          |     ✅     | Containing, StartingWith, EndingWith                     |
 | Comparison operators                 |     ✅     | GreaterThan, LessThan, Between, etc.                     |
 | `@Query` (JPQL)                      |     ✅     | Named/Positional Parameters                              |
+| `@Query` scalar/aggregate/DTO results |     ✅     | Scalars and HQL constructor DTOs                        |
 | `@Query` (Native)                    |     ✅     | Read-only; Page requires `countQuery`                    |
 | `@Modifying`                         |     ✅     | JPQL UPDATE/DELETE; `Int`/`Unit`, optional auto-clear    |
 | Pagination (`Page`, `Slice`)         |     ✅     | Smart COUNT skip optimization                            |
@@ -60,7 +61,7 @@ These are rejected at application startup with an explanatory message, not at fi
 | Projection (interface-based)              | Use FETCH JOIN and map in Kotlin                |
 | `@EntityGraph`                            | FETCH JOIN or `fetch()` method                  |
 | Native `@Modifying`                       | Use JPQL instead                                |
-| Scalar/aggregate/DTO results in `@Query`  | Return the entity type, or use `count…`/`exists…` derived methods |
+| Tuple/array results in `@Query`            | Use a scalar or HQL constructor DTO projection |
 | Non-suspend (including `Flow`) query methods | Declare `suspend fun … : List<T>`            |
 | Overloads with the same name and arity    | Give the methods distinct names                 |
 | `Top`/`First` combined with `Pageable`    | Use one or the other                            |

@@ -11,6 +11,7 @@ import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameterP
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryReturnType
 import io.clroot.hibernate.reactive.spring.boot.repository.query.QueryStatementType
+import jakarta.persistence.Tuple
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Slice
@@ -131,9 +132,8 @@ internal class QueryMethodParser(
             ?: QueryParameters(ParameterStyle.NONE)
         val argumentNames = extractParameterNames(method)
         validateQueryParameters(method, queryParameters, countParameters, argumentNames)
-        validateAnnotatedResultType(method, returnType)
 
-        return PreparedQueryMethod(
+        val prepared = PreparedQueryMethod(
             method = method,
             partTree = null,
             hql = query,
@@ -146,6 +146,8 @@ internal class QueryMethodParser(
             parameterStyle = queryParameters.style,
             parameterNames = argumentNames,
         )
+        validateAnnotatedResultType(prepared)
+        return prepared
     }
 
     private fun determineAnnotatedReturnType(method: Method, isModifying: Boolean): QueryReturnType {
@@ -377,37 +379,32 @@ internal class QueryMethodParser(
         }
 
     /**
-     * `@Query` 메서드가 엔티티 결과를 반환하는지 검증합니다.
+     * Hibernate가 직접 생성할 수 없는 프로젝션 형태를 기동 시점에 거부합니다.
      *
-     * 현재 실행 경로는 결과 타입을 엔티티 클래스로 고정하므로, 스칼라/집계/DTO 프로젝션은
-     * 런타임에 Hibernate 내부 오류로 실패합니다. 시작 시점에 명확히 거부합니다.
+     * 스칼라와 HQL 생성자 DTO는 선언된 결과 클래스를 typed query에 전달합니다. Spring Data식
+     * 인터페이스 프로젝션은 별도 프록시 생성이 필요하고, Tuple/배열 다중 선택은 별도 매핑
+     * 규칙이 필요하므로 이 기능의 범위에 포함하지 않습니다.
      */
-    private fun validateAnnotatedResultType(method: Method, returnType: QueryReturnType) {
-        if (returnType == QueryReturnType.MODIFYING || returnType == QueryReturnType.VOID) return
+    private fun validateAnnotatedResultType(prepared: PreparedQueryMethod) {
+        if (prepared.returnType == QueryReturnType.MODIFYING || prepared.returnType == QueryReturnType.VOID) return
 
-        val actualReturnType = extractActualReturnType(method) ?: return
-        val resultType = when (returnType) {
-            QueryReturnType.SINGLE -> actualReturnType
-            else -> firstTypeArgument(actualReturnType) ?: return
-        }
-        val rawResultType = rawClassOf(resultType) ?: return
+        val resultClass = prepared.resultClass ?: throw IllegalStateException(
+            "Could not determine the result type of @Query method '${prepared.method.name}'",
+        )
+        if (resultClass.isAssignableFrom(entityClass)) return
 
-        if (!rawResultType.isAssignableFrom(entityClass)) {
+        if (resultClass.isInterface) {
             throw IllegalStateException(
-                "@Query method '${method.name}' declares result type ${rawResultType.simpleName} " +
-                        "but only the entity type ${entityClass.simpleName} (or a List/Page/Slice of it) " +
-                        "is supported. Scalar, aggregate and DTO projections are not supported yet.",
+                "@Query method '${prepared.method.name}' declares interface projection " +
+                        "${resultClass.simpleName}, which is not supported. Use a constructor DTO projection instead.",
             )
         }
-    }
-
-    private fun firstTypeArgument(type: Type): Type? =
-        (type as? ParameterizedType)?.actualTypeArguments?.firstOrNull()?.let(::unwrapWildcard)
-
-    private fun rawClassOf(type: Type): Class<*>? = when (type) {
-        is Class<*> -> type
-        is ParameterizedType -> type.rawType as? Class<*>
-        else -> null
+        if (resultClass.isArray || resultClass == Tuple::class.java) {
+            throw IllegalStateException(
+                "@Query method '${prepared.method.name}' declares Tuple/array projection " +
+                        "${resultClass.simpleName}, which is not supported. Use a scalar or constructor DTO projection instead.",
+            )
+        }
     }
 
     private fun extractParameterNames(method: Method): List<String> {

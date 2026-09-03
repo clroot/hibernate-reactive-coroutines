@@ -11,6 +11,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Slice
 
 class QueryMethodParserTest : DescribeSpec({
     val parser = QueryMethodParser(User::class.java)
@@ -123,6 +124,50 @@ class QueryMethodParserTest : DescribeSpec({
         }
     }
 
+    describe("@Query projections") {
+        it("extracts a scalar aggregate result class") {
+            val prepared = parse("countActive")
+
+            prepared.returnType shouldBe QueryReturnType.SINGLE
+            prepared.resultClass shouldBe Long::class.javaObjectType
+        }
+
+        it("extracts a scalar list element class") {
+            val prepared = parse("findNotes")
+
+            prepared.returnType shouldBe QueryReturnType.LIST
+            prepared.resultClass shouldBe String::class.java
+        }
+
+        it("extracts a constructor DTO list element class") {
+            val prepared = parse("findSummaries")
+
+            prepared.returnType shouldBe QueryReturnType.LIST
+            prepared.resultClass shouldBe UserSummary::class.java
+        }
+
+        it("extracts constructor DTO element classes from Page and Slice") {
+            parse("findSummaryPage").resultClass shouldBe UserSummary::class.java
+            parse("findSummarySlice").resultClass shouldBe UserSummary::class.java
+        }
+
+        it("rejects interface projections during repository initialization") {
+            val error = shouldThrow<IllegalStateException> {
+                parse("findViews")
+            }
+
+            error.message shouldContain "interface projection"
+        }
+
+        it("rejects array projections during repository initialization") {
+            val error = shouldThrow<IllegalStateException> {
+                parse("findRows")
+            }
+
+            error.message shouldContain "Tuple/array projection"
+        }
+    }
+
     describe("@Modifying return types") {
         it("accepts Unit and preserves its declared return contract") {
             parse("deactivate").returnType shouldBe QueryReturnType.VOID
@@ -144,7 +189,40 @@ private data class User(
     val note: String,
 )
 
+private data class UserSummary(
+    val note: String,
+    val active: Boolean,
+)
+
+private interface UserView {
+    val note: String
+}
+
 private interface QueryRepository {
+    @Query("SELECT COUNT(e) FROM User e WHERE e.active = true")
+    suspend fun countActive(): Long
+
+    @Query("SELECT e.note FROM User e ORDER BY e.note")
+    suspend fun findNotes(): List<String>
+
+    @Query("SELECT new io.clroot.hibernate.reactive.spring.boot.repository.UserSummary(e.note, e.active) FROM User e")
+    suspend fun findSummaries(): List<UserSummary>
+
+    @Query(
+        value = "SELECT new io.clroot.hibernate.reactive.spring.boot.repository.UserSummary(e.note, e.active) FROM User e",
+        countQuery = "SELECT COUNT(e) FROM User e",
+    )
+    suspend fun findSummaryPage(pageable: Pageable): Page<UserSummary>
+
+    @Query("SELECT new io.clroot.hibernate.reactive.spring.boot.repository.UserSummary(e.note, e.active) FROM User e")
+    suspend fun findSummarySlice(pageable: Pageable): Slice<UserSummary>
+
+    @Query("SELECT e.note FROM User e")
+    suspend fun findViews(): List<UserView>
+
+    @Query("SELECT e.note, e.active FROM User e")
+    suspend fun findRows(): List<Array<Any>>
+
     @Modifying
     @Query("UPDATE User e SET e.active = false WHERE e.id = :id")
     suspend fun deactivate(id: Long)

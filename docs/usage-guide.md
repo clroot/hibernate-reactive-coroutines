@@ -224,6 +224,23 @@ interface UserRepository : CoroutineCrudRepository<User, Long> {
 }
 ```
 
+Scalar, aggregate, and HQL constructor DTO projections use the declared return type:
+
+```kotlin
+data class UserSummary(val name: String, val age: Int)
+
+@Query("SELECT COUNT(u) FROM User u WHERE u.status = :status")
+suspend fun countByStatus(status: Status): Long
+
+@Query("SELECT u.name FROM User u ORDER BY u.name")
+suspend fun findNames(): List<String>
+
+@Query("SELECT new com.example.UserSummary(u.name, u.age) FROM User u ORDER BY u.name")
+suspend fun findSummaries(): List<UserSummary>
+```
+
+Interface-based and Tuple/array projections are not supported. Use a concrete constructor DTO instead.
+
 `@Modifying` methods must return either `Int` (the affected row count) or `Unit`.
 Bulk updates do not synchronize already managed entities. Use
 `@Modifying(clearAutomatically = true)` when subsequent reads in the same transaction must

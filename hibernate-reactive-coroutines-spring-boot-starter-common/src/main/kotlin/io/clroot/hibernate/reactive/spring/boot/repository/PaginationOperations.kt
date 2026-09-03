@@ -111,14 +111,15 @@ internal class PaginationOperations<T : Any>(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
         pageable: Pageable,
-    ): Page<T> {
+    ): Page<Any> {
         val hql = queryOps.applyAnnotatedQuerySort(prepared, pageable.sort)
+        val resultClass = queryOps.annotatedResultClass(prepared)
 
         val content = sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(hql, entityClass)
+                session.createNativeQuery(hql, resultClass)
             } else {
-                session.createQuery(hql, entityClass)
+                session.createQuery(hql, resultClass)
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)
@@ -143,14 +144,15 @@ internal class PaginationOperations<T : Any>(
         prepared: PreparedQueryMethod,
         args: List<Any?>,
         pageable: Pageable,
-    ): Slice<T> {
+    ): Slice<Any> {
         val hql = queryOps.applyAnnotatedQuerySort(prepared, pageable.sort)
+        val resultClass = queryOps.annotatedResultClass(prepared)
 
         val content = sessionProvider.read { session ->
             val query = if (prepared.isNativeQuery) {
-                session.createNativeQuery(hql, entityClass)
+                session.createNativeQuery(hql, resultClass)
             } else {
-                session.createQuery(hql, entityClass)
+                session.createQuery(hql, resultClass)
             }
 
             queryOps.bindAnnotatedParameters(query, prepared, args)
@@ -241,7 +243,7 @@ internal class PaginationOperations<T : Any>(
     /**
      * COUNT 쿼리를 생략해도 되는지 확인합니다.
      */
-    private fun shouldSkipCountQuery(content: List<T>, pageable: Pageable): Boolean {
+    private fun shouldSkipCountQuery(content: List<*>, pageable: Pageable): Boolean {
         return (content.isNotEmpty() || pageable.offset == 0L) && content.size < pageable.pageSize
     }
 }

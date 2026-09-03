@@ -12,7 +12,7 @@ Hibernate Reactive + Kotlin Coroutines 환경에서 Spring Data JPA의 편의성
 
 - `CoroutineCrudRepository` 인터페이스 지원
 - 쿼리 메서드 자동 생성 (`findByEmail`, `existsByStatus` 등)
-- `@Query` 어노테이션으로 커스텀 JPQL
+- `@Query` 어노테이션으로 스칼라, 집계, 생성자 DTO 프로젝션을 포함한 커스텀 JPQL
 - 페이지네이션 (`Page`, `Slice`, `Pageable`)
 - Spring `@Transactional` 통합
 - Auditing (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)

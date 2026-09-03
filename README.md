@@ -25,7 +25,7 @@ This library provides a **Spring Boot starter for Hibernate Reactive** with firs
 
 - `CoroutineCrudRepository` interface with suspend functions
 - **Query method derivation** (`findByEmail`, `findAllByStatus`, `countByActive`, etc.)
-- **`@Query` annotation** for custom JPQL/HQL queries
+- **`@Query` annotation** for custom JPQL/HQL queries, including scalar, aggregate, and constructor DTO projections
 - **Pagination support** (`Page`, `Slice`, `Pageable`)
 - **Spring `@Transactional`** integration with coroutine context propagation
 - **Auditing** (`@CreatedDate`, `@LastModifiedDate`, `@CreatedBy`, `@LastModifiedBy`)
