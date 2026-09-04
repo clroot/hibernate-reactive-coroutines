@@ -4,13 +4,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration
 
 /**
- * Hibernate Reactive 전용 설정 프로퍼티.
+ * Hibernate Reactive-specific properties.
  *
- * 대부분의 설정은 기존 Spring 프로퍼티를 그대로 사용합니다:
- * - `spring.datasource.*`: DB 연결 정보
- * - `spring.jpa.*`: JPA/Hibernate 설정
- *
- * 이 프로퍼티는 Hibernate Reactive 전용 설정만 포함합니다:
+ * Connection and JPA settings remain under `spring.datasource.*` and `spring.jpa.*`.
  *
  * ```yaml
  * spring:
@@ -18,84 +14,74 @@ import java.time.Duration
  *     properties:
  *       hibernate:
  *         reactive:
- *           pool-size: 10  # 커넥션 풀 사이즈
- *           ssl-mode: disable  # SSL 모드 (disable, allow, prefer, require, verify-ca, verify-full)
+ *           pool-size: 10
+ *           ssl-mode: disable
  * ```
  */
 @ConfigurationProperties(prefix = "spring.jpa.properties.hibernate.reactive")
 public data class HibernateReactiveProperties(
     /**
-     * Hibernate Reactive 커넥션 풀 사이즈 (기본값: 10)
+     * Hibernate Reactive connection-pool size. Defaults to 10.
      *
-     * 일반 JDBC의 HikariCP와 달리, Hibernate Reactive는 자체 커넥션 풀을 사용합니다.
+     * Hibernate Reactive uses its own pool rather than JDBC's HikariCP.
      */
     val poolSize: Int = 10,
 
     /**
-     * Vert.x PG Client SSL 모드 (기본값: disable)
+     * Vert.x PostgreSQL client SSL mode. Defaults to `disable`.
      *
-     * 가능한 값:
-     * - `disable`: SSL 사용 안함
-     * - `allow`: 서버가 요구하면 SSL 사용
-     * - `prefer`: SSL 시도, 실패 시 비암호화
-     * - `require`: SSL 필수 (기본 trust store로 인증서 검증)
-     * - `verify-ca`: SSL + 지정한 CA 인증서 검증
-     * - `verify-full`: SSL + 지정한 CA + 호스트명 검증
+     * Supported values are `disable`, `allow`, `prefer`, `require`, `verify-ca`, and `verify-full`.
      *
-     * 프로덕션에서는 CA 인증서를 지정한 `verify-full` 권장
+     * Production deployments should use `verify-full` with a configured CA certificate.
      */
     val sslMode: String = "disable",
 
     /**
-     * 커넥션 풀에서 커넥션 요청 시 최대 대기 시간 (밀리초)
+     * Maximum time in milliseconds to wait for a pool connection.
      *
-     * 이 시간 내에 커넥션을 획득하지 못하면 타임아웃 예외가 발생합니다.
-     * null이면 Vert.x 기본값 사용
+     * A request that cannot acquire a connection within this duration times out. `null` uses the
+     * Vert.x default.
      *
-     * **프로덕션 권장**: [maxWaitQueueSize]와 함께 반드시 설정하세요.
-     * 둘 다 설정하지 않으면 대기 큐가 무제한이라, DB가 느려질 때 요청이 빠르게 실패하지 않고
-     * 계속 쌓여 애플리케이션 전체가 멈추는 브라운아웃으로 이어집니다.
+     * Set this together with [maxWaitQueueSize] in production to bound overload when the database
+     * becomes slow.
      *
      * @see org.hibernate.reactive.provider.Settings.POOL_CONNECT_TIMEOUT
      */
     val connectTimeout: Int? = null,
 
     /**
-     * 유휴 커넥션의 최대 유지 시간 (밀리초)
+     * Maximum idle connection lifetime in milliseconds.
      *
-     * 이 시간 동안 사용되지 않은 커넥션은 풀에서 제거됩니다.
-     * null이면 Vert.x 기본값 사용
+     * Unused connections are removed after this duration. `null` uses the Vert.x default.
      *
      * @see org.hibernate.reactive.provider.Settings.POOL_IDLE_TIMEOUT
      */
     val idleTimeout: Int? = null,
 
     /**
-     * 커넥션 풀 대기 큐의 최대 크기
+     * Maximum number of requests waiting for a pool connection.
      *
-     * 모든 커넥션이 사용 중일 때 대기할 수 있는 최대 요청 수입니다.
-     * 대기 큐가 가득 차면 즉시 예외가 발생합니다.
-     * null이면 Vert.x 기본값(무제한) 사용
+     * Requests fail immediately when the queue is full. `null` uses Vert.x's unbounded default.
      *
-     * **프로덕션 권장**: 무제한 대기 큐는 DB 지연 시 요청이 무한정 쌓이게 하므로
-     * [connectTimeout]과 함께 명시적으로 설정하세요.
+     * Set this together with [connectTimeout] in production to prevent unbounded request buildup
+     * during database latency.
      *
      * @see org.hibernate.reactive.provider.Settings.POOL_MAX_WAIT_QUEUE_SIZE
      */
     val maxWaitQueueSize: Int? = null,
 
     /**
-     * 스타터가 생성하는 Vert.x 인스턴스 설정.
+     * Settings for the Vert.x instance created by this starter.
      *
-     * 애플리케이션에 `Vertx` 빈이 이미 있으면 그 빈이 사용되며 이 설정은 무시됩니다.
+     * These settings do not apply when the application provides its own `Vertx` bean.
      */
     val vertx: VertxSettings = VertxSettings(),
 ) {
     /**
-     * Hibernate Reactive가 사용할 Vert.x 인스턴스의 이벤트 루프·blocked-thread checker 설정.
+     * Event-loop and blocked-thread checker settings for Hibernate Reactive's Vert.x instance.
      *
-     * `transactional {}` 블록은 이벤트 루프에서 실행되므로, blocked-thread checker 임계값을
-     * 낮게 잡을수록 블록 안의 실수(블로킹 호출, CPU 독점)를 운영 로그에서 빨리 발견할 수 있습니다.
+     * `transactional {}` runs on an event loop. Lower checker thresholds expose blocking calls or
+     * CPU monopolization sooner in production logs.
      *
      * ```yaml
      * spring:
@@ -111,43 +97,42 @@ public data class HibernateReactiveProperties(
      */
     public data class VertxSettings(
         /**
-         * 이벤트 루프 스레드 수 (기본값: Vert.x 기본값, 2 × CPU 코어)
+         * Event-loop thread count. Defaults to Vert.x's default (twice the CPU count).
          *
-         * DB I/O 전용 Vert.x이므로 웹 서버와 별도로 뜨는 환경에서는
-         * 코어 수보다 작게 잡아 스레드 수를 줄일 수 있습니다.
+         * When Vert.x is dedicated to database I/O, it can be smaller than the CPU count to reduce
+         * thread use.
          */
         val eventLoopPoolSize: Int? = null,
 
         /**
-         * 이벤트 루프가 한 번에 점유할 수 있는 최대 시간 (기본값: Vert.x 기본값, 2초)
+         * Maximum continuous event-loop execution time. Defaults to Vert.x's default (2 seconds).
          *
-         * 초과 시 blocked-thread checker가 경고 로그를 남깁니다.
+         * Exceeding it produces a blocked-thread checker warning.
          */
         val maxEventLoopExecuteTime: Duration? = null,
 
         /**
-         * blocked-thread checker의 검사 주기 (기본값: Vert.x 기본값, 1초)
+         * Blocked-thread checker interval. Defaults to Vert.x's default (1 second).
          */
         val blockedThreadCheckInterval: Duration? = null,
 
         /**
-         * 이 시간 이상 루프가 점유되면 경고 로그에 스택트레이스를 포함합니다
-         * (기본값: Vert.x 기본값, 5초)
+         * Include a stack trace in warnings after this duration. Defaults to Vert.x's default
+         * (5 seconds).
          *
-         * 어떤 코드가 루프를 막았는지 추적하려면 이 값을 낮추세요.
+         * Lower it to identify code blocking an event loop sooner.
          */
         val warningExceptionTime: Duration? = null,
 
         /**
-         * 내장 Netty 리액티브 웹 서버(WebFlux)를 이 Vert.x의 이벤트 루프 위에서 실행합니다
-         * (기본값: false)
+         * Run the embedded Netty reactive web server (WebFlux) on this Vert.x event-loop group.
+         * Defaults to `false`.
          *
-         * 켜면 reactor-netty가 별도의 이벤트 루프 풀을 만들지 않아 앱 전체가 하나의
-         * 스레드 풀을 공유합니다. 대신 장애 격리가 약해집니다: 트랜잭션 블록 안의 블로킹
-         * 호출 하나가 DB 계층뿐 아니라 HTTP 서빙(헬스체크 포함)까지 함께 멈출 수 있습니다.
+         * Sharing avoids a second reactor-netty event-loop pool but weakens fault isolation: a
+         * blocking call in `transactional {}` can also stall HTTP serving, including health checks.
          *
-         * 켜기 전에 hibernate-reactive-coroutines-blockhound로 블로킹 호출이 없는지
-         * 테스트에서 검증하고, blocked-thread checker 임계값을 낮춰 운영에서 감시하세요.
+         * Verify blocking-call safety with `hibernate-reactive-coroutines-blockhound` and use
+         * conservative blocked-thread checker thresholds in production.
          */
         val shareEventLoops: Boolean = false,
     )

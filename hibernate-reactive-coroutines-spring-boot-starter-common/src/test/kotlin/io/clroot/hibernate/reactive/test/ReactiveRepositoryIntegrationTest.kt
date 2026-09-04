@@ -22,7 +22,7 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
     init {
         describe("CoroutineCrudRepository") {
             context("save") {
-                it("엔티티를 저장하고 ID가 생성된다") {
+                it("saves an entity and generates an ID") {
                     val entity = TestEntity(name = "saveTest", value = 100)
 
                     val saved = tx.transactional {
@@ -34,7 +34,7 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
                     saved.value shouldBe 100
                 }
 
-                it("신규 엔티티는 전달한 인스턴스가 관리되고 생성된 ID도 같은 인스턴스에 반영된다") {
+                it("manages the supplied new entity instance and assigns its generated ID") {
                     val entity = TestEntity(name = "persistNew", value = 101)
 
                     val saved = tx.transactional {
@@ -45,7 +45,7 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
                     entity.id.shouldNotBeNull()
                 }
 
-                it("saveAll도 신규 엔티티 인스턴스를 그대로 persist한다") {
+                it("persists the supplied new entity instances through saveAll") {
                     val entities = listOf(
                         TestEntity(name = "persistAll1", value = 102),
                         TestEntity(name = "persistAll2", value = 103),
@@ -57,14 +57,12 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
                     entities.forEach { it.id.shouldNotBeNull() }
                 }
 
-                it("기존 엔티티를 업데이트한다") {
-                    // given
+                it("updates an existing entity") {
                     val entity = TestEntity(name = "updateTest", value = 50)
                     val saved = tx.transactional {
                         testEntityRepository.save(entity)
                     }
 
-                    // when
                     saved.name = "updated"
                     saved.value = 999
 
@@ -72,7 +70,6 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
                         testEntityRepository.save(saved)
                     }
 
-                    // then
                     updated.id shouldBe saved.id
                     updated.name shouldBe "updated"
                     updated.value shouldBe 999
@@ -80,25 +77,22 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
             }
 
             context("findById") {
-                it("존재하는 엔티티를 조회한다") {
-                    // given
+                it("finds an existing entity") {
                     val entity = TestEntity(name = "findByIdTest", value = 200)
                     val saved = tx.transactional {
                         testEntityRepository.save(entity)
                     }
 
-                    // when
                     val found = tx.readOnly {
                         testEntityRepository.findById(saved.id!!)
                     }
 
-                    // then
                     found.shouldNotBeNull()
                     found.id shouldBe saved.id
                     found.name shouldBe "findByIdTest"
                 }
 
-                it("존재하지 않는 ID는 null을 반환한다") {
+                it("returns null for a nonexistent ID") {
                     val found = tx.readOnly {
                         testEntityRepository.findById(99999L)
                     }
@@ -108,59 +102,50 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
             }
 
             context("findAll") {
-                it("모든 엔티티를 조회한다") {
-                    // given
+                it("finds all entities") {
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "all1", value = 1))
                         testEntityRepository.save(TestEntity(name = "all2", value = 2))
                         testEntityRepository.save(TestEntity(name = "all3", value = 3))
                     }
 
-                    // when
                     val all = tx.readOnly {
                         testEntityRepository.findAll().toList()
                     }
 
-                    // then
                     all.size shouldBe 3
                 }
             }
 
             context("count") {
-                it("엔티티 개수를 반환한다") {
-                    // given
+                it("returns the entity count") {
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "count1", value = 1))
                         testEntityRepository.save(TestEntity(name = "count2", value = 2))
                     }
 
-                    // when
                     val count = tx.readOnly {
                         testEntityRepository.count()
                     }
 
-                    // then
                     count shouldBe 2
                 }
             }
 
             context("existsById") {
-                it("존재하는 ID는 true를 반환한다") {
-                    // given
+                it("returns true for an existing ID") {
                     val saved = tx.transactional {
                         testEntityRepository.save(TestEntity(name = "exists", value = 1))
                     }
 
-                    // when
                     val exists = tx.readOnly {
                         testEntityRepository.existsById(saved.id!!)
                     }
 
-                    // then
                     exists shouldBe true
                 }
 
-                it("존재하지 않는 ID는 false를 반환한다") {
+                it("returns false for a nonexistent ID") {
                     val exists = tx.readOnly {
                         testEntityRepository.existsById(99999L)
                     }
@@ -170,45 +155,38 @@ class ReactiveRepositoryIntegrationTest : IntegrationTestBase() {
             }
 
             context("deleteById") {
-                it("ID로 엔티티를 삭제한다") {
-                    // given
+                it("deletes an entity by ID") {
                     val saved = tx.transactional {
                         testEntityRepository.save(TestEntity(name = "deleteById", value = 1))
                     }
 
-                    // when
                     tx.transactional {
                         testEntityRepository.deleteById(saved.id!!)
                     }
 
-                    // then
                     val found = tx.readOnly {
                         testEntityRepository.findById(saved.id!!)
                     }
                     found.shouldBeNull()
                 }
 
-                it("존재하지 않는 ID 삭제는 예외 없이 무시된다") {
+                it("ignores deletion of a nonexistent ID without throwing") {
                     tx.transactional {
                         testEntityRepository.deleteById(99999L)
                     }
-                    // 예외가 발생하지 않으면 성공
                 }
             }
 
             context("delete") {
-                it("엔티티를 삭제한다") {
-                    // given
+                it("deletes an entity") {
                     val saved = tx.transactional {
                         testEntityRepository.save(TestEntity(name = "delete", value = 1))
                     }
 
-                    // when
                     tx.transactional {
                         testEntityRepository.delete(saved)
                     }
 
-                    // then
                     val found = tx.readOnly {
                         testEntityRepository.findById(saved.id!!)
                     }

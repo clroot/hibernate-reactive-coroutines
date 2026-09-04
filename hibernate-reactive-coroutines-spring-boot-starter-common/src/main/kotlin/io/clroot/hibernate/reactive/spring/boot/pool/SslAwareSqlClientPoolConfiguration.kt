@@ -21,12 +21,7 @@ internal fun copyPostgresConnectOptions(source: SqlConnectOptions): SqlConnectOp
         .newInstance(source) as SqlConnectOptions
 }
 
-/**
- * SSL을 지원하는 SqlClientPoolConfiguration.
- *
- * PostgreSQL 연결 시 SSL 모드를 적용합니다.
- * `vertx-pg-client` 의존성이 없어도 동작하도록 Reflection을 사용합니다.
- */
+/** Applies PostgreSQL SSL modes while keeping `vertx-pg-client` optional through reflection. */
 public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
 
     public companion object {
@@ -36,9 +31,6 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
 
         private val logger = LoggerFactory.getLogger(SslAwareSqlClientPoolConfiguration::class.java)
 
-        /**
-         * vertx-pg-client가 클래스패스에 있는지 확인
-         */
         private val pgClientAvailable: Boolean by lazy {
             try {
                 Class.forName(PG_CONNECT_OPTIONS_CLASS)
@@ -68,7 +60,6 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
     override fun connectOptions(uri: URI): SqlConnectOptions {
         val baseOptions = super.connectOptions(uri)
 
-        // SSL 모드가 설정되지 않았거나 disable이면 기본 옵션 반환
         if (sslMode == null || sslMode == "disable") {
             return baseOptions
         }
@@ -92,18 +83,12 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
         return createPgConnectOptionsWithSsl(baseOptions)
     }
 
-    /**
-     * URI가 PostgreSQL인지 확인합니다.
-     */
     private fun isPostgresUri(uri: URI): Boolean {
         val scheme = uri.scheme?.lowercase() ?: return false
         return scheme == "postgresql" || scheme == "postgres"
     }
 
-    /**
-     * SqlConnectOptions를 PgConnectOptions로 변환하고 SSL 모드를 적용합니다.
-     * Reflection을 사용하여 vertx-pg-client 의존성 없이 동작합니다.
-     */
+    /** Applies SSL to PostgreSQL options without requiring `vertx-pg-client` at compile time. */
     private fun createPgConnectOptionsWithSsl(baseOptions: SqlConnectOptions): SqlConnectOptions {
         val configuredSslMode = requireNotNull(sslMode)
         if (configuredSslMode in setOf("verify-ca", "verify-full") && trustCertificate == null) {
@@ -117,16 +102,15 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
             val pgConnectOptionsClass = Class.forName(PG_CONNECT_OPTIONS_CLASS)
             val sslModeClass = Class.forName(SSL_MODE_CLASS)
 
-            // Vert.x의 복사 생성자로 SqlConnectOptions의 현재 및 향후 모든 속성을 보존합니다.
+            // Vert.x's copy constructor preserves current and future SqlConnectOptions properties.
             val pgOptions = copyPostgresConnectOptions(baseOptions)
 
-            // SSL 모드 설정
             val sslModeOfMethod = sslModeClass.getMethod("of", String::class.java)
             val sslModeValue = sslModeOfMethod.invoke(null, configuredSslMode)
             val setSslModeMethod = pgConnectOptionsClass.getMethod("setSslMode", sslModeClass)
             setSslModeMethod.invoke(pgOptions, sslModeValue)
 
-            // Vert.x 5부터 TLS 설정은 ClientSSLOptions로 분리되었습니다.
+            // Vert.x 5 moved TLS settings to ClientSSLOptions.
             applySslOptions(pgOptions, pgConnectOptionsClass, configuredSslMode)
 
             logger.info(
@@ -145,10 +129,11 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
     }
 
     /**
-     * TLS 설정을 [ClientSSLOptions]로 구성해 PgConnectOptions에 적용합니다.
+     * Applies TLS settings through [ClientSSLOptions].
      *
-     * Vert.x 5에서 `setTrustAll`/`setPemTrustOptions`/`setHostnameVerificationAlgorithm`이
-     * PgConnectOptions에서 제거되고 `setSslOptions(ClientSSLOptions)`로 통합되었습니다.
+     * Vert.x 5 removed `setTrustAll`, `setPemTrustOptions`, and
+     * `setHostnameVerificationAlgorithm` from PgConnectOptions in favor of
+     * `setSslOptions(ClientSSLOptions)`.
      */
     private fun applySslOptions(
         pgOptions: Any,
@@ -156,7 +141,7 @@ public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfigurat
         configuredSslMode: String,
     ) {
         val sslOptions = ClientSSLOptions()
-            // 어떤 SSL 모드에서도 인증서 검증을 우회하지 않음
+            // Never bypass certificate verification.
             .setTrustAll(false)
 
         trustCertificate?.let { certificatePath ->

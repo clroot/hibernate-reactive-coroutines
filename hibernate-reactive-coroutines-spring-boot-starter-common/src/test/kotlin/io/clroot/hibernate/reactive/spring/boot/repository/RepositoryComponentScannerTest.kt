@@ -8,9 +8,9 @@ class RepositoryComponentScannerTest : DescribeSpec({
 
     describe("RepositoryComponentScanner") {
 
-        context("인터페이스 스캔") {
+        context("interface scanning") {
 
-            it("HibernateReactiveRepositoryTypeFilter와 함께 사용하면 Repository 인터페이스를 찾는다") {
+            it("finds repository interfaces with HibernateReactiveRepositoryTypeFilter") {
                 val scanner = RepositoryComponentScanner().apply {
                     addIncludeFilter(HibernateReactiveRepositoryTypeFilter())
                 }
@@ -25,7 +25,7 @@ class RepositoryComponentScannerTest : DescribeSpec({
                 classNames.any { it.contains("Repository") } shouldBe true
             }
 
-            it("필터 없이 스캔하면 아무것도 찾지 않는다") {
+            it("finds no components without an include filter") {
                 val scanner = RepositoryComponentScanner()
 
                 val candidates = scanner.findCandidateComponents(

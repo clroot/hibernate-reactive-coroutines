@@ -2,11 +2,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query.condition
 
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterBinder
 
-/**
- * 단순 비교 조건 빌더들.
- */
-
-/** 단순 비교: = */
+/** Equality predicate. */
 internal data object SimplePropertyCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property = :p$paramIndex",
@@ -15,7 +11,7 @@ internal data object SimplePropertyCondition : ConditionBuilder {
     )
 }
 
-/** 부정 비교: <> */
+/** Inequality predicate. */
 internal data object NegatingSimplePropertyCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property <> :p$paramIndex",

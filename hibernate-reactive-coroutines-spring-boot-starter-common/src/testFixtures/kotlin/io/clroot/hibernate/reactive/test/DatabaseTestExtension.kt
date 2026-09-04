@@ -5,12 +5,10 @@ import io.kotest.core.extensions.SpecExtension
 import io.kotest.core.spec.Spec
 
 /**
- * Kotest Spec Extension으로 TestContainer 라이프사이클과 스키마 격리를 관리합니다.
+ * Manages the Testcontainer lifecycle and schema isolation for Kotest specs.
  *
- * 각 Spec(테스트 클래스)마다 고유한 PostgreSQL 스키마를 생성하여
- * 병렬 테스트 실행 시에도 데이터 충돌이 발생하지 않도록 합니다.
- *
- * 테스트 완료 후 스키마를 삭제하여 리소스를 정리합니다.
+ * Each spec receives a unique PostgreSQL schema to prevent data collisions during
+ * parallel execution. The schema is dropped when the spec completes.
  */
 class DatabaseTestExtension : SpecExtension {
     override suspend fun intercept(
@@ -19,7 +17,6 @@ class DatabaseTestExtension : SpecExtension {
     ) {
         PostgreSQLTestContainer.start()
 
-        // Spec별 고유 스키마 생성
         val schemaName = generateSchemaName(spec)
         PostgreSQLTestContainer.createSchema(schemaName)
         PostgreSQLTestContainer.configureSystemProperties(schemaName)
@@ -27,17 +24,15 @@ class DatabaseTestExtension : SpecExtension {
         try {
             execute(spec)
         } finally {
-            // 스키마 삭제 (테이블 포함)
             PostgreSQLTestContainer.dropSchema(schemaName)
         }
     }
 
     /**
-     * Spec 클래스명과 타임스탬프를 조합하여 고유한 스키마명을 생성합니다.
+     * Generates a unique schema name from the spec class name and a timestamp.
      *
-     * PostgreSQL 스키마명 규칙:
-     * - 소문자와 숫자, 언더스코어만 사용
-     * - 63자 제한
+     * PostgreSQL schema names may contain only lowercase letters, digits, and
+     * underscores, and are limited to 63 characters.
      */
     private fun generateSchemaName(spec: Spec): String {
         val className = spec.javaClass.simpleName

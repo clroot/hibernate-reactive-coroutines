@@ -3,13 +3,9 @@ package io.clroot.hibernate.reactive.test.recorder
 import org.hibernate.reactive.mutiny.Mutiny
 
 /**
- * HQL 쿼리를 기록하는 Session 래퍼.
+ * Session proxy that records query creation.
  *
- * [Mutiny.Session]의 쿼리 생성 메서드를 가로채서 [HqlRecorder]에 기록합니다.
- * 모든 다른 메서드는 원본 세션에 위임됩니다.
- *
- * @property delegate 원본 세션
- * @property recorder 쿼리 기록기
+ * Delegation preserves normal session behavior while intercepting query creation for assertions.
  */
 class RecordingSessionWrapper(
     private val delegate: Mutiny.Session,

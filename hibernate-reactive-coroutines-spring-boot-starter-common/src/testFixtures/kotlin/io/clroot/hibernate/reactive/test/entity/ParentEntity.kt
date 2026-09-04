@@ -3,9 +3,9 @@ package io.clroot.hibernate.reactive.test.entity
 import jakarta.persistence.*
 
 /**
- * Lazy Loading 테스트용 부모 엔티티.
+ * Parent entity for lazy-loading tests.
  *
- * @OneToMany 관계를 통해 Lazy Loading 동작을 테스트합니다.
+ * Tests lazy-loading behavior through a {@code @OneToMany} relationship.
  */
 @Entity
 @Table(name = "parent_entity")

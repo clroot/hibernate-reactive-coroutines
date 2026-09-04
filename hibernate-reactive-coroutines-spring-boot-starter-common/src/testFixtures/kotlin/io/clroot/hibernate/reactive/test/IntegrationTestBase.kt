@@ -12,31 +12,10 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 
 /**
- * 통합 테스트 베이스 클래스.
+ * Base class for integration tests.
  *
- * PostgreSQL TestContainer와 Spring 컨텍스트를 자동으로 설정합니다.
- * 각 Spec(테스트 클래스)마다 독립된 PostgreSQL 스키마를 사용하여
- * 병렬 테스트 실행 시에도 데이터 충돌이 발생하지 않습니다.
- *
- * - **Spec 간 격리**: 스키마 격리로 병렬 테스트 안전
- * - **테스트 케이스 간 격리**: beforeEach에서 TRUNCATE로 데이터 정리
- *
- * 사용 예:
- * ```kotlin
- * @SpringBootTest
- * class MyIntegrationTest : IntegrationTestBase() {
- *     @Autowired
- *     private lateinit var tx: ReactiveTransactionExecutor
- *
- *     init {
- *         describe("MyFeature") {
- *             it("should work") {
- *                 // test code
- *             }
- *         }
- *     }
- * }
- * ```
+ * Each spec uses an isolated PostgreSQL schema for safe parallel execution.
+ * Test data is cleared before every test case.
  */
 @ActiveProfiles("test")
 @Import(HibernateReactiveAutoConfiguration::class)
@@ -56,12 +35,11 @@ abstract class IntegrationTestBase : DescribeSpec() {
     }
 
     /**
-     * 모든 테스트 테이블의 데이터를 삭제합니다.
-     * 스키마 격리 환경에서 안전하게 동작하도록 DELETE를 사용합니다.
-     * FK 제약조건 순서를 고려하여 자식 테이블부터 삭제합니다.
+     * Clears all test tables with DELETE, which works safely with schema isolation.
+     * Child tables are deleted before parent tables to satisfy foreign key constraints.
      */
     private suspend fun clearAllTables() {
-        // FK 제약조건 순서: 자식 → 부모
+        // Delete child tables before parent tables to satisfy foreign key constraints.
         val entityNames = listOf(
             "ChildEntity",
             "ParentEntity",
@@ -72,8 +50,7 @@ abstract class IntegrationTestBase : DescribeSpec() {
         )
 
         sessionFactory.withTransaction { session ->
-            // Uni는 구독해야 실행되므로 반드시 chain으로 연결한다.
-            // 나열만 하면 마지막 구문 외에는 실행되지 않는다.
+            // Chain each Uni because unconnected operations are never subscribed.
             entityNames.fold(Uni.createFrom().voidItem()) { chain, entityName ->
                 chain.chain { _ ->
                     session.createMutationQuery("DELETE FROM $entityName")

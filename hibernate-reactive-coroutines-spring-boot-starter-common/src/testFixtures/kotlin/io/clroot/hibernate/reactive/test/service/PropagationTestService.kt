@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * 트랜잭션 전파 옵션 테스트를 위한 서비스 클래스.
+ * Service for transaction propagation tests.
  */
 @Service
 class PropagationTestService(
@@ -17,9 +17,7 @@ class PropagationTestService(
     private val sessionProvider: TransactionalAwareSessionProvider,
 ) {
 
-    // ============================================
-    // REQUIRED (기본) 전파 테스트
-    // ============================================
+    // REQUIRED propagation (default)
 
     @Transactional
     suspend fun outerRequired(name: String, innerAction: suspend () -> Unit): TestEntity {
@@ -39,18 +37,14 @@ class PropagationTestService(
         throw RuntimeException("Inner REQUIRED exception")
     }
 
-    // ============================================
-    // REQUIRES_NEW 전파 테스트 (미지원 - 에러 예상)
-    // ============================================
+    // REQUIRES_NEW propagation (unsupported; expected to fail)
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     suspend fun requiresNewTransaction(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = "requires-new-$name", value = 10))
     }
 
-    // ============================================
-    // SUPPORTS 전파 테스트
-    // ============================================
+    // SUPPORTS propagation
 
     @Transactional(propagation = Propagation.SUPPORTS)
     suspend fun supportsWithTransaction(name: String): TestEntity {
@@ -62,45 +56,35 @@ class PropagationTestService(
         return testEntityRepository.findById(id)
     }
 
-    // ============================================
-    // NOT_SUPPORTED 전파 테스트
-    // ============================================
+    // NOT_SUPPORTED propagation
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     suspend fun notSupportedAction(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = "not-supported-$name", value = 30))
     }
 
-    // ============================================
-    // MANDATORY 전파 테스트
-    // ============================================
+    // MANDATORY propagation
 
     @Transactional(propagation = Propagation.MANDATORY)
     suspend fun mandatoryAction(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = "mandatory-$name", value = 40))
     }
 
-    // ============================================
-    // NEVER 전파 테스트
-    // ============================================
+    // NEVER propagation
 
     @Transactional(propagation = Propagation.NEVER)
     suspend fun neverAction(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = "never-$name", value = 50))
     }
 
-    // ============================================
-    // readOnly 쓰기 시도 테스트
-    // ============================================
+    // Write attempt in a read-only transaction
 
     @Transactional(readOnly = true)
     suspend fun readOnlyWriteAttempt(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = "readonly-write-$name", value = 60))
     }
 
-    // ============================================
-    // 중첩 트랜잭션 시나리오
-    // ============================================
+    // Nested transaction scenarios
 
     @Transactional
     suspend fun nestedRequiredBothCommit(outerName: String, innerName: String): Pair<TestEntity, TestEntity> {
@@ -116,19 +100,16 @@ class PropagationTestService(
         return outer to inner
     }
 
-    // ============================================
-    // timeout 테스트
-    // ============================================
+    // Timeouts
 
-    @Transactional(timeout = 1) // 1초 타임아웃
+    @Transactional(timeout = 1) // One-second timeout.
     suspend fun transactionWithShortTimeout(name: String, delayMillis: Long): TestEntity {
         val entity = testEntityRepository.save(TestEntity(name = name, value = 70))
-        // 지연 시뮬레이션
         kotlinx.coroutines.delay(delayMillis)
         return entity
     }
 
-    @Transactional(timeout = 10) // 10초 타임아웃
+    @Transactional(timeout = 10) // Ten-second timeout.
     suspend fun transactionWithLongTimeout(name: String): TestEntity {
         return testEntityRepository.save(TestEntity(name = name, value = 71))
     }
@@ -169,9 +150,7 @@ class PropagationTestService(
         }
     }
 
-    // ============================================
-    // isolation 테스트
-    // ============================================
+    // Transaction isolation
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     suspend fun isolationReadCommitted(name: String): Pair<TestEntity, String> {
@@ -198,9 +177,7 @@ class PropagationTestService(
                 .singleResult
         }
 
-    // ============================================
-    // 헬퍼 메서드
-    // ============================================
+    // Helpers
 
     @Transactional(readOnly = true)
     suspend fun findById(id: Long): TestEntity? {

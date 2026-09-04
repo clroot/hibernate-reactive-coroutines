@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.test.projection
 
 /**
- * HQL constructor projection 검증용 DTO.
+ * DTO for HQL constructor projection tests.
  */
 data class TestEntitySummary(
     val name: String,

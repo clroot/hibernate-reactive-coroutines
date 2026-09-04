@@ -1,18 +1,17 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query.condition
 
 /**
- * Part.Type별 HQL 조건절 생성을 담당하는 빌더 인터페이스.
+ * Builds HQL predicates for a [Part.Type].
  *
- * 각 구현체는 특정 패턴의 조건을 생성하며,
- * [ConditionBuilderRegistry]를 통해 조회됩니다.
+ * Implementations are retrieved through [ConditionBuilderRegistry].
  */
 internal sealed interface ConditionBuilder {
     /**
-     * HQL 조건절을 생성합니다.
+     * Builds an HQL predicate.
      *
-     * @param property 엔티티 프로퍼티 (예: "e.name")
-     * @param paramIndex 현재 파라미터 인덱스
-     * @return 생성된 조건과 결과 정보
+     * @param property entity property, such as `e.name`
+     * @param paramIndex current parameter index
+     * @return predicate and parameter metadata
      */
     fun build(property: String, paramIndex: Int): ConditionResult
 }

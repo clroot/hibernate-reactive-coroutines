@@ -18,23 +18,8 @@ import kotlin.reflect.KProperty1
 import kotlin.time.Duration
 
 /**
- * @Transactional 컨텍스트를 인식하는 세션 제공자.
- *
- * 세션 획득 우선순위:
- * 1. Spring @Transactional 컨텍스트 (ReactorContext를 통해)
- * 2. ReactiveSessionContext (CoroutineContext를 통해, 기존 tx.transactional 방식)
- * 3. 새 세션 생성
- *
- * 이를 통해 @Transactional 어노테이션과 Repository를 함께 사용할 수 있습니다:
- * ```kotlin
- * @Service
- * class MyService(private val repository: MyRepository) {
- *     @Transactional
- *     suspend fun doSomething() {
- *         repository.save(entity)  // 자동으로 트랜잭션 세션 사용
- *     }
- * }
- * ```
+ * Resolves sessions in this order: the Spring `@Transactional` context, a coroutine
+ * [ReactiveSessionContext], then a newly opened session.
  */
 public open class TransactionalAwareSessionProvider(
     private val sessionFactory: Mutiny.SessionFactory,
@@ -42,44 +27,25 @@ public open class TransactionalAwareSessionProvider(
     internal val metamodel
         get() = sessionFactory.metamodel
 
-    /**
-     * 읽기 전용 작업을 수행합니다.
-     *
-     * - @Transactional 컨텍스트에 세션이 있으면 재사용
-     * - ReactiveSessionContext에 세션이 있으면 재사용
-     * - 없으면 withSession으로 새 세션 생성
-     */
     public override suspend fun <T> read(block: (Mutiny.Session) -> Uni<T>): T {
-        // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
             return executeWithTransactionTimeout(transactionalContext, block)
         }
 
-        // 2. ReactiveSessionContext 확인 (기존 tx.transactional 방식)
         val existingContext = currentContextOrNull()
         if (existingContext != null) {
             return block(existingContext.session).awaitSuspending()
         }
 
-        // 3. 새 세션 생성
         return sessionFactory
             .withSession { session ->
                 block(session)
             }.awaitSuspending()
     }
 
-    /**
-     * 쓰기 작업을 수행합니다.
-     *
-     * - @Transactional 컨텍스트에 세션이 있으면 재사용
-     * - ReactiveSessionContext에 세션이 있으면 재사용
-     * - 없으면 withTransaction으로 새 트랜잭션 생성
-     *
-     * @throws ReadOnlyTransactionException readOnly 컨텍스트 내에서 호출 시
-     */
+    /** @throws ReadOnlyTransactionException when called within a read-only transaction. */
     public override suspend fun <T> write(block: (Mutiny.Session) -> Uni<T>): T {
-        // 1. @Transactional 컨텍스트 확인
         val transactionalContext = getTransactionalSessionContext()
         if (transactionalContext != null) {
             if (transactionalContext.isReadOnly) {
@@ -91,7 +57,6 @@ public open class TransactionalAwareSessionProvider(
             return executeWithTransactionTimeout(transactionalContext, block)
         }
 
-        // 2. ReactiveSessionContext 확인 (기존 tx.transactional 방식)
         val existingContext = currentContextOrNull()
         return when {
             existingContext?.isReadOnly == true -> {
@@ -106,7 +71,6 @@ public open class TransactionalAwareSessionProvider(
             }
 
             else -> {
-                // 3. 새 트랜잭션 생성
                 sessionFactory
                     .withTransaction { session ->
                         block(session)
@@ -115,11 +79,8 @@ public open class TransactionalAwareSessionProvider(
         }
     }
 
-    /**
-     * 현재 @Transactional 컨텍스트에서 세션을 가져옵니다.
-     */
+    /** Retrieves the session bound to the current Spring reactive transaction. */
     private suspend fun getTransactionalSessionContext(): TransactionalSessionInfo? {
-        // CoroutineContext에서 ReactorContext 가져오기
         val reactorContext = currentCoroutineContext()[ReactorContext]?.context
             ?: return null
 
@@ -198,28 +159,7 @@ public open class TransactionalAwareSessionProvider(
             )
         }
 
-    // ==================== Lazy Loading 편의 메서드 ====================
-
-    /**
-     * 엔티티의 Lazy 연관관계를 fetch합니다.
-     *
-     * FETCH JOIN을 사용하기 어려운 경우(동적 조건, 다중 컬렉션 등)의 대안입니다.
-     * 가능하면 FETCH JOIN을 먼저 고려하세요.
-     *
-     * 사용 예시:
-     * ```kotlin
-     * @Transactional(readOnly = true)
-     * suspend fun getParentWithChildren(id: Long): ParentEntity {
-     *     val parent = parentRepository.findById(id)!!
-     *     sessionProvider.fetch(parent, ParentEntity::children)
-     *     return parent
-     * }
-     * ```
-     *
-     * @param entity fetch할 연관관계를 가진 엔티티
-     * @param property fetch할 연관관계 프로퍼티
-     * @return fetch된 연관관계 컬렉션/엔티티
-     */
+    /** Fetches a lazy association for an entity attached to the current session. */
     public open suspend fun <E : Any, T> fetch(entity: E, property: KProperty1<E, T>): T {
         return read { session ->
             val association = property.get(entity)
@@ -227,27 +167,7 @@ public open class TransactionalAwareSessionProvider(
         }
     }
 
-    /**
-     * 엔티티의 여러 Lazy 연관관계를 순차적으로 fetch합니다.
-     *
-     * 사용 예시:
-     * ```kotlin
-     * @Transactional(readOnly = true)
-     * suspend fun getOrderWithDetails(id: Long): Order {
-     *     val order = orderRepository.findById(id)!!
-     *     sessionProvider.fetchAll(
-     *         order,
-     *         Order::items,
-     *         Order::payments,
-     *         Order::shippingInfo,
-     *     )
-     *     return order
-     * }
-     * ```
-     *
-     * @param entity fetch할 연관관계들을 가진 엔티티
-     * @param properties fetch할 연관관계 프로퍼티들
-     */
+    /** Fetches lazy associations sequentially using the current session. */
     public open suspend fun <E : Any> fetchAll(entity: E, vararg properties: KProperty1<E, *>) {
         read { session ->
             var chain: Uni<*> = Uni.createFrom().voidItem()
@@ -259,29 +179,7 @@ public open class TransactionalAwareSessionProvider(
         }
     }
 
-    /**
-     * 엔티티를 현재 세션에 연결(merge)한 후 Lazy 연관관계를 fetch합니다.
-     *
-     * 다른 트랜잭션에서 조회한 detached 엔티티의 연관관계를 로딩할 때 사용합니다.
-     *
-     * 사용 예시:
-     * ```kotlin
-     * suspend fun processParent(detachedParent: ParentEntity) {
-     *     // detachedParent는 다른 트랜잭션에서 조회됨
-     *     val children = sessionProvider.fetchFromDetached(
-     *         detachedParent,
-     *         ParentEntity::class.java,
-     *         ParentEntity::children,
-     *     )
-     *     // children 사용
-     * }
-     * ```
-     *
-     * @param entity detached 상태의 엔티티
-     * @param entityClass 엔티티 클래스
-     * @param property fetch할 연관관계 프로퍼티
-     * @return fetch된 연관관계 컬렉션/엔티티
-     */
+    /** Merges a detached entity before fetching one of its lazy associations. */
     public open suspend fun <E : Any, T> fetchFromDetached(
         entity: E,
         entityClass: Class<E>,

@@ -21,11 +21,11 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
     private lateinit var tx: ReactiveTransactionExecutor
 
     init {
-        describe("동시성 테스트") {
+        describe("concurrency") {
 
-            context("여러 코루틴이 동시에 save를 호출할 때") {
+            context("when multiple coroutines call save concurrently") {
 
-                it("모든 엔티티가 올바르게 저장된다") {
+                it("persists every entity correctly") {
                     val count = 10
 
                     val savedEntities = coroutineScope {
@@ -48,15 +48,13 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("여러 코루틴이 동시에 findById를 호출할 때") {
+            context("when multiple coroutines call findById concurrently") {
 
-                it("각 코루틴이 독립적으로 조회한다") {
-                    // given
+                it("executes each lookup independently") {
                     val saved = tx.transactional {
                         testEntityRepository.save(TestEntity(name = "concurrent-find", value = 100))
                     }
 
-                    // when
                     val results = coroutineScope {
                         (1..10).map {
                             async {
@@ -67,23 +65,20 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
                         }.awaitAll()
                     }
 
-                    // then
                     results.filterNotNull() shouldHaveSize 10
                     results.forEach { it?.name shouldBe "concurrent-find" }
                 }
             }
 
-            context("여러 코루틴이 동시에 다른 엔티티를 업데이트할 때") {
+            context("when multiple coroutines update different entities concurrently") {
 
-                it("각 업데이트가 독립적으로 수행된다") {
-                    // given
+                it("executes each update independently") {
                     val entities = tx.transactional {
                         (1..5).map { i ->
                             testEntityRepository.save(TestEntity(name = "update-target-$i", value = i))
                         }
                     }
 
-                    // when
                     coroutineScope {
                         entities.map { entity ->
                             async {
@@ -95,7 +90,6 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
                         }.awaitAll()
                     }
 
-                    // then
                     val updated = tx.readOnly {
                         entities.mapNotNull { testEntityRepository.findById(it.id!!) }
                     }
@@ -105,11 +99,10 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("여러 코루틴이 동시에 읽기/쓰기 작업을 혼합할 때") {
+            context("when multiple coroutines mix reads and writes") {
 
-                it("트랜잭션 격리가 유지된다") {
+                it("maintains transaction isolation") {
                     coroutineScope {
-                        // 쓰기 작업들
                         val writeJobs = (1..5).map { i ->
                             async {
                                 tx.transactional {
@@ -118,7 +111,6 @@ class ConcurrencyIntegrationTest : IntegrationTestBase() {
                             }
                         }
 
-                        // 읽기 작업들
                         val readJobs = (1..5).map {
                             async {
                                 tx.readOnly {

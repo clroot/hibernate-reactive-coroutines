@@ -15,22 +15,15 @@ import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 
 /**
- * 애플리케이션 시작 시 파싱된 쿼리 메서드 정보.
+ * Query method metadata parsed at application startup.
  *
- * 파생 쿼리 파싱 결과와 생성된 HQL을 캐싱하여 런타임 오버헤드를 제거합니다.
+ * Caches derived-query parsing results and generated HQL to avoid runtime parsing.
  *
- * @param method 원본 메서드
- * @param partTree 호환성을 위해 보존된 PartTree (@Query 메서드면 null)
- * @param hql 생성된 HQL 쿼리 또는 @Query의 쿼리
- * @param countHql Page 반환 타입일 때 사용할 COUNT HQL (null이면 COUNT 불필요)
- * @param parameterBinders 파라미터별 바인더 (LIKE 패턴 변환 등, @Query면 빈 리스트)
- * @param returnType 반환 타입 정보
- * @param isAnnotatedQuery @Query 어노테이션 사용 여부
- * @param isNativeQuery 네이티브 쿼리 여부
- * @param isModifying @Modifying 어노테이션 사용 여부
- * @param parameterStyle 파라미터 바인딩 스타일 (NAMED, POSITIONAL, NONE)
- * @param parameterNames Named Parameter 사용 시 파라미터 이름 목록
- * @param maxResults `Top`/`First` 키워드로 지정된 최대 결과 개수 (제한이 없으면 null)
+ * @param partTree Retained for compatibility; null for `@Query` methods.
+ * @param countHql COUNT HQL for page results; null when no count query is needed.
+ * @param parameterBinders Per-parameter transformations, such as LIKE escaping; empty for `@Query`.
+ * @param parameterNames Names used for named parameters.
+ * @param maxResults Maximum result count from `Top` or `First`; null when unlimited.
  */
 public data class PreparedQueryMethod(
     val method: Method,
@@ -58,10 +51,10 @@ public data class PreparedQueryMethod(
     }
 
     /**
-     * 선언된 suspend 반환 타입에서 추출한 실제 쿼리 결과 클래스입니다.
+     * Resolves the query result class from the declared suspend return type.
      *
-     * 단일 결과는 반환 타입 자체를, List/Page/Slice는 요소 타입을 사용합니다. 생성자 파라미터를
-     * 추가하지 않아 공개 data class의 기존 생성자 ABI를 유지합니다.
+     * Single results use the return type itself; List, Page, and Slice use the element type.
+     * Keeping this derived value out of the constructor preserves the public data-class ABI.
      */
     internal val resultClass: Class<*>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
         resolveResultClass(method, returnType)

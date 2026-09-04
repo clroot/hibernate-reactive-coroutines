@@ -21,12 +21,10 @@ import reactor.core.publisher.Mono
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Hibernate Reactive (Mutiny API)를 위한 Spring ReactiveTransactionManager 구현체.
+ * Spring reactive transaction manager for Hibernate Reactive's Mutiny API.
  *
- * Spring의 @Transactional 어노테이션과 통합하여 suspend 함수에서 선언적 트랜잭션 관리를 지원합니다.
- *
- * 이 트랜잭션 매니저는 [ReactiveSessionContext]와 통합되어,
- * @Transactional 컨텍스트 내에서 Repository가 자동으로 현재 세션을 인식합니다.
+ * Binds the transaction session to Spring so repositories can reuse it within
+ * an `@Transactional` suspending function.
  */
 public class HibernateReactiveTransactionManager(
     private val sessionFactory: Mutiny.SessionFactory,
@@ -81,9 +79,9 @@ public class HibernateReactiveTransactionManager(
     }
 
     /**
-     * 새 세션을 열고 트랜잭션을 시작합니다.
-     * Hibernate Reactive가 내부적으로 관리하는 Vert.x Context에서 세션이 생성되며,
-     * 콜백에서 해당 Context를 캡처하여 저장합니다.
+     * Opens a session and captures its Vert.x context.
+     *
+     * Hibernate Reactive sessions must subsequently run on that context.
      */
     private fun openSessionAndBeginTransaction(
         txObject: HibernateTransactionObject,
@@ -94,7 +92,7 @@ public class HibernateReactiveTransactionManager(
             .invoke { session ->
                 log.debug("Acquired Mutiny.Session [{}] for Hibernate Reactive transaction", session)
 
-                // 세션이 생성된 후, 현재 스레드는 Hibernate Reactive의 Vert.x EventLoop 스레드
+                // The session is opened on Hibernate Reactive's Vert.x event-loop context.
                 val vertxContext = Vertx.currentContext()
                 val holder = MutinySessionHolder(
                     session,
@@ -139,8 +137,7 @@ public class HibernateReactiveTransactionManager(
 
         log.debug("Committing Hibernate Reactive transaction on Session [{}]", session)
 
-        // 참여 트랜잭션에서 rollback-only가 설정되었으면 UnexpectedRollbackException 발생
-        // Spring 표준 동작: 내부 트랜잭션이 rollback-only로 마킹되면 외부 커밋 시 예외 발생
+        // Preserve Spring semantics: an inner participant marking rollback-only fails the outer commit.
         if (sessionHolder.isRollbackOnly && !hasTransactionTimedOut(sessionHolder)) {
             return runOnVertxContext(sessionHolder.getVertxContext()) {
                 val reactiveConnection = ReactiveConnectionAccessor.get(session)
@@ -171,7 +168,7 @@ public class HibernateReactiveTransactionManager(
             return rollbackTimedOutTransaction(sessionHolder, reactiveConnection)
         }
 
-        // 커밋 전에 남은 deadline을 statement timeout에 반영하고 영속성 컨텍스트를 flush합니다.
+        // Apply the remaining deadline to statements before flushing pending changes.
         val remainingTimeout = sessionHolder.toReactiveSessionContext().remainingTimeout()
         return TransactionTimeoutConfigurer.configure(reactiveConnection, remainingTimeout)
             .chain { _: Void? -> session.flush() }
@@ -295,12 +292,10 @@ public class HibernateReactiveTransactionManager(
         val txObject = transaction as HibernateTransactionObject
 
         return Mono.defer {
-            // 리소스 언바인딩
             if (txObject.isNewSessionHolder()) {
                 synchronizationManager.unbindResource(sessionFactory)
             }
 
-            // 세션 정리
             if (txObject.isNewSessionHolder() && txObject.hasSessionHolder()) {
                 val sessionHolder = txObject.getSessionHolder()
                 val session = sessionHolder.getSession()
@@ -315,10 +310,7 @@ public class HibernateReactiveTransactionManager(
         }
     }
 
-    /**
-     * Vert.x Context에서 작업을 실행합니다.
-     * Hibernate Reactive 세션 작업은 반드시 세션이 생성된 Vert.x EventLoop 스레드에서 실행되어야 합니다.
-     */
+    /** Runs session work on the Vert.x context that owns the session. */
     private fun <T : Any> runOnVertxContext(vertxContext: Context?, block: () -> Mono<T>): Mono<T> {
         if (vertxContext == null) {
             return try {
@@ -332,8 +324,7 @@ public class HibernateReactiveTransactionManager(
             val subscription = Disposables.swap()
             sink.onCancel(subscription)
 
-            // block()이 동기적으로 던지면 sink가 종료되지 않아 커밋/롤백이 영원히 대기하게 된다.
-            // 세션에서 ReactiveConnection을 꺼내는 리플렉션이 대표적인 동기 실패 지점이다.
+            // Propagate synchronous failures so the sink terminates instead of hanging commit or rollback.
             try {
                 vertxContext.runOnContext {
                     try {
@@ -379,9 +370,7 @@ public class HibernateReactiveTransactionManager(
             definition.timeout.seconds
         }
 
-    /**
-     * 트랜잭션 객체 - 내부 상태 관리
-     */
+    /** Holds transaction-local session state. */
     private class HibernateTransactionObject {
         private var _sessionHolder: MutinySessionHolder? = null
         private var _newSessionHolder: Boolean = false

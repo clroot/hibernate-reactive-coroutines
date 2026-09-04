@@ -11,10 +11,10 @@ import reactor.blockhound.BlockingOperationError
 import java.util.concurrent.Callable
 
 /**
- * Vert.x 스레드 종류별로 BlockHound 검사 대상 여부를 검증합니다.
+ * Verifies which Vert.x thread types BlockHound monitors.
  *
- * - 이벤트 루프 스레드: 블로킹 호출이 탐지되어야 함
- * - 워커 스레드(executeBlocking): 블로킹이 허용되어야 함
+ * Event-loop threads must reject blocking calls, while `executeBlocking` worker
+ * threads permit them.
  */
 class VertxEventLoopBlockHoundIntegrationTest : DescribeSpec({
     BlockHound.install()
@@ -27,7 +27,7 @@ class VertxEventLoopBlockHoundIntegrationTest : DescribeSpec({
 
     describe("VertxEventLoopBlockHoundIntegration") {
 
-        it("이벤트 루프 스레드에서 Thread.sleep은 BlockingOperationError를 던진다") {
+        it("detects Thread.sleep on an event-loop thread") {
             val result = CompletableDeferred<Throwable?>()
             vertx.runOnContext {
                 result.complete(runCatching { Thread.sleep(10) }.exceptionOrNull())
@@ -35,7 +35,7 @@ class VertxEventLoopBlockHoundIntegrationTest : DescribeSpec({
             result.await().shouldBeInstanceOf<BlockingOperationError>()
         }
 
-        it("워커 스레드(executeBlocking)에서는 블로킹이 허용된다") {
+        it("allows Thread.sleep on an executeBlocking worker thread") {
             val result = vertx.executeBlocking(
                 Callable {
                     Thread.sleep(10)

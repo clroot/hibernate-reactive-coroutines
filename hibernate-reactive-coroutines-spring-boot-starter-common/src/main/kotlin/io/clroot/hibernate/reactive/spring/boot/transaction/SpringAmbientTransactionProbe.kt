@@ -10,11 +10,10 @@ import org.springframework.transaction.NoTransactionException
 import org.springframework.transaction.reactive.TransactionSynchronizationManager
 
 /**
- * Spring `@Transactional`이 시작한 리액티브 트랜잭션을 감지합니다.
+ * Detects a reactive transaction started by Spring `@Transactional`.
  *
- * 이 훅이 없으면 `@Transactional` 안에서 `tx.transactional {}`을 호출할 때
- * 별도의 세션과 트랜잭션이 열리지만, 정작 Repository 호출은
- * [TransactionalAwareSessionProvider]를 통해 Spring 세션으로 향합니다.
+ * This prevents nested `tx.transactional {}` calls from opening a session that differs
+ * from the Spring-bound session used by repositories.
  */
 public class SpringAmbientTransactionProbe(
     private val sessionFactory: Mutiny.SessionFactory,

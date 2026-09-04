@@ -10,9 +10,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
 
 /**
- * @EnableHibernateReactiveRepositories 어노테이션 테스트
+ * Tests the @EnableHibernateReactiveRepositories annotation.
  *
- * Repository가 빈으로 등록되고 CRUD가 정상 동작하는지 확인합니다.
+ * Verifies repository bean registration and CRUD operations.
  */
 @SpringBootTest(classes = [TestApplication::class])
 class EnableHibernateReactiveRepositoriesTest : IntegrationTestBase() {
@@ -28,13 +28,13 @@ class EnableHibernateReactiveRepositoriesTest : IntegrationTestBase() {
 
     init {
         describe("@EnableHibernateReactiveRepositories") {
-            context("Repository 스캔") {
-                it("지정된 패키지의 Repository가 빈으로 등록된다") {
+            context("repository scanning") {
+                it("registers repositories in the configured package as beans") {
                     val bean = context.getBean(AnotherEntityRepository::class.java)
                     bean.shouldNotBeNull()
                 }
 
-                it("Repository CRUD가 정상 동작한다") {
+                it("supports repository CRUD operations") {
                     val entity = AnotherEntity(description = "test description")
 
                     val saved = tx.transactional {

@@ -11,12 +11,11 @@ import org.springframework.context.ApplicationContextAware
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
 /**
- * CoroutineCrudRepository 인터페이스를 스캔하고 Spring Bean으로 등록하는 PostProcessor.
+ * Scans [CoroutineCrudRepository] interfaces and registers them as Spring beans.
  *
- * @SpringBootApplication 패키지 기준으로 CoroutineCrudRepository를 구현한 인터페이스를 찾아
- * 각각에 대해 [HibernateReactiveRepositoryFactoryBean]을 Bean으로 등록합니다.
+ * When [basePackages] is empty, scans the packages registered by `@SpringBootApplication`.
  *
- * @param basePackages 스캔할 베이스 패키지 (비어있으면 @SpringBootApplication 패키지 사용)
+ * @param basePackages Base packages to scan.
  */
 public class HibernateReactiveRepositoryRegistrar(
     private val basePackages: List<String> = emptyList(),
@@ -47,14 +46,9 @@ public class HibernateReactiveRepositoryRegistrar(
     }
 
     override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
-        // Bean 정의 단계에서 처리 완료, 추가 작업 없음
     }
 
-    /**
-     * CoroutineCrudRepository를 구현한 인터페이스들을 스캔합니다.
-     */
     private fun findRepositoryInterfaces(basePackages: List<String>): List<Class<*>> {
-        // 인터페이스도 스캔하는 커스텀 스캐너
         val scanner = RepositoryComponentScanner().apply {
             addIncludeFilter(HibernateReactiveRepositoryTypeFilter())
         }
@@ -69,15 +63,11 @@ public class HibernateReactiveRepositoryRegistrar(
                     .map { classLoader.loadClass(it) }
             }
             .filter { clazz ->
-                // CoroutineCrudRepository 자체는 제외
                 clazz.isInterface && clazz != CoroutineCrudRepository::class.java
             }
             .distinct()
     }
 
-    /**
-     * Repository 인터페이스에 대한 FactoryBean 정의를 생성합니다.
-     */
     private fun createBeanDefinition(repositoryInterface: Class<*>): BeanDefinition {
         return BeanDefinitionBuilder
             .genericBeanDefinition(HibernateReactiveRepositoryFactoryBean::class.java)

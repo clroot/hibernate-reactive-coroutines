@@ -9,14 +9,12 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 
-/**
- * auditing 타임스탬프 처리를 검증합니다.
- */
+/** Verifies auditing timestamp handling. */
 class AuditMetadataTest : DescribeSpec({
 
-    describe("지원 시간 타입") {
+    describe("supported time types") {
 
-        it("OffsetDateTime 필드를 채운다") {
+        it("populates OffsetDateTime fields") {
             val entity = OffsetDateTimeEntity()
 
             AuditMetadata.setCreatedDate(entity)
@@ -26,7 +24,7 @@ class AuditMetadataTest : DescribeSpec({
             entity.updatedAt.shouldNotBeNull()
         }
 
-        it("ZonedDateTime 필드를 채운다") {
+        it("populates ZonedDateTime fields") {
             val entity = ZonedDateTimeEntity()
 
             AuditMetadata.setCreatedDate(entity)
@@ -35,9 +33,9 @@ class AuditMetadataTest : DescribeSpec({
         }
     }
 
-    describe("생성 시각") {
+    describe("creation timestamps") {
 
-        it("같은 기준 시각을 넘기면 생성/수정 시각이 동일하다") {
+        it("uses the same timestamp for creation and modification when given the same instant") {
             val entity = OffsetDateTimeEntity()
             val now = Instant.now()
 
@@ -48,9 +46,9 @@ class AuditMetadataTest : DescribeSpec({
         }
     }
 
-    describe("지원하지 않는 타입") {
+    describe("unsupported types") {
 
-        it("필드를 건드리지 않는다") {
+        it("leaves the field unchanged") {
             val entity = UnsupportedTypeEntity()
 
             AuditMetadata.setCreatedDate(entity)

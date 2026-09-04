@@ -9,7 +9,7 @@ import org.springframework.data.annotation.LastModifiedDate
 import java.time.LocalDateTime
 
 /**
- * Auditing 기능 테스트용 엔티티
+ * Test entity for auditing features.
  */
 @Entity
 @Table(name = "auditable_entity")

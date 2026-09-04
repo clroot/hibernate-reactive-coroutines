@@ -8,12 +8,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 
 /**
- * Auditing 기능을 위한 Auto-configuration.
+ * Auto-configuration for auditing.
  *
- * [ReactiveAuditorAware] 빈이 등록되어 있으면 자동으로 [ReactiveAuditingHandler]를 생성합니다.
- * 이를 통해 `@CreatedBy`, `@LastModifiedBy` 필드가 자동으로 설정됩니다.
+ * Creates a [ReactiveAuditingHandler] when a [ReactiveAuditorAware] bean is available,
+ * enabling `@CreatedBy` and `@LastModifiedBy` population.
  *
- * 사용 방법:
+ * Usage:
  * ```kotlin
  * @Component
  * class SecurityAuditorAware : ReactiveAuditorAware<String> {
@@ -25,12 +25,12 @@ import org.springframework.context.annotation.Bean
  * }
  * ```
  *
- * WebFlux에서는 `SecurityContextHolder`(ThreadLocal)가 채워지지 않으므로 반드시
- * `ReactiveSecurityContextHolder`를 사용해야 합니다. ThreadLocal을 읽으면 감사자가
- * 항상 null이 되어 `@CreatedBy`가 조용히 비어 있게 됩니다.
+ * In WebFlux, use `ReactiveSecurityContextHolder` rather than the `SecurityContextHolder`
+ * ThreadLocal. The ThreadLocal is not populated, so it would silently leave `@CreatedBy` empty.
  *
- * Note: `@CreatedDate`, `@LastModifiedDate`는 [io.clroot.hibernate.reactive.spring.boot.auditing.AuditingEntityListener]를
- * 통해 처리됩니다. 엔티티에 `@EntityListeners(AuditingEntityListener::class)`를 추가해야 합니다.
+ * [io.clroot.hibernate.reactive.spring.boot.auditing.AuditingEntityListener] handles
+ * `@CreatedDate` and `@LastModifiedDate`; add
+ * `@EntityListeners(AuditingEntityListener::class)` to the entity.
  */
 @AutoConfiguration
 public class AuditingAutoConfiguration {

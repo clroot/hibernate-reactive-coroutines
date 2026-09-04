@@ -5,11 +5,11 @@ import jakarta.persistence.PreUpdate
 import java.time.Instant
 
 /**
- * JPA 엔티티 라이프사이클 콜백을 통해 Auditing 타임스탬프를 자동으로 설정하는 리스너.
+ * JPA entity listener that sets auditing timestamps during lifecycle callbacks.
  *
- * `@CreatedDate`와 `@LastModifiedDate` 어노테이션이 붙은 필드에 자동으로 현재 시간을 설정합니다.
+ * Populates fields annotated with `@CreatedDate` and `@LastModifiedDate`.
  *
- * 사용 방법:
+ * Usage:
  * ```kotlin
  * @Entity
  * @EntityListeners(AuditingEntityListener::class)
@@ -27,39 +27,29 @@ import java.time.Instant
  * )
  * ```
  *
- * 지원되는 필드 타입:
+ * Supported field types:
  * - `java.time.Instant`
  * - `java.time.LocalDateTime`
+ * - `java.time.OffsetDateTime`
  * - `java.time.ZonedDateTime`
  * - `java.util.Date`
- * - `Long` (밀리초 타임스탬프)
+ * - `Long` (milliseconds since the epoch)
  *
- * Note: `@CreatedBy`와 `@LastModifiedBy`는 비동기 컨텍스트에서 사용자 정보를 조회해야 하므로
- * 이 리스너에서는 처리하지 않습니다. 대신 Repository의 save() 메서드에서 처리됩니다.
+ * `@CreatedBy` and `@LastModifiedBy` require asynchronous auditor lookup and are populated by
+ * the repository's `save()` method instead.
  *
  * @see ReactiveAuditingHandler
  */
 public class AuditingEntityListener {
 
-    /**
-     * 엔티티가 처음 저장되기 전에 호출됩니다.
-     *
-     * `@CreatedDate`와 `@LastModifiedDate` 필드에 현재 시간을 설정합니다.
-     */
     @PrePersist
     public fun onPrePersist(entity: Any) {
-        // 두 필드가 같은 시각을 갖도록 한 번만 읽는다.
-        // 값이 미세하게 다르면 createdAt == updatedAt 으로 "수정된 적 없음"을 판별할 수 없다.
+        // A shared instant preserves `createdAt == updatedAt` for unmodified entities.
         val now = Instant.now()
         AuditMetadata.setCreatedDate(entity, now)
         AuditMetadata.setLastModifiedDate(entity, now)
     }
 
-    /**
-     * 엔티티가 수정되기 전에 호출됩니다.
-     *
-     * `@LastModifiedDate` 필드에 현재 시간을 설정합니다.
-     */
     @PreUpdate
     public fun onPreUpdate(entity: Any) {
         AuditMetadata.setLastModifiedDate(entity)

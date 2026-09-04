@@ -4,6 +4,6 @@ import io.clroot.hibernate.reactive.test.entity.VersionedEntity
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
 /**
- * Optimistic Locking 테스트용 Repository.
+ * Repository for optimistic locking tests.
  */
 interface VersionedEntityRepository : CoroutineCrudRepository<VersionedEntity, Long>

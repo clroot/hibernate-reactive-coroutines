@@ -16,12 +16,10 @@ import reactor.blockhound.BlockHound
 import reactor.blockhound.BlockingOperationError
 
 /**
- * 실제 DB 위에서 BlockHound + ReactiveTransactionExecutor 조합을 검증하는 E2E 테스트.
+ * Verifies BlockHound with [ReactiveTransactionExecutor] against a real database.
  *
- * 두 가지를 보장합니다:
- * 1. 정상적인 논블로킹 쿼리가 BlockHound 아래에서 오탐 없이 통과한다
- *    (Hibernate Reactive / pg-client 내부의 정당한 호출에 대한 allowlist 검증)
- * 2. transactional 블록 안의 블로킹 호출은 BlockingOperationError로 탐지된다
+ * The non-blocking query also verifies the required Hibernate Reactive and pg-client
+ * allowlists do not produce false positives.
  */
 class TransactionalBlockingDetectionTest : DescribeSpec({
     BlockHound.install()
@@ -62,7 +60,7 @@ class TransactionalBlockingDetectionTest : DescribeSpec({
 
     describe("BlockHound + ReactiveTransactionExecutor") {
 
-        it("정상적인 논블로킹 쿼리는 BlockHound 아래에서 통과한다") {
+        it("allows a non-blocking query to complete") {
             val result = tx.readOnly {
                 currentSessionOrNull()
                     .shouldNotBeNull()
@@ -74,7 +72,7 @@ class TransactionalBlockingDetectionTest : DescribeSpec({
             (result as Number).toInt() shouldBe 1
         }
 
-        it("transactional 블록 안의 Thread.sleep은 BlockingOperationError로 탐지된다") {
+        it("detects Thread.sleep in a transactional block") {
             val thrown = runCatching {
                 tx.transactional {
                     Thread.sleep(50)

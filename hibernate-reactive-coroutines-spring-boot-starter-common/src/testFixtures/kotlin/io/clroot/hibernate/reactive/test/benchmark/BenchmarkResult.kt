@@ -1,18 +1,18 @@
 package io.clroot.hibernate.reactive.test.benchmark
 
 /**
- * 벤치마크 결과 메트릭.
+ * Benchmark result metrics.
  *
- * @property name 벤치마크 이름
- * @property iterations 측정 반복 횟수
- * @property totalTimeMs 총 소요 시간 (밀리초)
- * @property avgTimeMs 평균 소요 시간 (밀리초)
- * @property minTimeMs 최소 소요 시간 (밀리초)
- * @property maxTimeMs 최대 소요 시간 (밀리초)
- * @property p50Ms 50번째 백분위수 (중간값)
- * @property p95Ms 95번째 백분위수
- * @property p99Ms 99번째 백분위수
- * @property throughput 초당 처리량 (ops/sec)
+ * @property name Benchmark name.
+ * @property iterations Number of measured iterations.
+ * @property totalTimeMs Total elapsed time in milliseconds.
+ * @property avgTimeMs Average elapsed time in milliseconds.
+ * @property minTimeMs Minimum elapsed time in milliseconds.
+ * @property maxTimeMs Maximum elapsed time in milliseconds.
+ * @property p50Ms 50th percentile (median) in milliseconds.
+ * @property p95Ms 95th percentile in milliseconds.
+ * @property p99Ms 99th percentile in milliseconds.
+ * @property throughput Operations per second.
  */
 data class BenchmarkResult(
     val name: String,
@@ -28,7 +28,7 @@ data class BenchmarkResult(
 ) {
     companion object {
         /**
-         * 측정된 시간 목록으로부터 벤치마크 결과를 생성합니다.
+         * Creates a benchmark result from measured durations.
          */
         fun fromTimings(name: String, timingsMs: List<Long>): BenchmarkResult {
             require(timingsMs.isNotEmpty()) { "Timings list cannot be empty" }
@@ -52,7 +52,7 @@ data class BenchmarkResult(
     }
 
     /**
-     * 벤치마크 결과를 콘솔에 출력합니다.
+     * Prints benchmark statistics to the console.
      */
     fun printReport() {
         println(

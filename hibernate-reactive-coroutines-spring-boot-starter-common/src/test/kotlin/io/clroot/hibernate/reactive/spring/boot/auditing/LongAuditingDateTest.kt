@@ -11,7 +11,7 @@ class LongAuditingDateTest : DescribeSpec({
     val listener = AuditingEntityListener()
 
     describe("Long auditing dates") {
-        it("nullable Long 날짜 필드를 epoch milliseconds로 설정한다") {
+        it("sets nullable Long date fields to epoch milliseconds") {
             val entity = NullableLongDates()
 
             listener.onPrePersist(entity)
@@ -20,7 +20,7 @@ class LongAuditingDateTest : DescribeSpec({
             entity.updatedAt.shouldNotBeNull() shouldBeGreaterThan 0L
         }
 
-        it("non-null Long의 초기값 0을 epoch milliseconds로 교체한다") {
+        it("replaces zero-valued non-null Long fields with epoch milliseconds") {
             val entity = NonNullLongDates()
 
             listener.onPrePersist(entity)
@@ -29,7 +29,7 @@ class LongAuditingDateTest : DescribeSpec({
             entity.updatedAt shouldBeGreaterThan 0L
         }
 
-        it("명시적으로 설정된 nullable Long 생성 시각은 보존한다") {
+        it("preserves an explicitly set nullable Long creation timestamp") {
             val entity = NullableLongDates(createdAt = 123L)
 
             listener.onPrePersist(entity)
@@ -37,7 +37,7 @@ class LongAuditingDateTest : DescribeSpec({
             entity.createdAt shouldBe 123L
         }
 
-        it("명시적으로 설정된 non-null Long 생성 시각은 보존한다") {
+        it("preserves an explicitly set non-null Long creation timestamp") {
             val entity = NonNullLongDates(createdAt = 123L)
 
             listener.onPrePersist(entity)
@@ -45,7 +45,7 @@ class LongAuditingDateTest : DescribeSpec({
             entity.createdAt shouldBe 123L
         }
 
-        it("nullable Long 수정 시각을 갱신한다") {
+        it("updates nullable Long modification timestamps") {
             val entity = NullableLongDates(createdAt = 123L, updatedAt = 123L)
 
             listener.onPreUpdate(entity)
@@ -54,7 +54,7 @@ class LongAuditingDateTest : DescribeSpec({
             entity.updatedAt.shouldNotBeNull() shouldBeGreaterThan 123L
         }
 
-        it("non-null Long 수정 시각을 갱신하고 생성 시각은 보존한다") {
+        it("updates non-null Long modification timestamps while preserving creation timestamps") {
             val entity = NonNullLongDates(createdAt = 123L, updatedAt = 123L)
 
             listener.onPreUpdate(entity)

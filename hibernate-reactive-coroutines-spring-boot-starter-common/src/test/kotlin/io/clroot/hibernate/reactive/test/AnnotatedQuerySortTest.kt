@@ -10,9 +10,9 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 
 /**
- * `@Query` 메서드에도 동적 정렬이 적용되는지 검증합니다.
+ * Verifies that dynamic sorting applies to `@Query` methods.
  *
- * 정렬이 무시되면 페이징 결과 순서가 보장되지 않아 페이지 간 중복·누락이 발생합니다.
+ * Ignoring sort order makes paginated results unstable, which can duplicate or omit entities across pages.
  */
 @SpringBootTest
 class AnnotatedQuerySortTest : IntegrationTestBase() {
@@ -32,9 +32,9 @@ class AnnotatedQuerySortTest : IntegrationTestBase() {
             }
         }
 
-        describe("@Query + Sort 파라미터") {
+        describe("@Query with Sort parameters") {
 
-            it("Sort를 적용한다") {
+            it("applies Sort") {
                 val sorted = tx.readOnly {
                     testEntityRepository.findByValueGreaterThanWithQuery(0, Sort.by("name"))
                 }
@@ -42,19 +42,19 @@ class AnnotatedQuerySortTest : IntegrationTestBase() {
                 sorted.map { it.name } shouldContainExactly listOf("a", "b", "c")
             }
 
-            it("쿼리에 이미 있는 ORDER BY를 보존하고 뒤에 덧붙인다") {
+            it("preserves and appends to an existing query ORDER BY") {
                 val sorted = tx.readOnly {
                     testEntityRepository.findOrderedByValueGreaterThanWithQuery(0, Sort.by("name"))
                 }
 
-                // 쿼리의 value DESC가 우선 적용됩니다.
+                // The query's value DESC ordering takes precedence.
                 sorted.map { it.name } shouldContainExactly listOf("c", "a", "b")
             }
         }
 
-        describe("@Query + 정렬된 Pageable") {
+        describe("@Query with sorted Pageable") {
 
-            it("Page 조회에 Pageable의 Sort를 적용한다") {
+            it("applies Pageable Sort to a Page query") {
                 val page = tx.readOnly {
                     testEntityRepository.findByValueWithQueryPageable(
                         10,
@@ -65,7 +65,7 @@ class AnnotatedQuerySortTest : IntegrationTestBase() {
                 page.content.map { it.name } shouldContainExactly listOf("b")
             }
 
-            it("Slice 조회에 Pageable의 Sort를 적용한다") {
+            it("applies Pageable Sort to a Slice query") {
                 val slice = tx.readOnly {
                     testEntityRepository.findByValueGreaterThanWithQuerySlice(
                         0,

@@ -32,11 +32,9 @@ import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
- * Repository 인터페이스의 쿼리 메서드를 파싱하여 [PreparedQueryMethod]를 생성하는 파서.
+ * Parses repository query methods into [PreparedQueryMethod] instances.
  *
- * @Query 어노테이션 메서드와 메서드명 기반 파생 쿼리를 모두 처리합니다.
- *
- * @param entityClass 엔티티 클래스
+ * Supports both `@Query` methods and queries derived from method names.
  */
 internal class QueryMethodParser(
     private val entityClass: Class<*>,
@@ -44,7 +42,7 @@ internal class QueryMethodParser(
 ) {
 
     companion object {
-        /** CoroutineCrudRepository의 기본 메서드 이름들 */
+        /** Names inherited from `CoroutineCrudRepository`, which are not custom queries. */
         private val BASE_METHODS = setOf(
             "save", "saveAll",
             "findById", "findAll", "findAllById",
@@ -53,13 +51,6 @@ internal class QueryMethodParser(
         )
     }
 
-    // ============================================
-    // 메서드 파싱 진입점
-    // ============================================
-
-    /**
-     * 메서드를 파싱하여 PreparedQueryMethod를 생성합니다.
-     */
     fun parse(method: Method): PreparedQueryMethod {
         val queryAnnotation = method.getAnnotation(Query::class.java)
         require(queryAnnotation != null || !method.isAnnotationPresent(Modifying::class.java)) {
@@ -73,16 +64,13 @@ internal class QueryMethodParser(
         }
     }
 
-    /**
-     * 커스텀 쿼리 메서드인지 확인합니다.
-     */
     fun isCustomQueryMethod(method: Method): Boolean =
         isDeclaredRepositoryMethod(method) && isSuspendMethod(method)
 
     /**
-     * 사용자가 Repository 인터페이스에 직접 선언한 메서드인지 확인합니다.
+     * Identifies methods declared directly by the repository interface.
      *
-     * 기본 CRUD 메서드, `Object` 메서드, default/static/bridge 메서드는 제외합니다.
+     * Excludes inherited CRUD and `Object` methods plus compiler-generated and non-abstract methods.
      */
     fun isDeclaredRepositoryMethod(method: Method): Boolean {
         if (method.name in BASE_METHODS) return false
@@ -94,7 +82,7 @@ internal class QueryMethodParser(
     }
 
     /**
-     * suspend 함수인지 확인합니다 (마지막 파라미터가 Continuation).
+     * Kotlin compiles suspend functions with a trailing [Continuation] parameter.
      */
     fun isSuspendMethod(method: Method): Boolean {
         val params = method.parameterTypes
@@ -102,17 +90,12 @@ internal class QueryMethodParser(
     }
 
     /**
-     * 메서드의 고유 키를 생성합니다.
-     * 오버로딩된 메서드를 구분하기 위해 메서드명과 파라미터 개수를 조합합니다.
+     * Distinguishes overloads by their name and declared argument count.
      */
     fun createMethodKey(method: Method): String {
-        val paramCount = method.parameterTypes.size - 1  // Continuation 제외
+        val paramCount = method.parameterTypes.size - 1
         return "${method.name}#$paramCount"
     }
-
-    // ============================================
-    // @Query 어노테이션 메서드 파싱
-    // ============================================
 
     private fun parseAnnotatedQueryMethod(
         method: Method,
@@ -125,7 +108,6 @@ internal class QueryMethodParser(
 
         val returnType = determineAnnotatedReturnType(method, isModifying)
 
-        // Page/Slice 반환인데 Pageable이 없으면 에러
         if ((returnType == QueryReturnType.PAGE || returnType == QueryReturnType.SLICE) && !hasPageable) {
             throw IllegalStateException(
                 "Method '${method.name}' returns Page/Slice but has no Pageable parameter",
@@ -222,10 +204,6 @@ internal class QueryMethodParser(
         }
     }
 
-    // ============================================
-    // 메서드명 기반 파생 쿼리 파싱
-    // ============================================
-
     private fun parseDerivedQueryMethod(method: Method): PreparedQueryMethod {
         val hasPageable = hasPageableParameter(method)
 
@@ -297,9 +275,9 @@ internal class QueryMethodParser(
         }
 
     /**
-     * 파생 `deleteBy...` 메서드의 반환 타입을 결정합니다.
+     * Determines the return type of a derived `deleteBy...` method.
      *
-     * Spring Data와 동일하게 `Unit`, `Int`, `Long` 반환을 지원합니다.
+     * Matches Spring Data by supporting `Unit`, `Int`, and `Long`.
      */
     private fun determineDeleteReturnType(method: Method): QueryReturnType {
         val actualReturnType = extractActualReturnType(method) ?: return QueryReturnType.VOID
@@ -312,10 +290,6 @@ internal class QueryMethodParser(
             )
         }
     }
-
-    // ============================================
-    // 파라미터 분석
-    // ============================================
 
     private fun validateQueryParameters(
         method: Method,
@@ -377,7 +351,7 @@ internal class QueryMethodParser(
     }
 
     /**
-     * 쿼리 인자 개수를 셉니다. Continuation과 Pageable/Sort는 쿼리 인자가 아닙니다.
+     * Excludes coroutine and pagination infrastructure parameters from query argument counts.
      */
     private fun queryArgumentCount(method: Method): Int =
         method.parameters.count { param ->
@@ -387,11 +361,11 @@ internal class QueryMethodParser(
         }
 
     /**
-     * Hibernate가 직접 생성할 수 없는 프로젝션 형태를 기동 시점에 거부합니다.
+     * Rejects projections Hibernate cannot instantiate directly at startup.
      *
-     * 스칼라와 HQL 생성자 DTO는 선언된 결과 클래스를 typed query에 전달합니다. Spring Data식
-     * 인터페이스 프로젝션은 별도 프록시 생성이 필요하고, Tuple/배열 다중 선택은 별도 매핑
-     * 규칙이 필요하므로 이 기능의 범위에 포함하지 않습니다.
+     * Scalar and constructor DTO projections supply the declared result class to typed queries.
+     * Interface projections require proxy creation, while tuple and array projections require
+     * additional mapping rules, neither of which this feature provides.
      */
     private fun validateAnnotatedResultType(prepared: PreparedQueryMethod) {
         if (prepared.returnType == QueryReturnType.MODIFYING || prepared.returnType == QueryReturnType.VOID) return
@@ -440,10 +414,6 @@ internal class QueryMethodParser(
         return Pageable::class.java.isAssignableFrom(params[lastNonContinuationIndex])
     }
 
-    // ============================================
-    // 반환 타입 분석
-    // ============================================
-
     private fun isPageReturnType(method: Method): Boolean {
         val actualReturnType = extractActualReturnType(method) ?: return false
         return isAssignableToRawType(actualReturnType, Page::class.java)
@@ -462,8 +432,8 @@ internal class QueryMethodParser(
     }
 
     /**
-     * suspend 함수의 실제 반환 타입을 추출합니다.
-     * Kotlin suspend 함수는 Continuation<? super T>로 컴파일됩니다.
+     * Extracts a suspend function's logical return type from its compiled
+     * `Continuation<? super T>` parameter.
      */
     private fun extractActualReturnType(method: Method): Type? {
         val genericParams = method.genericParameterTypes

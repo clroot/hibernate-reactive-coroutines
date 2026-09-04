@@ -59,7 +59,7 @@ class HibernateReactiveTransactionManagerAutoConfigurationTest : DescribeSpec({
         }
 
         it("fails with an actionable message when spring.datasource.url is missing") {
-            // Testcontainers 픽스처가 JVM 시스템 프로퍼티를 설정하므로 빈 값으로 덮어씁니다.
+            // Override the JVM property configured by the Testcontainers fixture.
             ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(HibernateReactiveAutoConfiguration::class.java))
                 .withPropertyValues("spring.datasource.url=")

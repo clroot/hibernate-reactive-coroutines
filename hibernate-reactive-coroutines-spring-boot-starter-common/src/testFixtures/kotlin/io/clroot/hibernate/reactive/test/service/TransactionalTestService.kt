@@ -8,12 +8,7 @@ import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-/**
- * @Transactional 테스트를 위한 서비스 클래스.
- *
- * Repository를 직접 사용하며, @Transactional이 세션을 자동으로 관리합니다.
- * 순수 suspend 함수로 구현되어 Mono 없이 깔끔하게 사용할 수 있습니다.
- */
+/** Exercises `@Transactional` session management with suspend repository operations. */
 @Service
 class TransactionalTestService(
     private val testEntityRepository: TestEntityRepository,
@@ -40,12 +35,9 @@ class TransactionalTestService(
         val entity = TestEntity(name = name, value = value)
         val saved = testEntityRepository.save(entity)
         onSaved(saved.id!!)
-        throw RuntimeException("의도적 롤백")
+        throw RuntimeException("Intentional rollback")
     }
 
-    /**
-     * 여러 엔티티를 한 트랜잭션에서 저장.
-     */
     @Transactional
     suspend fun saveMultipleEntities(names: List<String>): List<TestEntity> {
         return names.mapIndexed { index, name ->
@@ -53,37 +45,33 @@ class TransactionalTestService(
         }
     }
 
-    /**
-     * 여러 엔티티를 저장한 후 예외 발생 - 모든 저장이 롤백되어야 함.
-     */
+    /** Fails after saving multiple entities so all saves must roll back. */
     @Transactional
     suspend fun saveMultipleAndFail(names: List<String>, onSaved: (List<Long>) -> Unit): List<TestEntity> {
         val savedEntities = names.mapIndexed { index, name ->
             testEntityRepository.save(TestEntity(name = name, value = index))
         }
         onSaved(savedEntities.map { it.id!! })
-        throw RuntimeException("의도적 롤백 - 모든 저장이 롤백되어야 함")
+        throw RuntimeException("Intentional rollback: all saves must roll back")
     }
 
-    // === @Transactional 안에서 tx.transactional {} 을 함께 쓰는 경우 ===
-
     /**
-     * `tx.transactional {}`이 바깥 `@Transactional`에 참여해야 합니다.
-     * 별도 트랜잭션이 열리면 이 저장은 롤백되지 않습니다.
+     * `tx.transactional {}` must join the surrounding `@Transactional`.
+     * A separate transaction would leave this save unrolled back.
      */
     @Transactional
     suspend fun saveNestedAndFail(name: String, value: Int) {
         transactionExecutor.transactional {
             testEntityRepository.save(TestEntity(name = name, value = value))
         }
-        throw RuntimeException("의도적 롤백 - 중첩 저장까지 롤백되어야 함")
+        throw RuntimeException("Intentional rollback: nested save must roll back")
     }
 
     /**
-     * `tx.transactional {}`이 바깥 Spring 트랜잭션을 감지했는지 확인합니다.
+     * Verifies that `tx.transactional {}` detects the surrounding Spring transaction.
      *
-     * 감지하지 못하면 새 세션을 열면서 [ReactiveSessionContext]를 코루틴 컨텍스트에 추가합니다.
-     * 즉 여기서 세션이 보인다면 쓰이지도 않을 세션이 하나 더 열렸다는 뜻입니다.
+     * Otherwise it opens a new session and adds [ReactiveSessionContext] to the coroutine context.
+     * A visible session here therefore indicates an unnecessary additional session.
      */
     @Transactional
     suspend fun opensRedundantSession(): Boolean =
@@ -91,9 +79,7 @@ class TransactionalTestService(
             currentSessionOrNull() != null
         }
 
-    /**
-     * 읽기 전용 `@Transactional` 안에서는 쓰기 트랜잭션으로 승격할 수 없습니다.
-     */
+    /** A read-only `@Transactional` cannot be upgraded to a write transaction. */
     @Transactional(readOnly = true)
     suspend fun upgradeReadOnlyTransaction(name: String) {
         transactionExecutor.transactional {

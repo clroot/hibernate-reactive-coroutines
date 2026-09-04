@@ -4,14 +4,10 @@ import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.test.entity.ParentEntity
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
-/**
- * Lazy Loading 테스트용 Repository.
- */
+/** Repository for lazy-loading tests. */
 interface ParentEntityRepository : CoroutineCrudRepository<ParentEntity, Long> {
 
-    /**
-     * JOIN FETCH를 통한 Eager loading.
-     */
+    /** Eagerly loads children with `JOIN FETCH`. */
     @Query("SELECT p FROM ParentEntity p LEFT JOIN FETCH p.children WHERE p.id = :id")
     suspend fun findByIdWithChildren(id: Long): ParentEntity?
 }

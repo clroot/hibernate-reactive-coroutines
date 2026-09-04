@@ -11,17 +11,13 @@ import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * ReactiveSessionContext 단위 테스트.
- *
- * CoroutineContext Element로서의 동작과 타임아웃 계산 로직을 검증합니다.
- */
+/** Tests for coroutine-context behavior and timeout calculations. */
 class ReactiveSessionContextTest : DescribeSpec({
 
     describe("ReactiveSessionContext") {
 
-        context("생성 및 기본 속성") {
-            it("READ_WRITE 모드로 생성하면 isReadOnly가 false이다") {
+        context("construction") {
+            it("reports read-write mode as writable") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -33,7 +29,7 @@ class ReactiveSessionContextTest : DescribeSpec({
                 context.session shouldBeSameInstanceAs session
             }
 
-            it("READ_ONLY 모드로 생성하면 isReadOnly가 true이다") {
+            it("reports read-only mode as read-only") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -44,7 +40,7 @@ class ReactiveSessionContextTest : DescribeSpec({
                 context.mode shouldBe TransactionMode.READ_ONLY
             }
 
-            it("기본 타임아웃은 INFINITE이다") {
+            it("uses an infinite timeout by default") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -54,7 +50,7 @@ class ReactiveSessionContextTest : DescribeSpec({
                 context.timeout shouldBe INFINITE
             }
 
-            it("지정된 타임아웃이 설정된다") {
+            it("retains the configured timeout") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -66,8 +62,8 @@ class ReactiveSessionContextTest : DescribeSpec({
             }
         }
 
-        context("remainingTimeout 계산") {
-            it("INFINITE 타임아웃이면 INFINITE를 반환한다") {
+        context("remainingTimeout") {
+            it("returns infinity for an infinite timeout") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -78,7 +74,7 @@ class ReactiveSessionContextTest : DescribeSpec({
                 context.remainingTimeout() shouldBe INFINITE
             }
 
-            it("시작 직후에는 거의 전체 타임아웃이 남아있다") {
+            it("returns nearly the full timeout immediately after creation") {
                 val session = mockk<Mutiny.Session>()
                 val now = System.nanoTime()
                 val context = ReactiveSessionContext(
@@ -89,13 +85,12 @@ class ReactiveSessionContextTest : DescribeSpec({
                 )
 
                 val remaining = context.remainingTimeout()
-                // 약간의 실행 시간을 감안하여 9.9초 이상이면 성공
+                // Allow time elapsed while creating and checking the context.
                 (remaining.inWholeMilliseconds >= 9900) shouldBe true
             }
 
-            it("시간이 경과하면 남은 타임아웃이 줄어든다") {
+            it("decreases as time elapses") {
                 val session = mockk<Mutiny.Session>()
-                // 5초 전에 시작한 것으로 설정 (5_000_000_000 나노초 = 5초)
                 val startTimeNanos = System.nanoTime() - 5_000_000_000L
                 val context = ReactiveSessionContext(
                     session = session,
@@ -105,13 +100,12 @@ class ReactiveSessionContextTest : DescribeSpec({
                 )
 
                 val remaining = context.remainingTimeout()
-                // 약 5초 남았어야 함 (오차 허용)
+                // Allow clock and execution-time variance around the expected five seconds.
                 (remaining.inWholeMilliseconds in 4900..5100) shouldBe true
             }
 
-            it("타임아웃이 만료되면 ZERO를 반환한다") {
+            it("returns zero after the timeout expires") {
                 val session = mockk<Mutiny.Session>()
-                // 15초 전에 시작한 것으로 설정 (10초 타임아웃 초과, 15_000_000_000 나노초 = 15초)
                 val startTimeNanos = System.nanoTime() - 15_000_000_000L
                 val context = ReactiveSessionContext(
                     session = session,
@@ -124,8 +118,8 @@ class ReactiveSessionContextTest : DescribeSpec({
             }
         }
 
-        context("CoroutineContext Element 동작") {
-            it("withContext로 컨텍스트에 추가할 수 있다") {
+        context("coroutine context integration") {
+            it("makes the context available within withContext") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -139,17 +133,17 @@ class ReactiveSessionContextTest : DescribeSpec({
                 }
             }
 
-            it("컨텍스트가 없으면 currentContextOrNull은 null을 반환한다") {
+            it("returns null from currentContextOrNull without a context") {
                 val result = currentContextOrNull()
                 result.shouldBeNull()
             }
 
-            it("컨텍스트가 없으면 currentSessionOrNull은 null을 반환한다") {
+            it("returns null from currentSessionOrNull without a context") {
                 val result = currentSessionOrNull()
                 result.shouldBeNull()
             }
 
-            it("currentSessionOrNull은 컨텍스트의 세션을 반환한다") {
+            it("returns the session from the current context") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(
                     session = session,
@@ -162,8 +156,8 @@ class ReactiveSessionContextTest : DescribeSpec({
             }
         }
 
-        context("중첩 컨텍스트") {
-            it("내부 컨텍스트가 외부 컨텍스트를 덮어쓴다") {
+        context("nested contexts") {
+            it("uses the inner context until its scope exits") {
                 val outerSession = mockk<Mutiny.Session>()
                 val innerSession = mockk<Mutiny.Session>()
 
@@ -185,7 +179,6 @@ class ReactiveSessionContextTest : DescribeSpec({
                         currentContextOrNull()?.isReadOnly shouldBe true
                     }
 
-                    // 내부 블록을 벗어나면 다시 외부 컨텍스트
                     currentSessionOrNull() shouldBeSameInstanceAs outerSession
                     currentContextOrNull()?.isReadOnly shouldBe false
                 }
@@ -194,7 +187,7 @@ class ReactiveSessionContextTest : DescribeSpec({
     }
 
     describe("TransactionMode") {
-        it("READ_ONLY와 READ_WRITE 두 가지 모드가 있다") {
+        it("defines read-only and read-write modes") {
             TransactionMode.entries.size shouldBe 2
             TransactionMode.entries shouldBe listOf(
                 TransactionMode.READ_ONLY,

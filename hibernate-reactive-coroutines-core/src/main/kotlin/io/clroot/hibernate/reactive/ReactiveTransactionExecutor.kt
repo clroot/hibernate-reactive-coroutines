@@ -13,32 +13,11 @@ import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Service에서 여러 Port 호출을 하나의 트랜잭션으로 묶을 때 사용하는 래퍼.
+ * Executes related persistence operations in one reactive transaction.
  *
- * 사용 예:
- * ```kotlin
- * class MyService(
- *     private val tx: ReactiveTransactionExecutor,
- *     private val saveAPort: SaveAPort,
- *     private val saveBPort: SaveBPort,
- * ) {
- *     suspend fun doSomething() = tx.transactional {
- *         // 하나의 트랜잭션에서 실행됨
- *         saveAPort.save(a)
- *         saveBPort.save(b)
- *         // 예외 발생 시 둘 다 롤백됨
- *     }
- *
- *     suspend fun readSomething() = tx.readOnly {
- *         loadPort.findById(id)
- *     }
- * }
- * ```
- *
- * 주의사항:
- * - 블록 내에서 `launch`/`async`로 코루틴을 탈출시키면 세션 유효성 문제 발생
- * - `withContext(Dispatchers.Default)` 등으로 스레드를 전환하면 세션이 무효화될 수 있음
- * - 트랜잭션 내에서 외부 I/O(HTTP 호출 등)를 수행하면 DB 커넥션이 오래 점유됨
+ * The block must remain on the Vert.x event loop. Do not detach work with
+ * `launch` or `async`, switch dispatchers, or perform long-running external I/O
+ * while it holds the database connection.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 public class ReactiveTransactionExecutor @JvmOverloads constructor(
@@ -50,14 +29,13 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
     }
 
     /**
-     * 쓰기 트랜잭션을 시작합니다.
+     * Executes [block] in a write transaction.
      *
-     * 블록 내 모든 Port 호출이 동일한 세션을 공유하며,
-     * 이미 트랜잭션 컨텍스트 안에 있으면 기존 세션을 재사용합니다 (중첩 안전).
-     * 단, 읽기 전용 컨텍스트는 쓰기 트랜잭션으로 승격할 수 없습니다.
+     * Nested calls reuse the existing session. A read-only context cannot be
+     * promoted to a write transaction.
      *
-     * @param timeout 트랜잭션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
-     * @throws ReadOnlyTransactionException 읽기 전용 컨텍스트 안에서 호출한 경우
+     * @param timeout transaction timeout; nested calls use the shorter remaining timeout
+     * @throws ReadOnlyTransactionException when called in a read-only context
      */
     public suspend fun <T> transactional(
         timeout: Duration = DEFAULT_TIMEOUT,
@@ -70,13 +48,13 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
     )
 
     /**
-     * 읽기 전용 세션을 시작합니다.
+     * Executes [block] in a read-only session.
      *
-     * 블록 내 모든 Port 호출이 동일한 세션을 공유하며,
-     * 새 세션은 기본 read-only 및 수동 flush 모드로 설정되어 로드된 엔티티의 변경이 자동 반영되지 않습니다.
-     * 이미 세션 컨텍스트 안에 있으면 기존 세션을 재사용합니다 (중첩 안전).
+     * New sessions use Hibernate read-only mode and manual flushing, preventing
+     * changes to loaded entities from being flushed automatically. Nested calls
+     * reuse the existing session.
      *
-     * @param timeout 세션 타임아웃 (기본 30초). 중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용.
+     * @param timeout session timeout; nested calls use the shorter remaining timeout
      */
     public suspend fun <T> readOnly(
         timeout: Duration = DEFAULT_TIMEOUT,
@@ -96,15 +74,7 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
     )
 
     /**
-     * 세션 컨텍스트 내에서 블록을 실행합니다.
-     *
-     * 이미 세션 컨텍스트 안에 있으면 기존 세션을 재사용하고 (REQUIRED 동작),
-     * 없으면 새 세션을 생성합니다.
-     *
-     * @param mode 트랜잭션 모드 (READ_WRITE 또는 READ_ONLY)
-     * @param timeout 타임아웃 (중첩 시 부모의 남은 시간과 비교하여 더 짧은 값 적용)
-     * @param sessionStarter 새 세션을 시작하는 함수 (withTransaction 또는 withSession)
-     * @param block 실행할 블록
+     * Executes [block] with REQUIRED-style session propagation.
      */
     private suspend fun <T> executeInSession(
         mode: TransactionMode,
@@ -120,8 +90,8 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
             )
         }
 
-        // Spring @Transactional 등 바깥에서 시작된 트랜잭션은 코루틴 컨텍스트에 보이지 않는다.
-        // 감지하지 못하면 실제로는 쓰이지 않는 세션과 트랜잭션을 하나 더 열게 된다.
+        // Framework-managed transactions are not in the coroutine context.
+        // Detect them to avoid opening an unused session and transaction.
         val ambientTransaction = if (parentContext == null) {
             ambientTransactionProbe?.currentTransaction()
         } else {
@@ -138,10 +108,10 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
         val callerContext = currentCoroutineContext().minusKey(Job)
 
         return if (parentContext != null || ambientTransaction != null) {
-            // 기존 트랜잭션에 참여 (REQUIRED 동작)
+            // Join the existing transaction with REQUIRED-style propagation.
             executeWithTimeout(effectiveTimeout) { block() }
         } else {
-            // 새 세션 생성 - Vert.x EventLoop에서 실행
+            // Hibernate Reactive sessions must execute on the Vert.x event loop.
             executeWithTimeout(effectiveTimeout) {
                 sessionStarter { session ->
                     val vertxDispatcher = requireVertxContext().dispatcher()
@@ -162,9 +132,9 @@ public class ReactiveTransactionExecutor @JvmOverloads constructor(
     }
 
     /**
-     * 현재 Vert.x Context를 반환합니다.
+     * Returns the current Vert.x context.
      *
-     * @throws IllegalStateException Vert.x Context가 없는 경우
+     * @throws IllegalStateException when no Vert.x context is available
      */
     private fun requireVertxContext(): io.vertx.core.Context {
         return Vertx.currentContext()

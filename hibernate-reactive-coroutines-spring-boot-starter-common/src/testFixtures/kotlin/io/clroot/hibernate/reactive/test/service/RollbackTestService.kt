@@ -7,25 +7,20 @@ import org.springframework.transaction.annotation.Transactional
 import java.io.IOException
 
 /**
- * 트랜잭션 롤백 규칙 테스트를 위한 서비스 클래스.
+ * Exercises transaction rollback rules, including nested calls through the Spring proxy.
  *
- * 중첩 트랜잭션 테스트를 위해 self 참조를 사용합니다.
- * Spring AOP는 self-invocation(같은 객체 내 메서드 호출)을 가로채지 못하므로,
- * 프록시를 통해 내부 메서드를 호출하기 위해 self 참조가 필요합니다.
+ * Spring AOP does not intercept self-invocation, so nested transaction scenarios call through
+ * this self-reference.
  */
 @Service
 class RollbackTestService(
     private val testEntityRepository: TestEntityRepository,
 ) {
-    // self 참조 - 프록시를 통한 내부 메서드 호출을 위해 필요
-    // @Lazy로 순환 참조 문제 해결
     @org.springframework.beans.factory.annotation.Autowired
     @org.springframework.context.annotation.Lazy
     private lateinit var self: RollbackTestService
 
-    // ============================================
-    // 기본 롤백 동작 (RuntimeException)
-    // ============================================
+    // Default rollback behavior for RuntimeException.
 
     @Transactional
     suspend fun saveAndThrowRuntimeException(name: String): TestEntity {
@@ -39,9 +34,7 @@ class RollbackTestService(
         throw IllegalStateException("IllegalStateException for rollback")
     }
 
-    // ============================================
-    // Checked Exception (기본적으로 롤백 안 함)
-    // ============================================
+    // Checked exceptions do not roll back by default.
 
     @Transactional
     @Throws(IOException::class)
@@ -50,10 +43,7 @@ class RollbackTestService(
         throw IOException("Checked exception - should NOT rollback by default")
     }
 
-    // ============================================
-    // rollbackFor 지정
-    // ============================================
-
+    // Explicit rollback rules for checked exceptions.
     @Transactional(rollbackFor = [IOException::class])
     @Throws(IOException::class)
     suspend fun saveAndThrowCheckedWithRollbackFor(name: String): TestEntity {
@@ -68,10 +58,7 @@ class RollbackTestService(
         throw CustomCheckedException("Custom checked exception - SHOULD rollback")
     }
 
-    // ============================================
-    // noRollbackFor 지정
-    // ============================================
-
+    // Explicit no-rollback rules for runtime exceptions.
     @Transactional(noRollbackFor = [IllegalArgumentException::class])
     suspend fun saveAndThrowNoRollbackForException(name: String): TestEntity {
         val entity = testEntityRepository.save(TestEntity(name = name, value = 6))
@@ -84,14 +71,12 @@ class RollbackTestService(
         throw CustomRuntimeException("Custom runtime exception - should NOT rollback")
     }
 
-    // ============================================
-    // 중첩 호출에서의 롤백 전파
-    // ============================================
+    // Rollback propagation across nested proxy calls.
 
     @Transactional
     suspend fun outerSaveAndCallInnerThatFails(outerName: String, innerName: String): Pair<Long, Long> {
         val outer = testEntityRepository.save(TestEntity(name = outerName, value = 100))
-        // self를 통해 호출해야 프록시를 거쳐 @Transactional AOP가 적용됨
+        // Calling through self applies transactional AOP.
         val inner = self.innerSaveAndFail(innerName)
         return outer.id!! to inner.id!!
     }
@@ -106,17 +91,15 @@ class RollbackTestService(
     suspend fun outerCatchesInnerException(outerName: String, innerName: String): TestEntity {
         val outer = testEntityRepository.save(TestEntity(name = outerName, value = 200))
         try {
-            // self를 통해 호출해야 프록시를 거쳐 @Transactional AOP가 적용됨
+            // Calling through self applies transactional AOP.
             self.innerSaveAndFail(innerName)
         } catch (e: RuntimeException) {
-            // 내부 예외를 잡아도 트랜잭션은 이미 rollback-only로 마킹됨
+            // The transaction is already marked rollback-only.
         }
         return outer
     }
 
-    // ============================================
-    // 성공 케이스 (롤백 없음)
-    // ============================================
+    // Successful transactions do not roll back.
 
     @Transactional
     suspend fun saveSuccessfully(name: String, value: Int): TestEntity {
@@ -132,10 +115,6 @@ class RollbackTestService(
         return savedEntities
     }
 
-    // ============================================
-    // 헬퍼 메서드
-    // ============================================
-
     @Transactional(readOnly = true)
     suspend fun findById(id: Long): TestEntity? {
         return testEntityRepository.findById(id)
@@ -147,12 +126,6 @@ class RollbackTestService(
     }
 }
 
-/**
- * 테스트용 커스텀 Checked Exception
- */
 class CustomCheckedException(message: String) : Exception(message)
 
-/**
- * 테스트용 커스텀 Runtime Exception
- */
 class CustomRuntimeException(message: String) : RuntimeException(message)

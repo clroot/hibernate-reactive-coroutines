@@ -3,9 +3,9 @@ package io.clroot.hibernate.reactive.test.entity
 import jakarta.persistence.*
 
 /**
- * Optimistic Locking 테스트용 엔티티.
+ * Entity for optimistic-locking tests.
  *
- * @Version 필드를 통해 동시 수정 감지를 테스트합니다.
+ * Tests concurrent-update detection through the {@code @Version} field.
  */
 @Entity
 @Table(name = "versioned_entity")

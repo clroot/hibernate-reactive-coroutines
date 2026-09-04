@@ -9,10 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
 /**
- * 스타터가 소유한 Vert.x 인스턴스가 Hibernate Reactive에 주입되는지 검증합니다.
+ * Verifies that the starter-owned Vert.x instance is injected into Hibernate Reactive.
  *
- * 이 seam이 없으면 Hibernate Reactive 내부의 DefaultVertxInstance가
- * 애플리케이션 모르게 별도의 Vert.x(이벤트 루프 풀)를 하나 더 띄웁니다.
+ * Without this seam, Hibernate Reactive's internal DefaultVertxInstance creates
+ * a separate Vert.x event-loop pool outside application control.
  */
 @SpringBootTest(classes = [TestApplication::class])
 class VertxInstanceSeamTest : IntegrationTestBase() {
@@ -27,9 +27,9 @@ class VertxInstanceSeamTest : IntegrationTestBase() {
     private lateinit var tx: ReactiveTransactionExecutor
 
     init {
-        describe("Vertx 인스턴스 seam") {
+        describe("Vert.x instance seam") {
 
-            it("Hibernate Reactive의 VertxInstance 서비스는 Spring의 Vertx 빈이다") {
+            it("uses Spring's Vertx bean for Hibernate Reactive's VertxInstance service") {
                 val vertxInstance = (hibernateSessionFactory as SessionFactoryImplementor)
                     .serviceRegistry
                     .getService(VertxInstance::class.java)!!
@@ -37,7 +37,7 @@ class VertxInstanceSeamTest : IntegrationTestBase() {
                 vertxInstance.vertx shouldBeSameInstanceAs vertx
             }
 
-            it("transactional 블록은 Spring의 Vertx 빈이 소유한 컨텍스트에서 실행된다") {
+            it("runs transactional blocks in a context owned by Spring's Vertx bean") {
                 val owner = tx.readOnly { Vertx.currentContext()?.owner() }
 
                 owner shouldBeSameInstanceAs vertx

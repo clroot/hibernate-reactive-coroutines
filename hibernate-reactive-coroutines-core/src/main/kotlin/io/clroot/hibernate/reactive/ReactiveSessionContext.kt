@@ -9,7 +9,7 @@ import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.nanoseconds
 
 /**
- * 트랜잭션 모드
+ * Transaction mode for a session in the coroutine context.
  */
 public enum class TransactionMode {
     READ_ONLY,
@@ -17,15 +17,14 @@ public enum class TransactionMode {
 }
 
 /**
- * CoroutineContext에 Hibernate Reactive Session과 트랜잭션 메타데이터를 담는 Element.
+ * Holds a Hibernate Reactive session and transaction metadata in the [CoroutineContext].
  *
- * Service에서 `tx.transactional { }` 블록을 사용하면 이 컨텍스트가 생성되어
- * 하위 Adapter 호출에서 동일한 세션을 재사용할 수 있습니다.
+ * Nested operations reuse this session while the transaction block is active.
  *
- * @param session Hibernate Reactive 세션
- * @param mode 트랜잭션 모드 (READ_ONLY 또는 READ_WRITE)
- * @param timeout 타임아웃 (기본값: 무제한)
- * @param startTimeNanos 시작 시간 (System.nanoTime() 기반, 시스템 시간 변경에 영향받지 않음)
+ * @param session Hibernate Reactive session
+ * @param mode transaction mode
+ * @param timeout transaction timeout; unbounded by default
+ * @param startTimeNanos start time from [System.nanoTime], which is monotonic
  */
 public class ReactiveSessionContext(
     public val session: Mutiny.Session,
@@ -38,11 +37,9 @@ public class ReactiveSessionContext(
     public val isReadOnly: Boolean get() = mode == TransactionMode.READ_ONLY
 
     /**
-     * 남은 타임아웃 시간 계산.
-     * 중첩 트랜잭션에서 부모의 남은 시간을 상속받을 때 사용.
+     * Returns the remaining timeout for nested operations.
      *
-     * System.nanoTime()을 사용하여 시스템 시간 변경(NTP 동기화 등)에
-     * 영향받지 않고 정확한 경과 시간을 측정합니다.
+     * Uses a monotonic clock so wall-clock adjustments cannot extend a timeout.
      */
     public fun remainingTimeout(): Duration {
         if (timeout == INFINITE) return INFINITE
@@ -53,15 +50,13 @@ public class ReactiveSessionContext(
 }
 
 /**
- * 현재 CoroutineContext에서 Session을 가져옵니다.
- * 컨텍스트가 없으면 null 반환.
+ * Returns the session in the current coroutine context, if any.
  */
 public suspend fun currentSessionOrNull(): Mutiny.Session? =
     currentCoroutineContext()[ReactiveSessionContext]?.session
 
 /**
- * 현재 CoroutineContext에서 ReactiveSessionContext를 가져옵니다.
- * 컨텍스트가 없으면 null 반환.
+ * Returns the reactive session context, if any.
  */
 public suspend fun currentContextOrNull(): ReactiveSessionContext? =
     currentCoroutineContext()[ReactiveSessionContext]

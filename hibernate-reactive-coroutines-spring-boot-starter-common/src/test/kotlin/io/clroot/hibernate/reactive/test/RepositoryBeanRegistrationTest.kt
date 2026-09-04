@@ -15,10 +15,10 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 
 /**
- * Repository Bean 등록 테스트 - 단일 패키지 스캔
+ * Repository bean registration test for a single package scan.
  *
- * basePackages로 특정 패키지만 스캔하도록 설정했을 때,
- * 해당 패키지의 Repository만 빈으로 등록되는지 검증합니다.
+ * Verifies that configuring basePackages to scan one package registers only
+ * repositories in that package.
  */
 @SpringBootTest(classes = [SinglePackageTestConfig::class])
 class SinglePackageScanTest : IntegrationTestBase() {
@@ -27,14 +27,14 @@ class SinglePackageScanTest : IntegrationTestBase() {
     private lateinit var context: ApplicationContext
 
     init {
-        describe("basePackages로 단일 패키지만 스캔") {
-            context("pkg1만 스캔하도록 설정된 경우") {
-                it("pkg1의 Repository는 빈으로 등록된다") {
+        describe("scanning a single package with basePackages") {
+            context("when only pkg1 is configured for scanning") {
+                it("registers the pkg1 repository as a bean") {
                     val bean = context.getBean(Package1Repository::class.java)
                     bean.shouldNotBeNull()
                 }
 
-                it("pkg2의 Repository는 빈으로 등록되지 않는다") {
+                it("does not register the pkg2 repository as a bean") {
                     shouldThrow<NoSuchBeanDefinitionException> {
                         context.getBean(Package2Repository::class.java)
                     }
@@ -45,10 +45,10 @@ class SinglePackageScanTest : IntegrationTestBase() {
 }
 
 /**
- * Repository Bean 등록 테스트 - 여러 패키지 스캔
+ * Repository bean registration test for multiple package scans.
  *
- * basePackages로 여러 패키지를 지정했을 때,
- * 모든 지정된 패키지의 Repository가 빈으로 등록되는지 검증합니다.
+ * Verifies that configuring basePackages with multiple packages registers
+ * repositories from each package.
  */
 @SpringBootTest(classes = [MultiPackageTestConfig::class])
 class MultiPackageScanTest : IntegrationTestBase() {
@@ -57,14 +57,14 @@ class MultiPackageScanTest : IntegrationTestBase() {
     private lateinit var context: ApplicationContext
 
     init {
-        describe("basePackages로 여러 패키지 스캔") {
-            context("pkg1과 pkg2 모두 스캔하도록 설정된 경우") {
-                it("pkg1의 Repository가 빈으로 등록된다") {
+        describe("scanning multiple packages with basePackages") {
+            context("when pkg1 and pkg2 are configured for scanning") {
+                it("registers the pkg1 repository as a bean") {
                     val bean = context.getBean(Package1Repository::class.java)
                     bean.shouldNotBeNull()
                 }
 
-                it("pkg2의 Repository가 빈으로 등록된다") {
+                it("registers the pkg2 repository as a bean") {
                     val bean = context.getBean(Package2Repository::class.java)
                     bean.shouldNotBeNull()
                 }
@@ -74,10 +74,10 @@ class MultiPackageScanTest : IntegrationTestBase() {
 }
 
 /**
- * Repository Bean 등록 테스트 - basePackageClasses 사용
+ * Repository bean registration test using basePackageClasses.
  *
- * basePackageClasses로 마커 클래스를 지정했을 때,
- * 해당 클래스가 위치한 패키지의 Repository만 빈으로 등록되는지 검증합니다.
+ * Verifies that a marker class in basePackageClasses limits registration to
+ * repositories in its package.
  */
 @SpringBootTest(classes = [BasePackageClassesTestConfig::class])
 class BasePackageClassesScanTest : IntegrationTestBase() {
@@ -86,14 +86,14 @@ class BasePackageClassesScanTest : IntegrationTestBase() {
     private lateinit var context: ApplicationContext
 
     init {
-        describe("basePackageClasses로 패키지 스캔") {
-            context("Package1Repository 클래스를 마커로 지정한 경우") {
-                it("해당 클래스가 위치한 패키지의 Repository가 빈으로 등록된다") {
+        describe("scanning a package with basePackageClasses") {
+            context("when Package1Repository is configured as a marker class") {
+                it("registers repositories in the marker class package as beans") {
                     val bean = context.getBean(Package1Repository::class.java)
                     bean.shouldNotBeNull()
                 }
 
-                it("다른 패키지의 Repository는 빈으로 등록되지 않는다") {
+                it("does not register repositories from other packages as beans") {
                     shouldThrow<NoSuchBeanDefinitionException> {
                         context.getBean(Package2Repository::class.java)
                     }
@@ -103,9 +103,7 @@ class BasePackageClassesScanTest : IntegrationTestBase() {
     }
 }
 
-// Test Configurations
-// @SpringBootApplication 대신 @Configuration + @EnableAutoConfiguration 사용
-// 컴포넌트 스캔을 하지 않아 service 패키지의 빈이 등록되지 않음
+// These configurations avoid component scanning, so service-package beans are not registered.
 
 @Configuration
 @EnableAutoConfiguration

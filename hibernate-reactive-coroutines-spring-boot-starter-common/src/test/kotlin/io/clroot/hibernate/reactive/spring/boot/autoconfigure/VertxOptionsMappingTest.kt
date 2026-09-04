@@ -10,7 +10,7 @@ class VertxOptionsMappingTest : DescribeSpec({
 
     describe("buildVertxOptions") {
 
-        it("설정하지 않은 값은 Vert.x 기본값을 유지한다") {
+        it("retains Vert.x defaults for unspecified values") {
             val defaults = VertxOptions()
 
             val options = buildVertxOptions(HibernateReactiveProperties.VertxSettings())
@@ -22,7 +22,7 @@ class VertxOptionsMappingTest : DescribeSpec({
             options.warningExceptionTime shouldBe defaults.warningExceptionTime
         }
 
-        it("설정한 값을 나노초 단위로 매핑한다") {
+        it("maps configured durations to nanoseconds") {
             val options = buildVertxOptions(
                 HibernateReactiveProperties.VertxSettings(
                     eventLoopPoolSize = 4,

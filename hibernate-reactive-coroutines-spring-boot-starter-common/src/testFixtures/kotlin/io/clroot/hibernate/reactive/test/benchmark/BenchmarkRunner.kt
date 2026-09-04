@@ -6,25 +6,25 @@ import kotlinx.coroutines.coroutineScope
 import java.util.Collections
 
 /**
- * 벤치마크 실행기.
+ * Benchmark runner.
  *
- * 워밍업과 측정을 수행하여 [BenchmarkResult]를 반환합니다.
+ * Runs warmup and measured iterations and returns a [BenchmarkResult].
  *
- * @property warmupIterations 워밍업 반복 횟수
- * @property measureIterations 측정 반복 횟수
+ * @property warmupIterations Number of warmup iterations.
+ * @property measureIterations Number of measured iterations.
  */
 class BenchmarkRunner(
     private val warmupIterations: Int = 10,
     private val measureIterations: Int = 100,
 ) {
     /**
-     * 단일 작업을 벤치마크합니다.
+     * Benchmarks a single operation.
      *
-     * @param name 벤치마크 이름
-     * @param setup 각 반복 전 실행할 설정 작업 (선택)
-     * @param teardown 각 반복 후 실행할 정리 작업 (선택)
-     * @param block 벤치마크할 작업
-     * @return 벤치마크 결과
+     * @param name Benchmark name.
+     * @param setup Optional setup run before each iteration.
+     * @param teardown Optional cleanup run after each iteration.
+     * @param block Operation to benchmark.
+     * @return Benchmark result.
      */
     suspend fun <T> benchmark(
         name: String,
@@ -32,14 +32,12 @@ class BenchmarkRunner(
         teardown: suspend () -> Unit = {},
         block: suspend () -> T,
     ): BenchmarkResult {
-        // Warmup
         repeat(warmupIterations) {
             setup()
             block()
             teardown()
         }
 
-        // Measure
         val timings = mutableListOf<Long>()
         repeat(measureIterations) {
             setup()
@@ -53,13 +51,13 @@ class BenchmarkRunner(
     }
 
     /**
-     * 동시성 작업을 벤치마크합니다.
+     * Benchmarks concurrent operations.
      *
-     * @param name 벤치마크 이름
-     * @param concurrency 동시 실행 코루틴 수
-     * @param iterationsPerCoroutine 코루틴당 반복 횟수
-     * @param block 벤치마크할 작업
-     * @return 벤치마크 결과
+     * @param name Benchmark name.
+     * @param concurrency Number of concurrently running coroutines.
+     * @param iterationsPerCoroutine Number of iterations per coroutine.
+     * @param block Operation to benchmark.
+     * @return Benchmark result.
      */
     suspend fun <T> benchmarkConcurrent(
         name: String,
@@ -67,14 +65,12 @@ class BenchmarkRunner(
         iterationsPerCoroutine: Int = 10,
         block: suspend () -> T,
     ): BenchmarkResult {
-        // Warmup
         coroutineScope {
             repeat(concurrency) {
                 async { block() }
-            }.let { /* await all warmup */ }
+            }.let { }
         }
 
-        // Measure
         val timings = Collections.synchronizedList(mutableListOf<Long>())
 
         coroutineScope {

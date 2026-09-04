@@ -35,126 +35,99 @@ class AuditingIntegrationTest : IntegrationTestBase() {
         }
 
         describe("Auditing") {
-            context("엔티티 생성 시") {
-                it("@CreatedDate 필드에 현재 시간이 설정된다") {
-                    // given
+            context("when creating an entity") {
+                it("sets the current time on the @CreatedDate field") {
                     val entity = AuditableEntity(name = "test")
 
-                    // when
                     val saved = repository.save(entity)
 
-                    // then
                     saved.createdAt.shouldNotBeNull()
                 }
 
-                it("@LastModifiedDate 필드에 현재 시간이 설정된다") {
-                    // given
+                it("sets the current time on the @LastModifiedDate field") {
                     val entity = AuditableEntity(name = "test")
 
-                    // when
                     val saved = repository.save(entity)
 
-                    // then
                     saved.updatedAt.shouldNotBeNull()
                 }
 
-                it("AuditorAware가 설정되면 @CreatedBy 필드에 감사자가 설정된다") {
-                    // given
+                it("sets the auditor on the @CreatedBy field when AuditorAware is configured") {
                     TestAuditorAware.setCurrentAuditor("testUser")
                     val entity = AuditableEntity(name = "test")
 
-                    // when
                     val saved = repository.save(entity)
 
-                    // then
                     saved.createdBy shouldBe "testUser"
                 }
 
-                it("AuditorAware가 설정되면 @LastModifiedBy 필드에 감사자가 설정된다") {
-                    // given
+                it("sets the auditor on the @LastModifiedBy field when AuditorAware is configured") {
                     TestAuditorAware.setCurrentAuditor("testUser")
                     val entity = AuditableEntity(name = "test")
 
-                    // when
                     val saved = repository.save(entity)
 
-                    // then
                     saved.updatedBy shouldBe "testUser"
                 }
 
-                it("AuditorAware가 null을 반환하면 @CreatedBy는 null이다") {
-                    // given
+                it("leaves @CreatedBy null when AuditorAware returns null") {
                     TestAuditorAware.setCurrentAuditor(null)
                     val entity = AuditableEntity(name = "test")
 
-                    // when
                     val saved = repository.save(entity)
 
-                    // then
                     saved.createdBy.shouldBeNull()
                 }
             }
 
-            context("엔티티 수정 시") {
-                it("@LastModifiedDate 필드가 업데이트된다") {
-                    // given
+            context("when updating an entity") {
+                it("updates the @LastModifiedDate field") {
                     val entity = AuditableEntity(name = "test")
                     val saved = repository.save(entity)
                     val originalUpdatedAt = saved.updatedAt
 
-                    // 시간 차이를 위해 잠시 대기
+                    // Ensure the generated timestamp differs from the original.
                     delay(10)
 
-                    // when
                     saved.name = "updated"
                     val updated = repository.save(saved)
 
-                    // then
                     updated.updatedAt shouldNotBe originalUpdatedAt
                 }
 
-                it("@CreatedDate 필드는 변경되지 않는다") {
-                    // given
+                it("does not change the @CreatedDate field") {
                     val entity = AuditableEntity(name = "test")
                     val saved = repository.save(entity)
                     val originalCreatedAt = saved.createdAt
 
-                    // when
                     saved.name = "updated"
                     val updated = repository.save(saved)
 
-                    // then
                     updated.createdAt shouldBe originalCreatedAt
                 }
 
-                it("@LastModifiedBy 필드가 업데이트된다") {
-                    // given
+                it("updates the @LastModifiedBy field") {
                     TestAuditorAware.setCurrentAuditor("creator")
                     val entity = AuditableEntity(name = "test")
                     val saved = repository.save(entity)
 
-                    // when
                     TestAuditorAware.setCurrentAuditor("modifier")
                     saved.name = "updated"
                     val updated = repository.save(saved)
 
-                    // then
                     updated.createdBy shouldBe "creator"
                     updated.updatedBy shouldBe "modifier"
                 }
 
-                it("@CreatedBy 필드는 변경되지 않는다") {
-                    // given
+                it("does not change the @CreatedBy field") {
                     TestAuditorAware.setCurrentAuditor("creator")
                     val entity = AuditableEntity(name = "test")
                     val saved = repository.save(entity)
 
-                    // when
                     TestAuditorAware.setCurrentAuditor("modifier")
                     saved.name = "updated"
                     val updated = repository.save(saved)
 
-                    // then
                     updated.createdBy shouldBe "creator"
                 }
             }

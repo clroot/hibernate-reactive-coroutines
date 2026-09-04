@@ -8,9 +8,9 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 /**
- * HQL 엔티티 이름이 클래스 단순 이름과 다른 엔티티.
+ * Entity whose HQL name differs from its simple class name.
  *
- * 엔티티 이름을 클래스 이름에서 유추하면 이 엔티티를 대상으로 한 모든 쿼리가 실패합니다.
+ * Inferring the entity name from the class name causes all queries targeting this entity to fail.
  */
 @Entity(name = "RenamedAlias")
 @Table(name = "renamed_entity")
