@@ -69,7 +69,7 @@ Hibernate ORM 7을 지원하지 않아 두 스타터가 공존하면 기동에 �
 있습니다.
 
 ```kotlin
-val hrcVersion = "2.0.1"
+val hrcVersion = "2.0.2"
 
 dependencies {
     // 제거

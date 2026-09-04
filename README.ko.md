@@ -57,7 +57,7 @@ Vert.x가 논블로킹으로 처리합니다.
 | Ktor 3 | `hibernate-reactive-coroutines-ktor` |
 
 ```kotlin
-val hrcVersion = "2.0.1"
+val hrcVersion = "2.0.2"
 
 dependencies {
     // 사용하는 환경에 맞는 모듈 하나를 선택합니다.
