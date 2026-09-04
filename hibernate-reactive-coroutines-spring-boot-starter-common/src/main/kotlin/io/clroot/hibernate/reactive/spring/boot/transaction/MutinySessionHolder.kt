@@ -1,6 +1,8 @@
 package io.clroot.hibernate.reactive.spring.boot.transaction
 
 import io.clroot.hibernate.reactive.ReactiveSessionContext
+import io.clroot.hibernate.reactive.MonotonicClock
+import io.clroot.hibernate.reactive.SystemMonotonicClock
 import io.clroot.hibernate.reactive.TransactionMode
 import io.vertx.core.Context
 import io.vertx.kotlin.coroutines.dispatcher
@@ -17,7 +19,8 @@ public class MutinySessionHolder(
     private var vertxContext: Context? = null,
     private var mode: TransactionMode = TransactionMode.READ_WRITE,
     private var timeout: Duration = Duration.INFINITE,
-    private var startTimeNanos: Long = System.nanoTime(),
+    private val clock: MonotonicClock = SystemMonotonicClock,
+    private var startTimeNanos: Long = clock.nanoTime(),
 ) : ResourceHolderSupport() {
 
     private var transactionActive: Boolean = false
@@ -53,7 +56,7 @@ public class MutinySessionHolder(
     internal fun configureTransaction(mode: TransactionMode, timeout: Duration) {
         this.mode = mode
         this.timeout = timeout
-        this.startTimeNanos = System.nanoTime()
+        this.startTimeNanos = clock.nanoTime()
         this.transactionTimedOut = false
     }
 
@@ -71,6 +74,7 @@ public class MutinySessionHolder(
             mode = mode,
             timeout = timeout,
             startTimeNanos = startTimeNanos,
+            clock = clock,
         )
     }
 

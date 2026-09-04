@@ -21,9 +21,11 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
-    // BlockHound instruments blocking JDK methods at runtime; JDK 13+ needs both flags for the
-    // self-attaching ByteBuddy agent to redefine them.
+    // BlockHound still requires this deprecated HotSpot capability on JDK 13+.
+    // Disable VM startup warnings for this test process only; compiler and Gradle warnings stay enabled.
     jvmArgs(
+        "-XX:+UnlockDiagnosticVMOptions",
+        "-XX:-PrintWarnings",
         "-XX:+AllowRedefinitionToAddDeleteMethods",
         "-Djdk.attach.allowAttachSelf=true",
     )

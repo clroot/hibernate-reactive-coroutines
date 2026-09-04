@@ -2,6 +2,7 @@ import io.clroot.build.VerifyStarterSourceLayout
 
 plugins {
     id("hrc.base")
+    id("org.jetbrains.kotlinx.kover") version "0.9.9"
     // No root publication, but nmcp hangs its all-publications entry points off the root plugin.
     `maven-publish`
 }
@@ -14,6 +15,25 @@ val starterProjects = listOf(
     project(":hibernate-reactive-coroutines-spring-boot-starter"),
     project(":hibernate-reactive-coroutines-spring-boot-starter-boot4"),
 )
+
+val coveredProjects = listOf(
+    project(":hibernate-reactive-coroutines-blockhound"),
+    project(":hibernate-reactive-coroutines-core"),
+    project(":hibernate-reactive-coroutines-ktor"),
+    project(":hibernate-reactive-coroutines-repository"),
+    project(":hibernate-reactive-coroutines-spring-boot-starter"),
+    project(":hibernate-reactive-coroutines-spring-boot-starter-boot4"),
+)
+
+coveredProjects.forEach { coveredProject ->
+    coveredProject.pluginManager.apply("org.jetbrains.kotlinx.kover")
+}
+
+dependencies {
+    coveredProjects.forEach { coveredProject ->
+        kover(project(coveredProject.path))
+    }
+}
 
 val verifyStarterMainSourceLayout = tasks.register<VerifyStarterSourceLayout>("verifyStarterMainSourceLayout") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP

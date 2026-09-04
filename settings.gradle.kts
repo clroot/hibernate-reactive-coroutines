@@ -7,12 +7,14 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gradleup.nmcp.settings") version "1.4.3"
+    id("com.gradleup.nmcp.settings") version "1.6.2"
 }
 
 rootProject.name = "hibernate-reactive-coroutines"
 
 include(
+    "examples:ktor",
+    "examples:spring-boot",
     "hibernate-reactive-coroutines-core",
     "hibernate-reactive-coroutines-repository",
     "hibernate-reactive-coroutines-ktor",

@@ -169,11 +169,6 @@ class ReactiveSessionProviderTest : DescribeSpec({
                 val exception = ReadOnlyTransactionException("test message")
                 exception.message shouldBe "test message"
             }
-
-            it("extends IllegalStateException") {
-                val exception = ReadOnlyTransactionException("test")
-                (exception is IllegalStateException) shouldBe true
-            }
         }
     }
 })

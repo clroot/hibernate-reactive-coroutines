@@ -2,6 +2,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository
 
 import org.springframework.context.annotation.Import
 import org.springframework.core.annotation.AliasFor
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import kotlin.reflect.KClass
 
 /**
