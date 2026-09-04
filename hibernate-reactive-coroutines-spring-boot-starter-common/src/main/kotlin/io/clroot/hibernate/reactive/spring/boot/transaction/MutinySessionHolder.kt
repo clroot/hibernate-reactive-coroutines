@@ -19,9 +19,22 @@ public class MutinySessionHolder(
     private var vertxContext: Context? = null,
     private var mode: TransactionMode = TransactionMode.READ_WRITE,
     private var timeout: Duration = Duration.INFINITE,
-    private val clock: MonotonicClock = SystemMonotonicClock,
-    private var startTimeNanos: Long = clock.nanoTime(),
+    private var startTimeNanos: Long = System.nanoTime(),
 ) : ResourceHolderSupport() {
+
+    private var clock: MonotonicClock = SystemMonotonicClock
+
+    /** Constructor seam for deterministic timeout tests without changing the 2.0.0 public ABI. */
+    internal constructor(
+        session: Mutiny.Session?,
+        vertxContext: Context? = null,
+        mode: TransactionMode = TransactionMode.READ_WRITE,
+        timeout: Duration = Duration.INFINITE,
+        clock: MonotonicClock,
+        startTimeNanos: Long = clock.nanoTime(),
+    ) : this(session, vertxContext, mode, timeout, startTimeNanos) {
+        this.clock = clock
+    }
 
     private var transactionActive: Boolean = false
     private var transactionTimedOut: Boolean = false

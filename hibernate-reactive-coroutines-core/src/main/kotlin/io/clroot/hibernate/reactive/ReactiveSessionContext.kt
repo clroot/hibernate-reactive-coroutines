@@ -35,16 +35,32 @@ public enum class TransactionMode {
  * @param session Hibernate Reactive session
  * @param mode transaction mode
  * @param timeout transaction timeout; unbounded by default
- * @param clock monotonic clock used to calculate elapsed time
- * @param startTimeNanos transaction start reading from [clock]
+ * @param startTimeNanos transaction start reading from a monotonic clock
  */
 public class ReactiveSessionContext(
     public val session: Mutiny.Session,
     public val mode: TransactionMode,
     public val timeout: Duration = INFINITE,
-    public val clock: MonotonicClock = SystemMonotonicClock,
-    public val startTimeNanos: Long = clock.nanoTime(),
+    public val startTimeNanos: Long = System.nanoTime(),
 ) : AbstractCoroutineContextElement(ReactiveSessionContext) {
+    private var clock: MonotonicClock = SystemMonotonicClock
+
+    /**
+     * Creates a context with an explicit monotonic clock.
+     *
+     * The original four-argument constructor remains the primary constructor so binaries compiled
+     * against HRC 2.0.0 keep resolving its default-argument bridge methods.
+     */
+    public constructor(
+        session: Mutiny.Session,
+        mode: TransactionMode,
+        timeout: Duration = INFINITE,
+        clock: MonotonicClock,
+        startTimeNanos: Long = clock.nanoTime(),
+    ) : this(session, mode, timeout, startTimeNanos) {
+        this.clock = clock
+    }
+
     public companion object Key : CoroutineContext.Key<ReactiveSessionContext>
 
     public val isReadOnly: Boolean get() = mode == TransactionMode.READ_ONLY

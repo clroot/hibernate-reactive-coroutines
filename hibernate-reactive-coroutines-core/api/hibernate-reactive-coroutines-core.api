@@ -15,9 +15,10 @@ public abstract interface class io/clroot/hibernate/reactive/MonotonicClock {
 
 public final class io/clroot/hibernate/reactive/ReactiveSessionContext : kotlin/coroutines/AbstractCoroutineContextElement {
 	public static final field Key Lio/clroot/hibernate/reactive/ReactiveSessionContext$Key;
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JJLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JLio/clroot/hibernate/reactive/MonotonicClock;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/clroot/hibernate/reactive/TransactionMode;JLio/clroot/hibernate/reactive/MonotonicClock;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun getClock ()Lio/clroot/hibernate/reactive/MonotonicClock;
 	public final fun getMode ()Lio/clroot/hibernate/reactive/TransactionMode;
 	public final fun getSession ()Lorg/hibernate/reactive/mutiny/Mutiny$Session;
 	public final fun getStartTimeNanos ()J
