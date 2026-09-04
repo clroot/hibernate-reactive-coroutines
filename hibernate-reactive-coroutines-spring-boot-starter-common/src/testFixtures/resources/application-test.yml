@@ -1,6 +1,6 @@
 spring:
-  # webflux가 테스트 클래스패스에 있어도 기존 테스트는 웹 컨텍스트 없이 뜨게 한다.
-  # 이벤트 루프 공유 통합 테스트만 프로퍼티로 reactive를 다시 켠다.
+  # Keep the regular tests non-web even though WebFlux is on the test classpath.
+  # The event-loop sharing integration test enables reactive mode explicitly.
   main:
     web-application-type: none
   reactor:
@@ -9,16 +9,9 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
         reactive:
           pool-size: 5
-
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    io.github.clroot.khr: DEBUG
-    io.clroot.hibernate.reactive: DEBUG
-    org.springframework.transaction: DEBUG

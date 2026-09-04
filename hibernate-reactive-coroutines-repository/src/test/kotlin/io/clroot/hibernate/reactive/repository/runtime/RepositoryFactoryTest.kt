@@ -299,7 +299,7 @@ class RepositoryFactoryTest : DescribeSpec({
             suspend fun search(name: String): List<RuntimeEntity>
         }
 
-        interface DirectPagedRepository {
+        private interface DirectPagedRepository {
             suspend fun findPageByName(name: String, page: RepositoryPageRequest): RepositoryPage<RuntimeEntity>
         }
 
@@ -315,7 +315,7 @@ class RepositoryFactoryTest : DescribeSpec({
         data class TestPageRequest(val offset: Long, val size: Int)
         data class TestPage(val content: List<RuntimeEntity>, val total: Long)
 
-        object TestPageAdapter : RepositoryRuntimeAdapter {
+        private object TestPageAdapter : RepositoryRuntimeAdapter {
             override fun adaptArguments(arguments: List<Any?>): RepositoryInvocationArguments {
                 val request = arguments.last() as TestPageRequest
                 return RepositoryInvocationArguments(

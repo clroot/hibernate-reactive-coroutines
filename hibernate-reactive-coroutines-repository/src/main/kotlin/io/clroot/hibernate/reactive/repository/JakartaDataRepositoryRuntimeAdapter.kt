@@ -12,7 +12,7 @@ import jakarta.data.page.PageRequest
 import java.util.NoSuchElementException
 
 /** Maps Jakarta Data pagination and sorting values to the shared repository runtime. */
-public object JakartaDataRepositoryRuntimeAdapter : RepositoryRuntimeAdapter {
+internal object JakartaDataRepositoryRuntimeAdapter : RepositoryRuntimeAdapter {
     override fun adaptArguments(arguments: List<Any?>): RepositoryInvocationArguments {
         if (arguments.isEmpty()) return RepositoryInvocationArguments(arguments)
 

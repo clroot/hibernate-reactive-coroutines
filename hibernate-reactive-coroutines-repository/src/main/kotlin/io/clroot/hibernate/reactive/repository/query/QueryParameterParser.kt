@@ -1,11 +1,15 @@
 package io.clroot.hibernate.reactive.repository.query
 
+import io.clroot.hibernate.reactive.InternalHrcApi
+
+@InternalHrcApi
 public data class QueryParameters(
     public val style: QueryParameterStyle,
     public val names: List<String> = emptyList(),
     public val positions: List<Int> = emptyList(),
 )
 
+@InternalHrcApi
 public object QueryParameterParser {
     private enum class State {
         DEFAULT,

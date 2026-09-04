@@ -17,7 +17,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
  *
  * @param basePackages Base packages to scan.
  */
-public class HibernateReactiveRepositoryRegistrar(
+internal class HibernateReactiveRepositoryRegistrar(
     private val basePackages: List<String> = emptyList(),
 ) : BeanDefinitionRegistryPostProcessor, ApplicationContextAware {
 

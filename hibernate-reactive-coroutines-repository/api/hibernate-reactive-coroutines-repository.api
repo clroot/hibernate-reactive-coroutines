@@ -28,15 +28,6 @@ public final class io/clroot/hibernate/reactive/repository/JakartaDataRepository
 	public static synthetic fun create$default (Lio/clroot/hibernate/reactive/repository/JakartaDataRepositoryFactory;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/String;ILjava/lang/Object;)Lio/clroot/hibernate/reactive/repository/CoroutineCrudRepository;
 }
 
-public final class io/clroot/hibernate/reactive/repository/JakartaDataRepositoryRuntimeAdapter : io/clroot/hibernate/reactive/repository/runtime/RepositoryRuntimeAdapter {
-	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/JakartaDataRepositoryRuntimeAdapter;
-	public fun adaptArguments (Ljava/util/List;)Lio/clroot/hibernate/reactive/repository/runtime/RepositoryInvocationArguments;
-	public fun createPage (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;J)Ljava/lang/Object;
-	public fun createSlice (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;Z)Ljava/lang/Object;
-	public fun pageQueryLimit (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)I
-	public fun shouldRequestTotal (Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;)Z
-}
-
 public final class io/clroot/hibernate/reactive/repository/auditing/AuditingEntityLifecycle : io/clroot/hibernate/reactive/repository/runtime/RepositoryEntityLifecycle {
 	public fun <init> (Lio/clroot/hibernate/reactive/repository/auditing/ReactiveAuditorAware;)V
 	public fun beforeSave (Ljava/lang/Object;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
@@ -74,11 +65,6 @@ public abstract interface annotation class io/clroot/hibernate/reactive/reposito
 	public abstract fun value ()Ljava/lang/String;
 }
 
-public final class io/clroot/hibernate/reactive/repository/query/QueryAliasResolver {
-	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryAliasResolver;
-	public final fun resolve (Ljava/lang/String;)Ljava/lang/String;
-}
-
 public final class io/clroot/hibernate/reactive/repository/query/QueryParameterParser {
 	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryParameterParser;
 	public final fun parse (Ljava/lang/String;)Lio/clroot/hibernate/reactive/repository/query/QueryParameters;
@@ -107,11 +93,6 @@ public final class io/clroot/hibernate/reactive/repository/query/QueryParameters
 	public final fun getStyle ()Lio/clroot/hibernate/reactive/repository/query/QueryParameterStyle;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class io/clroot/hibernate/reactive/repository/query/QueryPropertyPathValidator {
-	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/query/QueryPropertyPathValidator;
-	public final fun isSafe (Ljava/lang/String;)Z
 }
 
 public final class io/clroot/hibernate/reactive/repository/query/QueryStatementType : java/lang/Enum {

@@ -1,8 +1,10 @@
 package io.clroot.hibernate.reactive.repository.query.derived
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.repository.query.QueryPropertyPathValidator
 
 /** Compiles a framework-neutral [DerivedQuery] into Hibernate Query Language. */
+@InternalHrcApi
 public class DerivedQueryHqlCompiler(
     private val entityName: String,
 ) {
@@ -202,12 +204,14 @@ public class DerivedQueryHqlCompiler(
 }
 
 /** HQL and parameter transformations produced by [DerivedQueryHqlCompiler]. */
+@InternalHrcApi
 public data class CompiledQuery(
     public val hql: String,
     public val parameterBindings: List<ParameterBinding>,
 )
 
 /** Framework-neutral transformation applied before a derived-query argument is bound. */
+@InternalHrcApi
 public enum class ParameterBinding {
     DIRECT,
     CONTAINING,

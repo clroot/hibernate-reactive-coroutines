@@ -1,8 +1,10 @@
 package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.repository.query.derived.QueryOrder
 
 /** Normalized paging request passed between a framework adapter and the repository runtime. */
+@InternalHrcApi
 public data class RepositoryPageRequest(
     public val offset: Long,
     public val pageSize: Int,
@@ -17,11 +19,13 @@ public data class RepositoryPageRequest(
 }
 
 /** Framework-neutral standalone sort argument for direct runtime use. */
+@InternalHrcApi
 public data class RepositorySort(
     public val orders: List<QueryOrder> = emptyList(),
 )
 
 /** Arguments after framework-specific paging and sorting parameters have been removed. */
+@InternalHrcApi
 public data class RepositoryInvocationArguments(
     public val queryArguments: List<Any?>,
     public val pageRequest: RepositoryPageRequest? = null,
@@ -31,6 +35,7 @@ public data class RepositoryInvocationArguments(
 )
 
 /** Neutral page transport returned by the default adapter. */
+@InternalHrcApi
 public data class RepositoryPage<T>(
     public val content: List<T>,
     public val request: RepositoryPageRequest,
@@ -38,6 +43,7 @@ public data class RepositoryPage<T>(
 )
 
 /** Neutral slice transport returned by the default adapter. */
+@InternalHrcApi
 public data class RepositorySlice<T>(
     public val content: List<T>,
     public val request: RepositoryPageRequest,
@@ -50,6 +56,7 @@ public data class RepositorySlice<T>(
  * Spring and Jakarta Data adapters translate their own public API types here. The default
  * implementation allows a repository proxy to operate without any application framework.
  */
+@InternalHrcApi
 public interface RepositoryRuntimeAdapter {
     public fun adaptArguments(arguments: List<Any?>): RepositoryInvocationArguments {
         if (arguments.isEmpty()) return RepositoryInvocationArguments(arguments)

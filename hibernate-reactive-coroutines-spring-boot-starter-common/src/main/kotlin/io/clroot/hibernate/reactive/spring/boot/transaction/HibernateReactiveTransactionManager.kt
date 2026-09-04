@@ -26,7 +26,7 @@ import kotlin.time.Duration.Companion.seconds
  * Binds the transaction session to Spring so repositories can reuse it within
  * an `@Transactional` suspending function.
  */
-public class HibernateReactiveTransactionManager(
+internal class HibernateReactiveTransactionManager(
     private val sessionFactory: Mutiny.SessionFactory,
 ) : AbstractReactiveTransactionManager(), InitializingBean {
 

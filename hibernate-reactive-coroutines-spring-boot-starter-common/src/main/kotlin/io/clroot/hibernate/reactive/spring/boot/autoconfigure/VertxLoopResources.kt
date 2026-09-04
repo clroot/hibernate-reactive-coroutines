@@ -20,7 +20,7 @@ import java.time.Duration
  * This uses Vert.x 5's internal [VertxInternal] API because its public API no longer exposes
  * `nettyEventLoopGroup()`. Minor Vert.x upgrades may change that internal signature.
  */
-public class VertxLoopResources(vertx: Vertx) : LoopResources {
+internal class VertxLoopResources(vertx: Vertx) : LoopResources {
 
     private val eventLoopGroup: EventLoopGroup = run {
         require(vertx is VertxInternal) {

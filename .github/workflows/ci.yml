@@ -29,7 +29,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build koverXmlReport koverHtmlReport --warning-mode fail
+        run: ./gradlew build koverVerify koverXmlReport koverHtmlReport --warning-mode fail
 
       - name: Start PostgreSQL
         run: |
@@ -39,18 +39,23 @@ jobs:
             --env POSTGRES_USER=hrc \
             --env POSTGRES_PASSWORD=hrc \
             postgres:16-alpine
-          until docker exec hrc-postgres pg_isready --username hrc --dbname hrc; do
+          for attempt in {1..60}; do
+            if docker exec hrc-postgres pg_isready --username hrc --dbname hrc; then
+              exit 0
+            fi
             sleep 1
           done
+          docker logs hrc-postgres
+          exit 1
 
-      - name: Smoke test Spring Boot example
+      - name: Exercise Spring Boot example
         run: |
           ./gradlew :examples:spring-boot:run > spring-boot-example.log 2>&1 &
           app_pid=$!
           trap 'kill "$app_pid" || true' EXIT
           for attempt in {1..60}; do
-            if response=$(curl --fail --silent http://localhost:8080/smoke); then
-              test "$response" = "spring-boot-ok:1"
+            if response=$(curl --fail --silent --request POST http://localhost:8080/demo); then
+              test "$response" = "spring-demo-ok:platform:3:alice:2:true:demo-user:true"
               exit
             fi
             sleep 1
@@ -58,14 +63,14 @@ jobs:
           cat spring-boot-example.log
           exit 1
 
-      - name: Smoke test Ktor example
+      - name: Exercise Ktor example
         run: |
           ./gradlew :examples:ktor:run > ktor-example.log 2>&1 &
           app_pid=$!
           trap 'kill "$app_pid" || true' EXIT
           for attempt in {1..60}; do
-            if response=$(curl --fail --silent http://localhost:8081/smoke); then
-              test "$response" = "ktor-ok:1"
+            if response=$(curl --fail --silent --request POST http://localhost:8081/demo); then
+              test "$response" = "ktor-demo-ok:platform:3:alice:2:true:demo-user:true"
               exit
             fi
             sleep 1

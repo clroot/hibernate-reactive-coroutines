@@ -15,7 +15,7 @@ import org.springframework.transaction.reactive.TransactionSynchronizationManage
  * This prevents nested `tx.transactional {}` calls from opening a session that differs
  * from the Spring-bound session used by repositories.
  */
-public class SpringAmbientTransactionProbe(
+internal class SpringAmbientTransactionProbe(
     private val sessionFactory: Mutiny.SessionFactory,
 ) : AmbientTransactionProbe {
 

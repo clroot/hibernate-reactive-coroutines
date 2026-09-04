@@ -22,7 +22,8 @@ Spring Boot apps get auto-configuration out of the box; Ktor apps get a plugin w
 - Pagination, sorting, and auditing with automatic created/modified timestamps
 - Spring `@Transactional` support, or an explicit `ReactiveTransactionExecutor` when you want control
 - First-class integrations for Spring Boot 3/4 and Ktor 3
-- Runnable [Spring Boot](examples/spring-boot) and [Ktor](examples/ktor) examples, exercised by CI
+- Runnable [Spring Boot](examples/spring-boot) and [Ktor](examples/ktor) application demos that
+  exercise transactions, auditing, pagination, and association fetching in CI
 
 ## Architecture
 

@@ -20,7 +20,7 @@ import java.lang.reflect.Method
  * @param T Repository interface type.
  * @param repositoryInterface Repository interface class.
  */
-public class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<*, *>>(
+internal class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepository<*, *>>(
     private val repositoryInterface: Class<T>,
 ) : FactoryBean<T> {
 

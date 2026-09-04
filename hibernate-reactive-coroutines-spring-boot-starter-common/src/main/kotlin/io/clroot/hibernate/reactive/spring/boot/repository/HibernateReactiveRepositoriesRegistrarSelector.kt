@@ -8,7 +8,7 @@ import org.springframework.core.type.AnnotationMetadata
 /**
  * Registers the repository registrar requested by [EnableHibernateReactiveRepositories].
  */
-public class HibernateReactiveRepositoriesRegistrarSelector : ImportBeanDefinitionRegistrar {
+internal class HibernateReactiveRepositoriesRegistrarSelector : ImportBeanDefinitionRegistrar {
 
     override fun registerBeanDefinitions(
         importingClassMetadata: AnnotationMetadata,

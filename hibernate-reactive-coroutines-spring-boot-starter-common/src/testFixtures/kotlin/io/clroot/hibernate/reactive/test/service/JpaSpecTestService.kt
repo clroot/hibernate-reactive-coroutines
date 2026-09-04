@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional
  * `@Transactional` defines the transaction boundary.
  */
 @Service
-class JpaSpecTestService(
+internal class JpaSpecTestService(
     private val testEntityRepository: TestEntityRepository,
     private val versionedEntityRepository: VersionedEntityRepository,
     private val parentEntityRepository: ParentEntityRepository,

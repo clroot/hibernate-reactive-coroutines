@@ -20,10 +20,13 @@ import kotlin.time.Duration.Companion.seconds
  * while it holds the database connection.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-public class ReactiveTransactionExecutor @JvmOverloads constructor(
+public class ReactiveTransactionExecutor(
     private val sessionFactory: Mutiny.SessionFactory,
     private val ambientTransactionProbe: AmbientTransactionProbe? = null,
 ) {
+    public constructor(sessionFactory: Mutiny.SessionFactory) : this(sessionFactory, null)
+
+
     public companion object {
         public val DEFAULT_TIMEOUT: Duration = 30.seconds
     }

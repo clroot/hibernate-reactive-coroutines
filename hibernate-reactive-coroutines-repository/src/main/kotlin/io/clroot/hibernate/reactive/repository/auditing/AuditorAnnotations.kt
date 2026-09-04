@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.repository.auditing
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryEntityLifecycle
 import java.lang.reflect.Field
 import java.util.concurrent.ConcurrentHashMap
@@ -15,6 +16,7 @@ public annotation class CreatedBy
 public annotation class LastModifiedBy
 
 /** Applies annotation-based auditor fields before repository save operations. */
+@InternalHrcApi
 public class AuditingEntityLifecycle(
     private val auditorAware: ReactiveAuditorAware<*>?,
 ) : RepositoryEntityLifecycle {

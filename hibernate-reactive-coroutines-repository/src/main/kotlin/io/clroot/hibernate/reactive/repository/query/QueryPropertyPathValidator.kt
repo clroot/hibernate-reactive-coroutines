@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.repository.query
 
 /** Validates property paths before an adapter interpolates them into a query. */
-public object QueryPropertyPathValidator {
+internal object QueryPropertyPathValidator {
     private val safePropertyPath =
         Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*(\\.[\\p{L}_$][\\p{L}\\p{N}_$]*)*")
 

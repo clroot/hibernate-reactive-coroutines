@@ -33,7 +33,7 @@ import org.springframework.context.annotation.Bean
  * `@EntityListeners(AuditingEntityListener::class)` to the entity.
  */
 @AutoConfiguration
-public class AuditingAutoConfiguration {
+internal class AuditingAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean

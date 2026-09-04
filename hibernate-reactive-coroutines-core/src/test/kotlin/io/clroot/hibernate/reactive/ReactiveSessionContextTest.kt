@@ -17,26 +17,6 @@ class ReactiveSessionContextTest : DescribeSpec({
     describe("ReactiveSessionContext") {
 
         context("construction") {
-            it("retains the 2.0.0 JVM constructor bridges") {
-                val defaultConstructorMarker = Class.forName("kotlin.jvm.internal.DefaultConstructorMarker")
-
-                ReactiveSessionContext::class.java.getConstructor(
-                    Mutiny.Session::class.java,
-                    TransactionMode::class.java,
-                    java.lang.Long.TYPE,
-                    java.lang.Long.TYPE,
-                    defaultConstructorMarker,
-                )
-                ReactiveSessionContext::class.java.getConstructor(
-                    Mutiny.Session::class.java,
-                    TransactionMode::class.java,
-                    java.lang.Long.TYPE,
-                    java.lang.Long.TYPE,
-                    java.lang.Integer.TYPE,
-                    defaultConstructorMarker,
-                )
-            }
-
             it("reports read-write mode as writable") {
                 val session = mockk<Mutiny.Session>()
                 val context = ReactiveSessionContext(

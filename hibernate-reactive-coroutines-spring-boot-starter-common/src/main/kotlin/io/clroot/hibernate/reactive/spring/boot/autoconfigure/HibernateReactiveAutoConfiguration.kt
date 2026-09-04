@@ -61,7 +61,7 @@ import org.springframework.util.ClassUtils
 @AutoConfiguration
 @ConditionalOnClass(Mutiny.SessionFactory::class)
 @EnableConfigurationProperties(HibernateReactiveProperties::class)
-public class HibernateReactiveAutoConfiguration(
+internal class HibernateReactiveAutoConfiguration(
     private val applicationContext: ApplicationContext,
     private val properties: HibernateReactiveProperties,
     @Value("\${spring.datasource.url:#{null}}") private val jdbcUrl: String?,

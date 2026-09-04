@@ -2,6 +2,12 @@ plugins {
     id("hrc.published")
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=io.clroot.hibernate.reactive.InternalHrcApi")
+    }
+}
+
 dependencies {
     // Hibernate Reactive
     api(libs.hibernate.reactive.core)

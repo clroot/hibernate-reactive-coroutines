@@ -22,7 +22,8 @@ Spring Boot에서는 자동 설정을, Ktor에서는 명시적으로 구성하�
 - 페이지네이션, 정렬, Auditing(생성·수정 시각 자동 기록)
 - Spring `@Transactional`과 명시적 `ReactiveTransactionExecutor`
 - Spring Boot 3/4 및 Ktor 3 통합
-- CI에서 기동 검증하는 [Spring Boot](examples/spring-boot) 및 [Ktor](examples/ktor) 실행 예제
+- 트랜잭션, auditing, 페이지네이션, 연관관계 조회를 CI에서 검증하는
+  [Spring Boot](examples/spring-boot) 및 [Ktor](examples/ktor) 실행형 애플리케이션 데모
 
 ## 아키텍처
 

@@ -452,6 +452,10 @@ suspend fun findWithRoles(status: Status, pageable: Pageable): Page<User>
 
 ```kotlin
 import io.clroot.hibernate.reactive.spring.boot.auditing.AuditingEntityListener
+import org.springframework.data.annotation.CreatedBy
+import org.springframework.data.annotation.CreatedDate
+import org.springframework.data.annotation.LastModifiedBy
+import org.springframework.data.annotation.LastModifiedDate
 
 @Entity
 @EntityListeners(AuditingEntityListener::class)
@@ -460,6 +464,8 @@ class User(
     var name: String,
     @CreatedDate var createdAt: Instant? = null,
     @LastModifiedDate var updatedAt: Instant? = null,
+    @CreatedBy var createdBy: String? = null,
+    @LastModifiedBy var updatedBy: String? = null,
 )
 ```
 

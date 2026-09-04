@@ -19,11 +19,20 @@ plugins {
     `java-test-fixtures`
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=io.clroot.hibernate.reactive.InternalHrcApi")
+    }
+}
+
 val sharedStarterRoot = rootProject.layout.projectDirectory
     .dir("hibernate-reactive-coroutines-spring-boot-starter-common/src")
 val sharedStarterMain = sharedStarterRoot.dir("main")
 val sharedStarterTest = sharedStarterRoot.dir("test")
 val sharedStarterTestFixtures = sharedStarterRoot.dir("testFixtures")
+val sharedStarterBenchmarkTest = sharedStarterRoot.dir("benchmarkTest")
+
+val benchmarkTestSourceSet = sourceSets.create("benchmarkTest")
 
 kotlin {
     sourceSets.named("main") {
@@ -35,6 +44,9 @@ kotlin {
     sourceSets.named("testFixtures") {
         kotlin.srcDir(sharedStarterTestFixtures.dir("kotlin"))
     }
+    sourceSets.named(benchmarkTestSourceSet.name) {
+        kotlin.srcDir(sharedStarterBenchmarkTest.dir("kotlin"))
+    }
 }
 
 sourceSets.named("main") {
@@ -45,6 +57,18 @@ sourceSets.named("test") {
 }
 sourceSets.named("testFixtures") {
     resources.srcDir(sharedStarterTestFixtures.dir("resources"))
+}
+sourceSets.named(benchmarkTestSourceSet.name) {
+    resources.srcDir(sharedStarterBenchmarkTest.dir("resources"))
+    compileClasspath += sourceSets.main.get().output + sourceSets.testFixtures.get().output
+    runtimeClasspath += output + compileClasspath
+}
+
+configurations.named(benchmarkTestSourceSet.implementationConfigurationName) {
+    extendsFrom(configurations.testImplementation.get())
+}
+configurations.named(benchmarkTestSourceSet.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations.testRuntimeOnly.get())
 }
 
 tasks.named("check") {
@@ -129,27 +153,15 @@ tasks.named("check") {
     dependsOn(verifyPublicationMetadata)
 }
 
-tasks.test {
-    useJUnitPlatform {
-        excludeTags("benchmark")
-    }
-}
-
 tasks.register<Test>("benchmark") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs the performance benchmark tests excluded from `test`."
-
-    // A bare Test task has no classpath and silently reports NO-SOURCE, so bind the test source set.
-    val testSourceSet = sourceSets.test.get()
-    testClassesDirs = testSourceSet.output.classesDirs
-    classpath = testSourceSet.runtimeClasspath
-
-    useJUnitPlatform {
-        includeTags("benchmark")
-    }
+    description = "Runs the performance benchmark suite."
+    testClassesDirs = benchmarkTestSourceSet.output.classesDirs
+    classpath = benchmarkTestSourceSet.runtimeClasspath
+    shouldRunAfter(tasks.test)
+    useJUnitPlatform()
 
     testLogging {
-        showStandardStreams = true
         events("passed", "skipped", "failed")
     }
 }

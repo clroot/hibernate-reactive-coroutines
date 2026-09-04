@@ -1,5 +1,7 @@
 package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.InternalHrcApi
+
 /**
  * Adapter hook for integration-specific entity state and lifecycle behavior.
  *
@@ -7,6 +9,7 @@ package io.clroot.hibernate.reactive.repository.runtime
  * identifier/version rules. [beforeSave] is invoked after the final state decision and before
  * Hibernate receives the entity.
  */
+@InternalHrcApi
 public interface RepositoryEntityLifecycle {
     public fun isNew(entity: Any): Boolean? = null
 

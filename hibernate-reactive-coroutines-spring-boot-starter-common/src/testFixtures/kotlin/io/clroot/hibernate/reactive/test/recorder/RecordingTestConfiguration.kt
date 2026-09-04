@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Primary
  * The primary provider wraps sessions so test queries can be asserted.
  */
 @TestConfiguration
-class RecordingTestConfiguration {
+internal class RecordingTestConfiguration {
 
     @Bean
     fun hqlRecorder(): HqlRecorder = HqlRecorder()

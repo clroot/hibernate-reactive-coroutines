@@ -2,6 +2,12 @@ plugins {
     id("hrc.published")
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=io.clroot.hibernate.reactive.InternalHrcApi")
+    }
+}
+
 description = "Framework-neutral repository query compiler and runtime for Hibernate Reactive Coroutines"
 
 dependencies {
