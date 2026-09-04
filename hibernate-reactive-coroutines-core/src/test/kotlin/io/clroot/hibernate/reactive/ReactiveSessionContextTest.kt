@@ -74,45 +74,45 @@ class ReactiveSessionContextTest : DescribeSpec({
                 context.remainingTimeout() shouldBe INFINITE
             }
 
-            it("returns nearly the full timeout immediately after creation") {
+            it("returns the full timeout before the clock advances") {
                 val session = mockk<Mutiny.Session>()
-                val now = System.nanoTime()
+                val clock = TestMonotonicClock(1_000)
                 val context = ReactiveSessionContext(
                     session = session,
                     mode = TransactionMode.READ_WRITE,
                     timeout = 10.seconds,
-                    startTimeNanos = now,
+                    clock = clock,
                 )
 
-                val remaining = context.remainingTimeout()
-                // Allow time elapsed while creating and checking the context.
-                (remaining.inWholeMilliseconds >= 9900) shouldBe true
+                context.remainingTimeout() shouldBe 10.seconds
             }
 
             it("decreases as time elapses") {
                 val session = mockk<Mutiny.Session>()
-                val startTimeNanos = System.nanoTime() - 5_000_000_000L
+                val clock = TestMonotonicClock(1_000)
                 val context = ReactiveSessionContext(
                     session = session,
                     mode = TransactionMode.READ_WRITE,
                     timeout = 10.seconds,
-                    startTimeNanos = startTimeNanos,
+                    clock = clock,
                 )
 
-                val remaining = context.remainingTimeout()
-                // Allow clock and execution-time variance around the expected five seconds.
-                (remaining.inWholeMilliseconds in 4900..5100) shouldBe true
+                clock.advance(5.seconds)
+
+                context.remainingTimeout() shouldBe 5.seconds
             }
 
             it("returns zero after the timeout expires") {
                 val session = mockk<Mutiny.Session>()
-                val startTimeNanos = System.nanoTime() - 15_000_000_000L
+                val clock = TestMonotonicClock(1_000)
                 val context = ReactiveSessionContext(
                     session = session,
                     mode = TransactionMode.READ_WRITE,
                     timeout = 10.seconds,
-                    startTimeNanos = startTimeNanos,
+                    clock = clock,
                 )
+
+                clock.advance(15.seconds)
 
                 context.remainingTimeout() shouldBe 0.milliseconds
             }
@@ -196,3 +196,13 @@ class ReactiveSessionContextTest : DescribeSpec({
         }
     }
 })
+
+private class TestMonotonicClock(
+    private var nowNanos: Long,
+) : MonotonicClock {
+    override fun nanoTime(): Long = nowNanos
+
+    fun advance(duration: kotlin.time.Duration) {
+        nowNanos += duration.inWholeNanoseconds
+    }
+}

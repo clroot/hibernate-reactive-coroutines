@@ -1,6 +1,7 @@
 # Hibernate Reactive Coroutines
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines-core.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines-core)
+[![CI](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -10,7 +11,8 @@
 
 > Coroutine-first repositories and transactions for Hibernate Reactive.
 
-Write `suspend` functions and `Flow`s. Never touch `Uni` or `CompletionStage`.
+Write `suspend` functions and `Flow`s. Repository `Flow`s are cold but not streaming: collection
+loads the complete query result into memory before emitting it. Never touch `Uni` or `CompletionStage`.
 Spring Boot apps get auto-configuration out of the box; Ktor apps get a plugin with explicit wiring.
 
 ## Features
@@ -20,6 +22,7 @@ Spring Boot apps get auto-configuration out of the box; Ktor apps get a plugin w
 - Pagination, sorting, and auditing with automatic created/modified timestamps
 - Spring `@Transactional` support, or an explicit `ReactiveTransactionExecutor` when you want control
 - First-class integrations for Spring Boot 3/4 and Ktor 3
+- Runnable [Spring Boot](examples/spring-boot) and [Ktor](examples/ktor) examples, exercised by CI
 
 ## Architecture
 
@@ -161,7 +164,9 @@ The plugin never opens a transaction on its own. Wrap each unit of work in `tran
 
 - There is no synchronous lazy loading in Hibernate Reactive. Fetch associations up front with a
   fetch join, or call `fetch()` explicitly.
-- `Propagation.REQUIRES_NEW` is deliberately unsupported: it can starve the connection pool.
+- `Propagation.REQUIRES_NEW` works when it starts a top-level transaction. Nested
+  `REQUIRES_NEW` is unsupported: the parent keeps one connection while the child requests another,
+  which can exhaust the pool. The implementation does not reject nested use at runtime.
 - Keep blocking I/O out of transaction blocks. The BlockHound module catches accidental blocking
   calls in your tests.
 - Spring Boot 3 (Spring Framework 6) cannot run Hibernate ORM 7, so this starter and

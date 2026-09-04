@@ -1,6 +1,7 @@
 # Hibernate Reactive Coroutines
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines-core.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines-core)
+[![CI](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
 [![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -11,6 +12,7 @@
 > Hibernate Reactive를 Kotlin Coroutines답게 사용하는 리포지토리와 트랜잭션 도구입니다.
 
 `Uni`·`CompletionStage` 같은 리액티브 타입을 직접 다루지 않고, `suspend` 함수와 `Flow`만으로 데이터베이스에 접근합니다.
+리포지토리 `Flow`는 cold이지만 스트리밍하지 않습니다. collect할 때 쿼리 결과 전체를 메모리에 올린 뒤 방출합니다.
 Spring Boot에서는 자동 설정을, Ktor에서는 명시적으로 구성하는 애플리케이션 플러그인을 제공합니다.
 
 ## 핵심 기능
@@ -20,6 +22,7 @@ Spring Boot에서는 자동 설정을, Ktor에서는 명시적으로 구성하�
 - 페이지네이션, 정렬, Auditing(생성·수정 시각 자동 기록)
 - Spring `@Transactional`과 명시적 `ReactiveTransactionExecutor`
 - Spring Boot 3/4 및 Ktor 3 통합
+- CI에서 기동 검증하는 [Spring Boot](examples/spring-boot) 및 [Ktor](examples/ktor) 실행 예제
 
 ## 아키텍처
 
@@ -160,7 +163,9 @@ Ktor 플러그인은 요청마다 트랜잭션을 자동으로 시작하지 않�
 
 - Hibernate Reactive는 동기 방식의 Lazy Loading을 지원하지 않습니다. 연관 엔티티는 Fetch Join이나 `fetch()`로
   명시적으로 불러와야 합니다.
-- `Propagation.REQUIRES_NEW`는 커넥션 풀이 고갈될 위험이 있어 지원하지 않습니다.
+- `Propagation.REQUIRES_NEW`는 최상위 트랜잭션을 시작할 때는 동작합니다. 중첩
+  `REQUIRES_NEW`는 부모가 커넥션을 보유한 채 자식이 새 커넥션을 요구해 풀이 고갈될 수 있으므로
+  지원하지 않습니다. 구현이 중첩 사용을 런타임에 거부하지는 않습니다.
 - 트랜잭션 블록 안에서는 블로킹 I/O를 실행하지 않아야 합니다. 테스트에서 블로킹 호출을 탐지하려면
   BlockHound 모듈을 사용할 수 있습니다.
 - Spring Boot 3(Spring Framework 6)는 Hibernate ORM 7을 지원하지 않기 때문에, 같은 애플리케이션에서

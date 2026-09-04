@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.transaction
 
+import io.clroot.hibernate.reactive.MonotonicClock
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
@@ -23,9 +24,14 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
     describe("transaction begin deadline") {
         it("installs PostgreSQL statement timeout after beginning the transaction") {
             val events = mutableListOf<String>()
+            val clock = TestMonotonicClock(1_000)
             val sessionFactory = mockk<Mutiny.SessionFactory>()
             val session = mockk<Mutiny.Session>()
-            val holder = MutinySessionHolder(session, timeout = 1.seconds)
+            val holder = MutinySessionHolder(
+                session,
+                timeout = 1.seconds,
+                clock = clock,
+            )
             val metadata = mockk<DatabaseMetadata>()
             val connection = mockk<ReactiveConnection>()
             val manager = HibernateReactiveTransactionManager(sessionFactory)
@@ -45,9 +51,8 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
                 .await().indefinitely()
 
             events.first() shouldBe "begin"
-            val configuredMillis = events.single { it.startsWith("SET LOCAL statement_timeout = ") }
-                .substringAfterLast(' ').toLong()
-            (configuredMillis in 1..1_000) shouldBe true
+            events.single { it.startsWith("SET LOCAL statement_timeout = ") } shouldBe
+                    "SET LOCAL statement_timeout = 1000"
         }
 
         it("rolls back when PostgreSQL statement timeout setup fails") {
@@ -107,15 +112,23 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
         }
 
         it("rolls back when the deadline expires during flush") {
+            val clock = TestMonotonicClock(1_000)
             val sessionFactory = mockk<Mutiny.SessionFactory>()
             val session = mockk<Mutiny.Session>()
             val connection = mockk<ReactiveConnection>()
-            val holder = MutinySessionHolder(session)
+            val metadata = mockk<DatabaseMetadata>()
+            val holder = MutinySessionHolder(
+                session,
+                timeout = 1.seconds,
+                clock = clock,
+            )
             val manager = HibernateReactiveTransactionManager(sessionFactory)
 
+            every { metadata.productName() } returns "H2"
+            every { connection.databaseMetadata } returns metadata
             every { session.flush() } returns
                     Uni.createFrom().voidItem()
-                        .invoke { _: Void? -> holder.markTransactionTimedOut() }
+                        .invoke { _: Void? -> clock.advance(1.seconds) }
             every { connection.rollbackTransaction() } returns CompletableFuture.completedFuture(null)
 
             val error = shouldThrow<UnexpectedRollbackException> {
@@ -212,3 +225,13 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
         }
     }
 })
+
+private class TestMonotonicClock(
+    private var nowNanos: Long,
+) : MonotonicClock {
+    override fun nanoTime(): Long = nowNanos
+
+    fun advance(duration: kotlin.time.Duration) {
+        nowNanos += duration.inWholeNanoseconds
+    }
+}
