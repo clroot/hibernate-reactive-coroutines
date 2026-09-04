@@ -255,8 +255,9 @@ public final class io/clroot/hibernate/reactive/spring/boot/transaction/Hibernat
 }
 
 public final class io/clroot/hibernate/reactive/spring/boot/transaction/MutinySessionHolder : org/springframework/transaction/support/ResourceHolderSupport {
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JJLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JLio/clroot/hibernate/reactive/MonotonicClock;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Lorg/hibernate/reactive/mutiny/Mutiny$Session;Lio/vertx/core/Context;Lio/clroot/hibernate/reactive/TransactionMode;JLio/clroot/hibernate/reactive/MonotonicClock;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun clear ()V
 	public final fun getDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
 	public final fun getSession ()Lorg/hibernate/reactive/mutiny/Mutiny$Session;
