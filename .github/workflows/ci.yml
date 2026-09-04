@@ -29,7 +29,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build koverXmlReport koverHtmlReport --warning-mode fail
+        run: ./gradlew build koverVerify koverXmlReport koverHtmlReport --warning-mode fail
 
       - name: Start PostgreSQL
         run: |
@@ -39,9 +39,14 @@ jobs:
             --env POSTGRES_USER=hrc \
             --env POSTGRES_PASSWORD=hrc \
             postgres:16-alpine
-          until docker exec hrc-postgres pg_isready --username hrc --dbname hrc; do
+          for attempt in {1..60}; do
+            if docker exec hrc-postgres pg_isready --username hrc --dbname hrc; then
+              exit 0
+            fi
             sleep 1
           done
+          docker logs hrc-postgres
+          exit 1
 
       - name: Smoke test Spring Boot example
         run: |

@@ -1,4 +1,7 @@
 import io.clroot.build.VerifyStarterSourceLayout
+import kotlinx.kover.gradle.plugin.dsl.AggregationType
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+import kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension
 
 plugins {
     id("hrc.base")
@@ -27,6 +30,43 @@ val coveredProjects = listOf(
 
 coveredProjects.forEach { coveredProject ->
     coveredProject.pluginManager.apply("org.jetbrains.kotlinx.kover")
+}
+
+starterProjects.forEach { starterProject ->
+    starterProject.extensions.configure<KoverProjectExtension> {
+        currentProject {
+            instrumentation {
+                disabledForTestTasks.add("benchmark")
+            }
+        }
+        reports {
+            filters {
+                excludes {
+                    classes("io.clroot.hibernate.reactive.test.PerformanceBenchmarkTest*")
+                }
+            }
+        }
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes("io.clroot.hibernate.reactive.test.PerformanceBenchmarkTest*")
+            }
+        }
+        total {
+            verify {
+                rule("Minimum aggregate line coverage") {
+                    minBound(85, CoverageUnit.LINE, AggregationType.COVERED_PERCENTAGE)
+                }
+                rule("Minimum aggregate branch coverage") {
+                    minBound(65, CoverageUnit.BRANCH, AggregationType.COVERED_PERCENTAGE)
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -65,6 +105,16 @@ val verifyStarterTestFixtureSourceLayout =
         versionSpecificPaths = emptySet()
     }
 
+val verifyStarterBenchmarkTestSourceLayout =
+    tasks.register<VerifyStarterSourceLayout>("verifyStarterBenchmarkTestSourceLayout") {
+        group = LifecycleBasePlugin.VERIFICATION_GROUP
+        description = "Verifies that Boot starter benchmark sources have a single owner."
+        sharedSourceDirectory =
+            layout.projectDirectory.dir("hibernate-reactive-coroutines-spring-boot-starter-common/src/benchmarkTest")
+        starterSourceDirectories = starterProjects.map { it.layout.projectDirectory.dir("src/benchmarkTest") }
+        versionSpecificPaths = emptySet()
+    }
+
 tasks.register("verifyStarterSourceLayout") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Verifies that all Boot starter source sets have a single owner."
@@ -72,6 +122,7 @@ tasks.register("verifyStarterSourceLayout") {
         verifyStarterMainSourceLayout,
         verifyStarterTestSourceLayout,
         verifyStarterTestFixtureSourceLayout,
+        verifyStarterBenchmarkTestSourceLayout,
     )
 }
 

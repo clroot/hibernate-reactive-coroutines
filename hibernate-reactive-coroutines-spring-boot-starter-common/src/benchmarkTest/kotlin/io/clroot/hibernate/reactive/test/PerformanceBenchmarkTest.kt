@@ -6,7 +6,6 @@ import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.doubles.shouldBeGreaterThan
-import org.junit.jupiter.api.Tag
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.domain.PageRequest
@@ -15,12 +14,11 @@ import org.springframework.data.domain.PageRequest
  * Performance benchmark tests.
  *
  * Measures baseline library performance.
- * `@Tag("benchmark")` excludes these tests from the regular suite.
+ * The dedicated `benchmarkTest` source set keeps these tests out of the regular suite.
  *
  * Run with `./gradlew :hibernate-reactive-coroutines-spring-boot-starter:benchmark` or
  * `:hibernate-reactive-coroutines-spring-boot-starter-boot4:benchmark`.
  */
-@Tag("benchmark")
 @SpringBootTest(classes = [TestApplication::class])
 class PerformanceBenchmarkTest : IntegrationTestBase() {
 
