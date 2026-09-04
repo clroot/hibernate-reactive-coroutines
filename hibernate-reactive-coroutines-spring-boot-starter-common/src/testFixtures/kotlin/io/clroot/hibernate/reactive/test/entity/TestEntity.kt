@@ -3,7 +3,7 @@ package io.clroot.hibernate.reactive.test.entity
 import jakarta.persistence.*
 
 /**
- * 테스트용 엔티티
+ * Entity for tests.
  */
 @Entity
 @Table(name = "test_entity")

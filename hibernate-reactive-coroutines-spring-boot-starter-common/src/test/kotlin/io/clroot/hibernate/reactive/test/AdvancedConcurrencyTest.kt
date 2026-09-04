@@ -15,9 +15,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 고급 동시성 테스트.
+ * Advanced concurrency tests.
  *
- * 대규모 동시 트랜잭션, 경쟁 조건, 트랜잭션 격리를 검증합니다.
+ * Verifies high-volume concurrent transactions, races, and transaction isolation.
  */
 @SpringBootTest(classes = [TestApplication::class])
 class AdvancedConcurrencyTest : IntegrationTestBase() {
@@ -29,11 +29,11 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
     private lateinit var tx: ReactiveTransactionExecutor
 
     init {
-        describe("고급 동시성 테스트") {
+        describe("advanced concurrency") {
 
-            context("대규모 동시 트랜잭션") {
+            context("high-volume concurrent transactions") {
 
-                it("50개 동시 저장이 모두 성공한다") {
+                it("persists all 50 entities concurrently") {
                     val count = 50
 
                     val savedEntities = coroutineScope {
@@ -54,15 +54,13 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                     afterCount shouldBe count.toLong()
                 }
 
-                it("100개 동시 조회가 모두 성공한다") {
-                    // given
+                it("completes all 100 concurrent reads") {
                     val entities = tx.transactional {
                         (1..10).map { i ->
                             testEntityRepository.save(TestEntity(name = "read-target-$i", value = i))
                         }
                     }
 
-                    // when
                     val readCount = 100
                     val results = coroutineScope {
                         (1..readCount).map {
@@ -74,7 +72,6 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                         }.awaitAll()
                     }
 
-                    // then
                     results shouldHaveSize readCount
                     results.forEach { list ->
                         list shouldHaveSize 10
@@ -82,14 +79,13 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                 }
             }
 
-            context("읽기/쓰기 경쟁") {
+            context("read/write races") {
 
-                it("동시 쓰기 중 읽기가 일관된 결과를 반환한다") {
+                it("returns consistent results while writes run concurrently") {
                     val writeCount = AtomicInteger(0)
                     val readResults = mutableListOf<Long>()
 
                     coroutineScope {
-                        // 쓰기 작업 20개
                         val writeJobs = (1..20).map { i ->
                             async {
                                 tx.transactional {
@@ -99,7 +95,6 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                             }
                         }
 
-                        // 읽기 작업 20개 (쓰기와 동시에)
                         val readJobs = (1..20).map {
                             async {
                                 tx.readOnly {
@@ -116,26 +111,23 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                         readJobs.awaitAll()
                     }
 
-                    // 최종 상태 확인
                     val finalCount = tx.readOnly { testEntityRepository.count() }
                     finalCount shouldBe 20
 
-                    // 읽기 결과는 0 ~ 20 사이의 일관된 값이어야 함 (트랜잭션 격리)
+                    // Every read observes a transactionally consistent snapshot.
                     readResults.forEach { count ->
                         count shouldBeGreaterThanOrEqual 0
-                        count shouldBe count // 각 읽기는 일관된 스냅샷
+                        count shouldBe count // Each read observes a consistent snapshot.
                     }
                 }
 
-                it("여러 트랜잭션이 서로 다른 엔티티를 동시에 수정해도 충돌 없음") {
-                    // given - 10개 엔티티 생성
+                it("updates distinct entities concurrently without conflicts") {
                     val entities = tx.transactional {
                         (1..10).map { i ->
                             testEntityRepository.save(TestEntity(name = "update-target-$i", value = i))
                         }
                     }
 
-                    // when - 각 엔티티를 다른 트랜잭션에서 동시 수정
                     coroutineScope {
                         entities.map { entity ->
                             async {
@@ -148,7 +140,6 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                         }.awaitAll()
                     }
 
-                    // then
                     val updated = tx.readOnly { testEntityRepository.findAll().toList() }
                     updated shouldHaveSize 10
                     updated.forEach { entity ->
@@ -158,22 +149,20 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                 }
             }
 
-            context("트랜잭션 격리 검증") {
+            context("transaction isolation") {
 
-                it("트랜잭션 내 변경이 커밋 전에는 다른 트랜잭션에서 보이지 않는다") {
+                it("does not expose uncommitted changes to another transaction") {
                     var visibleDuringTransaction = false
 
                     coroutineScope {
-                        // 긴 트랜잭션 시작
                         val writeJob = async {
                             tx.transactional {
                                 testEntityRepository.save(TestEntity(name = "isolation-test", value = 1))
-                                // 잠시 대기하여 읽기 트랜잭션이 실행될 시간 확보
+                                // Keep the transaction open while the concurrent read executes.
                                 kotlinx.coroutines.delay(100)
                             }
                         }
 
-                        // 약간 대기 후 읽기 시도
                         kotlinx.coroutines.delay(50)
                         val readJob = async {
                             tx.readOnly {
@@ -186,7 +175,6 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                         readJob.await()
                     }
 
-                    // 트랜잭션 커밋 후에는 보여야 함
                     val afterCommit = tx.readOnly {
                         testEntityRepository.findByName("isolation-test")
                     }
@@ -194,9 +182,9 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                 }
             }
 
-            context("실패 시 격리") {
+            context("failure isolation") {
 
-                it("한 트랜잭션 실패가 다른 동시 트랜잭션에 영향을 주지 않는다") {
+                it("does not let one failed transaction affect concurrent transactions") {
                     val successCount = AtomicInteger(0)
                     val failCount = AtomicInteger(0)
 
@@ -207,7 +195,7 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                                     tx.transactional {
                                         testEntityRepository.save(TestEntity(name = "isolation-$i", value = i))
                                         if (i % 5 == 0) {
-                                            throw RuntimeException("의도적 실패: $i")
+                                            throw RuntimeException("Intentional failure: $i")
                                         }
                                         successCount.incrementAndGet()
                                     }
@@ -218,7 +206,6 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                         }.awaitAll()
                     }
 
-                    // 5, 10, 15, 20 번이 실패 → 4개 실패
                     failCount.get() shouldBe 4
                     successCount.get() shouldBe 16
 
@@ -227,13 +214,12 @@ class AdvancedConcurrencyTest : IntegrationTestBase() {
                 }
             }
 
-            context("순차적 작업 체인") {
+            context("sequential operation chains") {
 
-                it("동시에 시작된 순차 작업들이 독립적으로 완료된다") {
+                it("completes concurrently started sequential chains independently") {
                     val results = coroutineScope {
                         (1..5).map { chainId ->
                             async {
-                                // 각 체인은 3단계 작업 수행
                                 val step1 = tx.transactional {
                                     testEntityRepository.save(TestEntity(name = "chain-$chainId-step1", value = 1))
                                 }

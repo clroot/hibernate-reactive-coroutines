@@ -23,58 +23,51 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
     private lateinit var tx: ReactiveTransactionExecutor
 
     companion object {
-        // 각 테스트에서 고유한 value를 사용하기 위한 카운터
-        // 다른 테스트 클래스와 충돌하지 않도록 높은 값에서 시작
+        // Start outside the ranges used by other integration tests.
         private val valueCounter = AtomicInteger(50000)
     }
 
     init {
-        describe("@Query 어노테이션") {
+        describe("@Query annotation") {
 
             context("Named Parameter + @Param") {
-                it("@Param으로 지정한 이름으로 파라미터를 바인딩한다") {
+                it("binds parameters by the name declared with @Param") {
                     val uniqueValue = valueCounter.incrementAndGet()
 
-                    // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "query_named_1", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "query_named_2", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "query_named_3", value = uniqueValue + 1))
                     }
 
-                    // when
                     val found = tx.readOnly {
                         testEntityRepository.findByValueWithQuery(uniqueValue)
                     }
 
-                    // then
                     found shouldHaveSize 2
                     found.map { it.name } shouldContainExactlyInAnyOrder listOf("query_named_1", "query_named_2")
                 }
             }
 
-            context("Named Parameter (자동 추출)") {
-                it("@Param 없이도 Kotlin 파라미터 이름으로 바인딩한다") {
+            context("Named Parameter (automatic extraction)") {
+                it("binds parameters by Kotlin parameter name without @Param") {
                     val uniqueValue = valueCounter.incrementAndGet()
                     val uniqueName = "auto_param_$uniqueValue"
 
-                    // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = uniqueName, value = uniqueValue))
                     }
 
-                    // when
                     val found = tx.readOnly {
                         testEntityRepository.findByNameAndValueWithQuery(uniqueName, uniqueValue)
                     }
 
-                    // then
                     found.shouldNotBeNull()
                     found.name shouldBe uniqueName
                     found.value shouldBe uniqueValue
                 }
 
-                it("일치하지 않으면 null 반환") {
+                it("returns null when no entity matches") {
                     val found = tx.readOnly {
                         testEntityRepository.findByNameAndValueWithQuery("nonexistent_${System.nanoTime()}", 999999)
                     }
@@ -84,10 +77,9 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
             }
 
             context("Positional Parameter") {
-                it("?1, ?2 형식으로 파라미터를 바인딩한다") {
+                it("binds parameters in ?1 and ?2 form") {
                     val baseValue = valueCounter.addAndGet(100)
 
-                    // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "positional_1", value = baseValue + 10))
                         testEntityRepository.save(TestEntity(name = "positional_2", value = baseValue + 20))
@@ -95,35 +87,30 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
                         testEntityRepository.save(TestEntity(name = "positional_4", value = baseValue + 40))
                     }
 
-                    // when
                     val found = tx.readOnly {
                         testEntityRepository.findByValueBetweenWithQuery(baseValue + 15, baseValue + 35)
                     }
 
-                    // then
                     found shouldHaveSize 2
                     found.map { it.value } shouldContainExactlyInAnyOrder listOf(baseValue + 20, baseValue + 30)
                 }
             }
 
             context("@Modifying UPDATE") {
-                it("UPDATE 쿼리를 실행하고 영향받은 행 수를 반환한다") {
+                it("executes an UPDATE query and returns the affected row count") {
                     val uniqueValue = valueCounter.incrementAndGet()
                     val newValue = uniqueValue + 50
 
-                    // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "update_1", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "update_2", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "update_3", value = uniqueValue + 100))
                     }
 
-                    // when
                     val affected = tx.transactional {
                         testEntityRepository.updateValue(uniqueValue, newValue)
                     }
 
-                    // then
                     affected shouldBe 2
 
                     val updated = tx.readOnly {
@@ -132,7 +119,7 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
                     updated shouldHaveSize 2
                 }
 
-                it("Unit 반환 메서드는 영향받은 행 수를 노출하지 않고 정상 완료한다") {
+                it("completes a Unit-returning method without exposing the affected row count") {
                     val uniqueValue = valueCounter.incrementAndGet()
                     val newValue = uniqueValue + 50
 
@@ -147,7 +134,7 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
                     updated shouldHaveSize 1
                 }
 
-                it("clearAutomatically는 벌크 업데이트 뒤 같은 트랜잭션의 stale 엔티티를 제거한다") {
+                it("clears stale entities from the transaction after a bulk update when clearAutomatically is enabled") {
                     tx.transactional {
                         val saved = testEntityRepository.save(TestEntity(name = "before_clear", value = 1))
                         val id = saved.id!!
@@ -161,22 +148,19 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
             }
 
             context("@Modifying DELETE") {
-                it("DELETE 쿼리를 실행하고 영향받은 행 수를 반환한다") {
+                it("executes a DELETE query and returns the affected row count") {
                     val uniqueValue = valueCounter.incrementAndGet()
 
-                    // given
                     tx.transactional {
                         testEntityRepository.save(TestEntity(name = "delete_1", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "delete_2", value = uniqueValue))
                         testEntityRepository.save(TestEntity(name = "delete_3", value = uniqueValue + 100))
                     }
 
-                    // when
                     val affected = tx.transactional {
                         testEntityRepository.deleteByValueWithQuery(uniqueValue)
                     }
 
-                    // then
                     affected shouldBe 2
 
                     val remaining = tx.readOnly {
@@ -187,22 +171,19 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
             }
 
             context("@Query + Page") {
-                it("페이징과 함께 쿼리를 실행한다") {
+                it("executes a query with pagination") {
                     val uniqueValue = valueCounter.incrementAndGet()
 
-                    // given
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(TestEntity(name = "page_query_$i", value = uniqueValue))
                         }
                     }
 
-                    // when
                     val page = tx.readOnly {
                         testEntityRepository.findByValueWithQueryPageable(uniqueValue, PageRequest.of(0, 3))
                     }
 
-                    // then
                     page.content shouldHaveSize 3
                     page.totalElements shouldBe 10
                     page.totalPages shouldBe 4
@@ -210,44 +191,38 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
             }
 
             context("@Query + Slice") {
-                it("Slice로 다음 페이지 여부를 확인한다") {
+                it("reports whether a next page exists through Slice") {
                     val baseValue = valueCounter.addAndGet(100)
 
-                    // given
                     tx.transactional {
                         repeat(5) { i ->
                             testEntityRepository.save(TestEntity(name = "slice_query_$i", value = baseValue + i + 1))
                         }
                     }
 
-                    // when
                     val slice = tx.readOnly {
                         testEntityRepository.findByValueGreaterThanWithQuerySlice(baseValue, PageRequest.of(0, 3))
                     }
 
-                    // then
                     slice.content shouldHaveSize 3
                     slice.hasNext() shouldBe true
                 }
             }
 
-            context("@Query + 명시적 countQuery") {
-                it("명시적으로 지정한 countQuery를 사용한다") {
-                    val uniqueValue = valueCounter.addAndGet(100)  // 큰 간격으로 증가
+            context("@Query + explicit countQuery") {
+                it("uses the explicitly specified countQuery") {
+                    val uniqueValue = valueCounter.addAndGet(100)
 
-                    // given
                     tx.transactional {
                         repeat(7) { i ->
                             testEntityRepository.save(TestEntity(name = "explicit_count_$i", value = uniqueValue))
                         }
                     }
 
-                    // when
                     val page = tx.readOnly {
                         testEntityRepository.findByValueWithExplicitCount(uniqueValue, PageRequest.of(0, 5))
                     }
 
-                    // then
                     page.content shouldHaveSize 5
                     page.totalElements shouldBe 7
                 }

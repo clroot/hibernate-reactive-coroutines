@@ -1,13 +1,11 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
-/**
- * 쿼리 메서드의 반환 타입.
- */
+/** Query method return types. */
 public enum class QueryReturnType {
-    /** 단일 엔티티 (nullable) */
+    /** A nullable single entity. */
     SINGLE,
 
-    /** 엔티티 리스트 */
+    /** A list of entities. */
     LIST,
 
     /** Boolean (existsBy) */
@@ -19,12 +17,12 @@ public enum class QueryReturnType {
     /** Unit/Void (deleteBy) */
     VOID,
 
-    /** Page<T> (페이징 + 총 개수) */
+    /** A page with its total result count. */
     PAGE,
 
-    /** Slice<T> (페이징, 총 개수 없음) */
+    /** A slice without a total result count. */
     SLICE,
 
-    /** Int (@Modifying 쿼리의 영향받은 행 수) */
+    /** The number of rows affected by an `@Modifying` query. */
     MODIFYING,
 }

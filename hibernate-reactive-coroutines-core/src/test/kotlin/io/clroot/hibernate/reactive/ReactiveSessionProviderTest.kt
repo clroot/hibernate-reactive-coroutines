@@ -13,11 +13,7 @@ import kotlinx.coroutines.withContext
 import org.hibernate.reactive.mutiny.Mutiny
 import java.util.function.Function
 
-/**
- * ReactiveSessionProvider 단위 테스트.
- *
- * read/write 헬퍼의 세션 재사용 및 ReadOnly 검증 로직을 테스트합니다.
- */
+/** Tests session reuse and read-only enforcement for read and write helpers. */
 class ReactiveSessionProviderTest : DescribeSpec({
 
     describe("ReactiveSessionProvider") {
@@ -26,9 +22,9 @@ class ReactiveSessionProviderTest : DescribeSpec({
             ReactiveSessionProvider(mockk()).shouldBeInstanceOf<ReactiveSessionOperations>()
         }
 
-        context("read 헬퍼") {
+        context("read helper") {
 
-            it("컨텍스트가 없으면 withSession으로 새 세션을 생성한다") {
+            it("opens a session when no context exists") {
                 val session = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
 
@@ -52,7 +48,7 @@ class ReactiveSessionProviderTest : DescribeSpec({
                 }
             }
 
-            it("컨텍스트가 있으면 기존 세션을 재사용한다") {
+            it("reuses the current session when a context exists") {
                 val existingSession = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
                 val context = ReactiveSessionContext(
@@ -71,13 +67,12 @@ class ReactiveSessionProviderTest : DescribeSpec({
                     result shouldBe "reused"
                 }
 
-                // withSession이 호출되지 않아야 함 (세션 재사용)
                 verify(exactly = 0) {
                     sessionFactory.withSession(any<Function<Mutiny.Session, Uni<String>>>())
                 }
             }
 
-            it("READ_ONLY 컨텍스트에서도 read는 정상 동작한다") {
+            it("uses the current session in a read-only context") {
                 val existingSession = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
                 val context = ReactiveSessionContext(
@@ -98,9 +93,9 @@ class ReactiveSessionProviderTest : DescribeSpec({
             }
         }
 
-        context("write 헬퍼") {
+        context("write helper") {
 
-            it("컨텍스트가 없으면 withTransaction으로 새 트랜잭션을 생성한다") {
+            it("opens a transaction when no context exists") {
                 val session = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
 
@@ -124,7 +119,7 @@ class ReactiveSessionProviderTest : DescribeSpec({
                 }
             }
 
-            it("READ_WRITE 컨텍스트가 있으면 기존 세션을 재사용한다") {
+            it("reuses the current session in a read-write context") {
                 val existingSession = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
                 val context = ReactiveSessionContext(
@@ -143,13 +138,12 @@ class ReactiveSessionProviderTest : DescribeSpec({
                     result shouldBe "reused-write"
                 }
 
-                // withTransaction이 호출되지 않아야 함 (세션 재사용)
                 verify(exactly = 0) {
                     sessionFactory.withTransaction(any<Function<Mutiny.Session, Uni<String>>>())
                 }
             }
 
-            it("READ_ONLY 컨텍스트에서 write를 호출하면 ReadOnlyTransactionException이 발생한다") {
+            it("throws ReadOnlyTransactionException in a read-only context") {
                 val existingSession = mockk<Mutiny.Session>()
                 val sessionFactory = mockk<Mutiny.SessionFactory>()
                 val context = ReactiveSessionContext(
@@ -171,12 +165,12 @@ class ReactiveSessionProviderTest : DescribeSpec({
         }
 
         context("ReadOnlyTransactionException") {
-            it("메시지를 포함한다") {
+            it("retains its message") {
                 val exception = ReadOnlyTransactionException("test message")
                 exception.message shouldBe "test message"
             }
 
-            it("IllegalStateException을 상속한다") {
+            it("extends IllegalStateException") {
                 val exception = ReadOnlyTransactionException("test")
                 (exception is IllegalStateException) shouldBe true
             }

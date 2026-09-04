@@ -22,14 +22,14 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
     }
 
     describe("HibernateReactiveRepositoryBeanNameGenerator") {
-        it("유일한 리포지토리는 기존 단순 빈 이름을 유지한다") {
+        it("uses the conventional simple bean name for a unique repository") {
             val repository = Alpha.CustomerRepository::class.java
 
             HibernateReactiveRepositoryBeanNameGenerator.generate(listOf(repository)) { true }
                 .shouldContainExactly(mapOf(repository to "customerRepository"))
         }
 
-        it("서로 다른 패키지 경로의 동명 리포지토리는 완전한 클래스명으로 구분한다") {
+        it("uses fully qualified names for repositories with the same simple name") {
             val first = Alpha.OrderRepository::class.java
             val second = Beta.OrderRepository::class.java
 
@@ -42,7 +42,7 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
                 )
         }
 
-        it("기존 빈이 단순 이름을 사용 중이면 완전한 클래스명으로 폴백한다") {
+        it("uses the fully qualified name when the simple name is already taken") {
             val repository = Alpha.CustomerRepository::class.java
 
             HibernateReactiveRepositoryBeanNameGenerator.generate(listOf(repository)) {
@@ -50,7 +50,7 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
             }.shouldContainExactly(mapOf(repository to repository.name))
         }
 
-        it("서로 다른 실제 패키지의 동명 리포지토리를 함께 등록한다") {
+        it("registers repositories with the same simple name from separate packages") {
             GenericApplicationContext().use { context ->
                 registerRepositories(
                     context,
@@ -63,7 +63,7 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
             }
         }
 
-        it("alias가 단순 이름을 점유하면 완전한 클래스명으로 등록한다") {
+        it("uses the fully qualified name when an alias occupies the simple name") {
             GenericApplicationContext().use { context ->
                 context.registerBeanDefinition("existingBean", RootBeanDefinition(Any::class.java))
                 context.registerAlias("existingBean", "customerRepository")
@@ -78,7 +78,7 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
             }
         }
 
-        it("수동 singleton이 단순 이름을 점유하면 완전한 클래스명으로 등록한다") {
+        it("uses the fully qualified name when a singleton occupies the simple name") {
             GenericApplicationContext().use { context ->
                 context.beanFactory.registerSingleton("customerRepository", Any())
 

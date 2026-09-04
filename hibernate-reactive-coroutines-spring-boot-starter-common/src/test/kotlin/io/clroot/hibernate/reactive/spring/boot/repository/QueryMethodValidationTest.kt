@@ -7,8 +7,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 
 /**
- * 예전에는 시작 시점을 통과한 뒤 런타임에 조용히 오동작하던 선언들이
- * 이제 명확한 메시지로 거부되는지 검증합니다.
+ * Verifies that invalid declarations fail with clear messages rather than
+ * silently misbehaving at runtime after startup.
  */
 class QueryMethodValidationTest : DescribeSpec({
     val parser = QueryMethodParser(Member::class.java)
@@ -22,7 +22,6 @@ class QueryMethodValidationTest : DescribeSpec({
             parse("findByNameIgnoreCase").hql shouldBe
                 "FROM Member e WHERE LOWER(e.name) = LOWER(:p0)"
 
-            // 대조군: IgnoreCase가 없으면 그대로 비교합니다.
             parse("findByName").hql shouldBe "FROM Member e WHERE e.name = :p0"
         }
 

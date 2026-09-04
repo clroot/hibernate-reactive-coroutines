@@ -7,20 +7,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 
 /**
- * HQL 기록 기능을 위한 테스트 설정.
+ * Test configuration for HQL recording.
  *
- * [HqlRecorder]와 [RecordingSessionProvider]를 Bean으로 등록합니다.
- * `@Primary`를 사용하여 기존 [TransactionalAwareSessionProvider]를 대체합니다.
- *
- * 사용 예:
- * ```kotlin
- * @SpringBootTest
- * @Import(RecordingTestConfiguration::class)
- * class MyTest : IntegrationTestBase() {
- *     @Autowired
- *     lateinit var hqlRecorder: HqlRecorder
- * }
- * ```
+ * The primary provider wraps sessions so test queries can be asserted.
  */
 @TestConfiguration
 class RecordingTestConfiguration {

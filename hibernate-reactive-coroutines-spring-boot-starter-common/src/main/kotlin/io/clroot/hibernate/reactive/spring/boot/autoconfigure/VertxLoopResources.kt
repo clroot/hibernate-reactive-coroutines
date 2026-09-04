@@ -8,19 +8,17 @@ import reactor.netty.resources.LoopResources
 import java.time.Duration
 
 /**
- * reactor-netty가 Vert.x의 이벤트 루프 그룹을 그대로 사용하게 하는 [LoopResources] 구현.
+ * [LoopResources] implementation that exposes Vert.x's event-loop group to reactor-netty.
  *
- * 내장 Netty 리액티브 웹 서버가 이 리소스로 실행되면 HTTP 서빙과 Hibernate Reactive의
- * DB I/O가 같은 스레드 풀(전부 `VertxThread`)에서 동작합니다. 요청이 처음부터 Vert.x
- * 이벤트 루프에서 시작하므로 `transactional {}` 진입 시 다른 풀로 넘어가는 스레드 전환이
- * 사라지고, Vert.x의 blocked-thread checker와 BlockHound 통합이 웹 계층까지 커버합니다.
+ * HTTP serving and Hibernate Reactive database I/O then share `VertxThread`s. Requests begin on
+ * a Vert.x event loop, avoiding a pool switch when entering `transactional {}` and extending the
+ * Vert.x blocked-thread checker and BlockHound integration to the web layer.
  *
- * 생명주기: 이벤트 루프의 소유자는 [Vertx] 빈입니다. reactor-netty가 종료 시
- * [dispose]/[disposeLater]를 호출해도 루프를 닫지 않습니다.
+ * The [Vertx] bean owns the event loops. [dispose] and [disposeLater] intentionally do not close
+ * them when reactor-netty shuts down.
  *
- * 참고: 이벤트 루프 그룹 접근에 Vert.x 5의 internal API([VertxInternal])를 사용합니다.
- * Vert.x 5는 공개 API에서 `nettyEventLoopGroup()`을 제거했기 때문이며,
- * 마이너 업그레이드에서 시그니처가 바뀔 수 있습니다.
+ * This uses Vert.x 5's internal [VertxInternal] API because its public API no longer exposes
+ * `nettyEventLoopGroup()`. Minor Vert.x upgrades may change that internal signature.
  */
 public class VertxLoopResources(vertx: Vertx) : LoopResources {
 
@@ -35,7 +33,7 @@ public class VertxLoopResources(vertx: Vertx) : LoopResources {
     override fun onServer(useNative: Boolean): EventLoopGroup = eventLoopGroup
 
     override fun dispose() {
-        // Vert.x 빈이 루프를 소유하므로 웹 계층 종료 시 닫지 않는다.
+        // The Vert.x bean owns the loops.
     }
 
     override fun disposeLater(quietPeriod: Duration, timeout: Duration): Mono<Void> = Mono.empty()

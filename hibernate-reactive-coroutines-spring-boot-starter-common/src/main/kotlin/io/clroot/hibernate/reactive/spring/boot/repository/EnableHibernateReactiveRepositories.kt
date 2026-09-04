@@ -5,23 +5,23 @@ import org.springframework.core.annotation.AliasFor
 import kotlin.reflect.KClass
 
 /**
- * Hibernate Reactive 기반 CoroutineCrudRepository 스캔을 활성화하는 어노테이션.
+ * Enables scanning for Hibernate Reactive [CoroutineCrudRepository] interfaces.
  *
- * 기본적으로 Auto-configuration이 활성화되어 있으므로 이 어노테이션 없이도 동작합니다.
- * 특정 패키지만 스캔하고 싶을 때 이 어노테이션을 사용합니다.
+ * Auto-configuration scans the application package by default. Use this annotation to limit scanning to
+ * specific packages.
  *
- * 사용 예:
+ * Example:
  * ```kotlin
- * // 기본: @SpringBootApplication 패키지 기준으로 스캔
+ * // Scan the @SpringBootApplication package.
  * @SpringBootApplication
  * class MyApplication
  *
- * // 특정 패키지만 스캔
+ * // Scan only a specific package.
  * @EnableHibernateReactiveRepositories(basePackages = ["com.example.domain.repository"])
  * @SpringBootApplication
  * class MyApplication
  *
- * // 마커 클래스 기준으로 스캔
+ * // Derive a package from a marker class.
  * @EnableHibernateReactiveRepositories(basePackageClasses = [UserRepository::class])
  * @SpringBootApplication
  * class MyApplication
@@ -33,20 +33,17 @@ import kotlin.reflect.KClass
 @Import(HibernateReactiveRepositoriesRegistrarSelector::class)
 public annotation class EnableHibernateReactiveRepositories(
     /**
-     * 스캔할 베이스 패키지 (basePackages의 별칭)
+     * Alias for [basePackages].
      */
     @get:AliasFor("basePackages")
     val value: Array<String> = [],
 
-    /**
-     * 스캔할 베이스 패키지
-     */
+    /** Base packages to scan. */
     @get:AliasFor("value")
     val basePackages: Array<String> = [],
 
     /**
-     * 스캔할 베이스 패키지를 결정하는 마커 클래스
-     * 해당 클래스가 위치한 패키지가 베이스 패키지로 사용됩니다.
+     * Marker classes whose packages are scanned.
      */
     val basePackageClasses: Array<KClass<*>> = [],
 )

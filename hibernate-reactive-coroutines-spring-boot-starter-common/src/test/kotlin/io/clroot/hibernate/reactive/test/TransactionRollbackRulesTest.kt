@@ -13,16 +13,16 @@ import org.springframework.transaction.UnexpectedRollbackException
 import java.io.IOException
 
 /**
- * Spring @Transactional 롤백 규칙 테스트.
+ * Tests Spring's `@Transactional` rollback rules.
  *
  * @see <a href="https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/rolling-back.html">
  *     Rolling Back a Declarative Transaction</a>
  *
- * ## Spring 표준 롤백 규칙
- * - RuntimeException 및 Error: 기본적으로 롤백
- * - Checked Exception: 기본적으로 롤백하지 않음 (커밋)
- * - rollbackFor: 지정된 예외에서 롤백
- * - noRollbackFor: 지정된 예외에서 롤백하지 않음
+ * ## Default rules
+ * - `RuntimeException` and `Error` roll back by default.
+ * - Checked exceptions commit by default.
+ * - `rollbackFor` forces a rollback for specified exceptions.
+ * - `noRollbackFor` prevents a rollback for specified exceptions.
  */
 @SpringBootTest(classes = [TestApplication::class, RollbackTestService::class])
 class TransactionRollbackRulesTest : IntegrationTestBase() {
@@ -31,33 +31,27 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
     private lateinit var rollbackService: RollbackTestService
 
     init {
-        describe("기본 롤백 동작 - RuntimeException") {
+        describe("default rollback behavior for RuntimeException") {
 
-            it("RuntimeException 발생 시 자동으로 롤백된다") {
-                // when
+            it("rolls back automatically when RuntimeException is thrown") {
                 shouldThrow<RuntimeException> {
                     rollbackService.saveAndThrowRuntimeException("runtime-rollback")
                 }
 
-                // then - 롤백되어 데이터가 없어야 함
                 rollbackService.findByName("runtime-rollback").shouldBeNull()
             }
 
-            it("IllegalStateException 발생 시 자동으로 롤백된다") {
-                // when
+            it("rolls back automatically when IllegalStateException is thrown") {
                 shouldThrow<IllegalStateException> {
                     rollbackService.saveAndThrowIllegalStateException("illegal-state-rollback")
                 }
 
-                // then
                 rollbackService.findByName("illegal-state-rollback").shouldBeNull()
             }
 
-            it("예외 없이 정상 완료되면 커밋된다") {
-                // when
+            it("commits when it completes normally") {
                 val entity = rollbackService.saveSuccessfully("success-commit", 100)
 
-                // then
                 entity.id.shouldNotBeNull()
                 val found = rollbackService.findById(entity.id!!)
                 found.shouldNotBeNull()
@@ -65,84 +59,74 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
             }
         }
 
-        describe("Checked Exception 롤백 동작") {
+        describe("checked exception rollback behavior") {
             /**
-             * Spring 표준: Checked Exception은 기본적으로 롤백하지 않음
+             * Spring does not roll back checked exceptions by default.
              *
              * DefaultTransactionAttribute.rollbackOn(Throwable ex):
              *   return (ex instanceof RuntimeException || ex instanceof Error)
              *
-             * IOException은 RuntimeException이 아니므로 롤백하지 않고 커밋됨.
-             * Kotlin에서는 checked/unchecked 구분이 언어 레벨에서 없지만,
-             * Spring은 JVM 바이트코드 레벨에서 예외 타입을 체크하므로 동일하게 동작함.
+             * `IOException` is not a `RuntimeException`, so this transaction commits.
+             * Kotlin has no language-level checked exceptions, but Spring applies the
+             * same rule based on the JVM exception type.
              */
-            it("Checked Exception (IOException)은 기본적으로 롤백하지 않는다") {
-                // when
+            it("commits by default when IOException is thrown") {
                 shouldThrow<IOException> {
                     rollbackService.saveAndThrowCheckedException("checked-no-rollback")
                 }
 
-                // then - Checked Exception이므로 커밋됨 (롤백 안 함)
                 val found = rollbackService.findByName("checked-no-rollback")
                 found.shouldNotBeNull()
                 found.value shouldBe 3
             }
         }
 
-        describe("rollbackFor 옵션") {
+        describe("rollbackFor") {
 
-            it("rollbackFor에 지정된 Checked Exception은 롤백된다") {
-                // when
+            it("rolls back a checked exception specified by rollbackFor") {
                 shouldThrow<IOException> {
                     rollbackService.saveAndThrowCheckedWithRollbackFor("rollback-for-checked")
                 }
 
-                // then - rollbackFor로 지정되어 롤백됨
                 rollbackService.findByName("rollback-for-checked").shouldBeNull()
             }
 
-            it("rollbackFor에 지정된 커스텀 예외도 롤백된다") {
-                // when
+            it("rolls back a custom exception specified by rollbackFor") {
                 shouldThrow<CustomCheckedException> {
                     rollbackService.saveAndThrowCustomCheckedException("custom-checked-rollback")
                 }
 
-                // then
                 rollbackService.findByName("custom-checked-rollback").shouldBeNull()
             }
         }
 
-        describe("noRollbackFor 옵션") {
+        describe("noRollbackFor") {
 
-            it("noRollbackFor에 지정된 RuntimeException은 롤백되지 않는다") {
-                // when
+            it("commits a RuntimeException specified by noRollbackFor") {
                 shouldThrow<IllegalArgumentException> {
                     rollbackService.saveAndThrowNoRollbackForException("no-rollback-illegal-arg")
                 }
 
-                // then - noRollbackFor로 지정되어 커밋됨
                 val found = rollbackService.findByName("no-rollback-illegal-arg")
                 found.shouldNotBeNull()
                 found.value shouldBe 6
             }
 
-            it("noRollbackFor에 지정된 커스텀 예외도 롤백되지 않는다") {
-                // when
+            it("commits a custom exception specified by noRollbackFor") {
                 shouldThrow<CustomRuntimeException> {
                     rollbackService.saveAndThrowCustomNoRollbackException("custom-no-rollback")
                 }
 
-                // then - 커밋됨
                 val found = rollbackService.findByName("custom-no-rollback")
                 found.shouldNotBeNull()
                 found.value shouldBe 7
             }
         }
 
-        describe("중첩 트랜잭션에서의 롤백 전파") {
+        describe("rollback propagation in nested transactions") {
 
-            it("내부 트랜잭션 실패 시 외부도 함께 롤백된다") {
-                // REQUIRED 전파에서 내부 예외는 외부까지 전파됨
+            it("rolls back the outer transaction when the inner transaction fails") {
+                // REQUIRED propagation shares the outer transaction.
                 shouldThrow<RuntimeException> {
                     rollbackService.outerSaveAndCallInnerThatFails(
                         "outer-propagate",
@@ -150,14 +134,12 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
                     )
                 }
 
-                // 둘 다 같은 트랜잭션이므로 전체 롤백
                 rollbackService.findByName("outer-propagate").shouldBeNull()
                 rollbackService.findByName("inner-propagate").shouldBeNull()
             }
 
-            it("내부 트랜잭션이 rollback-only로 마킹되면 외부에서 예외를 catch해도 전체 롤백된다") {
-                // REQUIRED 전파에서 내부 트랜잭션이 예외를 던지면 트랜잭션이 rollback-only로 마킹됨
-                // 외부에서 예외를 catch해도 커밋 시점에 UnexpectedRollbackException 발생
+            it("rolls back when an inner transaction is marked rollback-only even if the outer method catches its exception") {
+                // The shared transaction remains rollback-only; commit raises UnexpectedRollbackException.
                 shouldThrow<UnexpectedRollbackException> {
                     rollbackService.outerCatchesInnerException(
                         "outer-catch",
@@ -165,42 +147,36 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
                     )
                 }
 
-                // then - 두 엔티티 모두 롤백되었는지 확인
                 rollbackService.findByName("outer-catch").shouldBeNull()
                 rollbackService.findByName("inner-caught").shouldBeNull()
             }
         }
 
-        describe("여러 엔티티 저장 시 롤백") {
+        describe("saving multiple entities") {
 
-            it("여러 엔티티를 정상적으로 저장하고 커밋한다") {
+            it("commits multiple saved entities") {
                 val names = listOf("multi-1", "multi-2", "multi-3")
 
-                // 정상 저장
                 val saved = rollbackService.saveMultipleSuccessfully(names)
                 saved.size shouldBe 3
                 saved.forEach { it.id.shouldNotBeNull() }
 
-                // 저장된 엔티티 확인
                 saved.forEach { entity ->
                     rollbackService.findById(entity.id!!).shouldNotBeNull()
                 }
             }
         }
 
-        describe("롤백 후 데이터 일관성") {
+        describe("data consistency after rollback") {
 
-            it("롤백 후 이전 상태가 유지된다") {
-                // given - 먼저 데이터 저장
+            it("preserves the previous state after rollback") {
                 val existing = rollbackService.saveSuccessfully("existing-before-rollback", 999)
                 existing.id.shouldNotBeNull()
 
-                // when - 새 저장 시도 중 예외 발생
                 shouldThrow<RuntimeException> {
                     rollbackService.saveAndThrowRuntimeException("should-be-rolled-back")
                 }
 
-                // then - 롤백된 데이터는 없고, 기존 데이터는 유지
                 rollbackService.findByName("should-be-rolled-back").shouldBeNull()
                 rollbackService.findById(existing.id!!)?.name shouldBe "existing-before-rollback"
             }

@@ -17,7 +17,7 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
     val sessionProvider = mockk<TransactionalAwareSessionProvider>()
     val transactionExecutor = mockk<ReactiveTransactionExecutor>()
 
-    // HQL 엔티티 이름은 JPA 메타모델에서 조회하므로 테스트에서도 등록된 엔티티처럼 동작시킵니다.
+    // HQL entity names come from the JPA metamodel, so mock every test class as a registered entity.
     val metamodel = mockk<Metamodel>()
     every { sessionProvider.metamodel } returns metamodel
     every { metamodel.entity(any<Class<*>>()) } answers {
@@ -30,7 +30,7 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
 
         context("getObject") {
 
-            it("Repository 인터페이스의 프록시를 생성한다") {
+            it("creates a proxy for a repository interface") {
                 val factoryBean = HibernateReactiveRepositoryFactoryBean(TestUserRepository::class.java)
                 factoryBean.sessionProvider = sessionProvider
                 factoryBean.transactionExecutor = transactionExecutor
@@ -40,7 +40,7 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
                 proxy.shouldBeInstanceOf<TestUserRepository>()
             }
 
-            it("제네릭 타입 파라미터가 있는 Repository도 처리한다") {
+            it("handles a repository with generic type parameters") {
                 val factoryBean = HibernateReactiveRepositoryFactoryBean(TestOrderRepository::class.java)
                 factoryBean.sessionProvider = sessionProvider
                 factoryBean.transactionExecutor = transactionExecutor
@@ -53,7 +53,7 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
 
         context("getObjectType") {
 
-            it("Repository 인터페이스 클래스를 반환한다") {
+            it("returns the repository interface class") {
                 val factoryBean = HibernateReactiveRepositoryFactoryBean(TestUserRepository::class.java)
 
                 factoryBean.objectType shouldBe TestUserRepository::class.java
@@ -62,16 +62,16 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
 
         context("isSingleton") {
 
-            it("true를 반환한다") {
+            it("returns true") {
                 val factoryBean = HibernateReactiveRepositoryFactoryBean(TestUserRepository::class.java)
 
                 factoryBean.isSingleton shouldBe true
             }
         }
 
-        context("extractGenericTypes 예외 처리") {
+        context("extractGenericTypes error handling") {
 
-            it("CoroutineCrudRepository를 상속하지 않는 인터페이스는 예외를 던진다") {
+            it("throws for an interface that does not extend CoroutineCrudRepository") {
                 val factoryBean = HibernateReactiveRepositoryFactoryBean(
                     @Suppress("UNCHECKED_CAST")
                     (InvalidRepository::class.java as Class<CoroutineCrudRepository<*, *>>),
@@ -87,15 +87,12 @@ class HibernateReactiveRepositoryFactoryBeanTest : DescribeSpec({
     }
 }) {
     companion object {
-        // 테스트용 엔티티
         class User(val id: Long, val name: String)
         class Order(val id: String, val amount: Int)
 
-        // 테스트용 Repository
         interface TestUserRepository : CoroutineCrudRepository<User, Long>
         interface TestOrderRepository : CoroutineCrudRepository<Order, String>
 
-        // 잘못된 Repository (CoroutineCrudRepository를 상속하지 않음)
         interface InvalidRepository
     }
 }

@@ -3,7 +3,7 @@ package io.clroot.hibernate.reactive.test.entity
 import jakarta.persistence.*
 
 /**
- * Lazy Loading 테스트용 자식 엔티티.
+ * Child entity for lazy-loading tests.
  */
 @Entity
 @Table(name = "child_entity")

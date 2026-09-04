@@ -20,13 +20,12 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
 /**
- * share-event-loops opt-in이 켜지면 내장 Netty 리액티브 웹 서버가
- * 스타터의 Vert.x 이벤트 루프 위에서 실행되는지 검증하는 E2E 테스트.
+ * End-to-end test that verifies the embedded Netty reactive web server runs on
+ * the starter's Vert.x event loops when `share-event-loops` is enabled.
  *
- * 핸들러에서 세 가지를 확인합니다:
- * 1. 요청 처리 스레드가 VertxThread다 (reactor-netty 자체 풀이 아님)
- * 2. 그 스레드가 Vertx 빈의 이벤트 루프 그룹 소속이다
- * 3. 같은 요청 안의 DB 트랜잭션도 같은 Vertx 인스턴스에서 실행된다
+ * The handler verifies that the request runs on a VertxThread belonging to the
+ * Vert.x bean's event loop group and that its database transaction uses the
+ * same Vert.x instance.
  */
 @SpringBootTest(
     classes = [TestApplication::class, VertxEventLoopSharingIntegrationTest.ThreadInfoRoutes::class],
@@ -62,9 +61,9 @@ class VertxEventLoopSharingIntegrationTest : IntegrationTestBase() {
     private lateinit var environment: Environment
 
     init {
-        describe("이벤트 루프 공유 (share-event-loops=true)") {
+        describe("event loop sharing (share-event-loops=true)") {
 
-            it("HTTP 요청과 DB 트랜잭션이 같은 Vert.x 이벤트 루프 풀에서 실행된다") {
+            it("runs the HTTP request and database transaction on the same Vert.x event loop pool") {
                 val port = environment.getProperty("local.server.port")
                     ?: error("local.server.port is not set — the web server did not start")
 

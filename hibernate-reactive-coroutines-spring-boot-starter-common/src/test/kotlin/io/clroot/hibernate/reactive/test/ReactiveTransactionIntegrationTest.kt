@@ -29,7 +29,7 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
     init {
         describe("ReactiveSessionProvider") {
             context("write") {
-                it("엔티티를 저장할 수 있다") {
+                it("saves an entity") {
                     val entity = TestEntity(name = "test", value = 100)
 
                     val saved = sessions.write { session ->
@@ -43,25 +43,22 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
             }
 
             context("read") {
-                it("저장된 엔티티를 조회할 수 있다") {
-                    // given
+                it("finds a saved entity") {
                     val entity = TestEntity(name = "findMe", value = 200)
                     val saved = sessions.write { session ->
                         session.persist(entity).replaceWith(entity)
                     }
 
-                    // when
                     val found = sessions.read { session ->
                         session.find(TestEntity::class.java, saved.id)
                     }
 
-                    // then
                     found.shouldNotBeNull()
                     found.name shouldBe "findMe"
                     found.value shouldBe 200
                 }
 
-                it("존재하지 않는 엔티티는 null을 반환한다") {
+                it("returns null for a nonexistent entity") {
                     val found = sessions.read { session ->
                         session.find(TestEntity::class.java, 99999L)
                     }
@@ -73,7 +70,7 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
 
         describe("ReactiveTransactionExecutor") {
             context("transactional") {
-                it("여러 write 작업이 원자적으로 수행된다") {
+                it("performs multiple write operations atomically") {
                     val result = tx.transactional {
                         val entity1 = TestEntity(name = "atomic1", value = 1)
                         val entity2 = TestEntity(name = "atomic2", value = 2)
@@ -91,7 +88,7 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                     result shouldBe "success"
                 }
 
-                it("예외 발생 시 모든 변경이 롤백된다") {
+                it("rolls back all changes when an exception occurs") {
                     var savedId: Long? = null
 
                     shouldThrow<RuntimeException> {
@@ -102,27 +99,25 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                             }
                             savedId = saved.id
 
-                            throw RuntimeException("의도적 롤백")
+                            throw RuntimeException("intentional rollback")
                         }
                     }
 
                     savedId.shouldNotBeNull()
 
-                    // 롤백 확인 - 새 세션에서 조회
                     val found = sessions.read { session ->
                         session.find(TestEntity::class.java, savedId)
                     }
                     found.shouldBeNull()
                 }
 
-                it("중첩된 transactional 블록에서 세션이 재사용된다") {
+                it("reuses the session in nested transactional blocks") {
                     val result = tx.transactional {
                         val outer = TestEntity(name = "outer", value = 1)
                         sessions.write { session ->
                             session.persist(outer).replaceWith(outer)
                         }
 
-                        // 중첩 transactional
                         tx.transactional {
                             val inner = TestEntity(name = "inner", value = 2)
                             sessions.write { session ->
@@ -136,7 +131,7 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                     result shouldBe "nested success"
                 }
 
-                it("호출자의 코루틴 컨텍스트를 트랜잭션 블록에 전파한다") {
+                it("propagates the caller coroutine context into the transaction block") {
                     val traceContext = ThreadLocal<String>()
                     withContext(CoroutineName("request-trace") + traceContext.asContextElement("trace-123")) {
                         tx.transactional {
@@ -148,26 +143,23 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
             }
 
             context("readOnly") {
-                it("read 작업은 정상 수행된다") {
-                    // given
+                it("performs read operations") {
                     val entity = TestEntity(name = "readOnly", value = 500)
                     val saved = sessions.write { session ->
                         session.persist(entity).replaceWith(entity)
                     }
 
-                    // when
                     val found = tx.readOnly {
                         sessions.read { session ->
                             session.find(TestEntity::class.java, saved.id)
                         }
                     }
 
-                    // then
                     found.shouldNotBeNull()
                     found.name shouldBe "readOnly"
                 }
 
-                it("write 시도 시 ReadOnlyTransactionException이 발생한다") {
+                it("throws ReadOnlyTransactionException when a write is attempted") {
                     shouldThrow<ReadOnlyTransactionException> {
                         tx.readOnly {
                             sessions.write { session ->
@@ -178,7 +170,7 @@ class ReactiveTransactionIntegrationTest : IntegrationTestBase() {
                     }
                 }
 
-                it("dirty checking과 auto-flush를 비활성화한다") {
+                it("disables dirty checking and auto-flush") {
                     val entity = TestEntity(name = "readOnlyDirtyChecking", value = 100)
                     val saved = tx.transactional {
                         sessions.write { session ->

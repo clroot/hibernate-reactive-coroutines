@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
 /**
- * CoroutineCrudRepository 자동 구성.
+ * Auto-configuration for `CoroutineCrudRepository`.
  *
- * CoroutineCrudRepository를 구현한 인터페이스를 자동으로 스캔하고 Bean으로 등록합니다.
+ * Scans and registers interfaces that extend `CoroutineCrudRepository`.
  */
 @AutoConfiguration(after = [HibernateReactiveAutoConfiguration::class])
 @ConditionalOnClass(CoroutineCrudRepository::class)
@@ -18,8 +18,7 @@ public class HibernateReactiveRepositoryAutoConfiguration {
 
     public companion object {
         /**
-         * static 메서드로 BeanDefinitionRegistryPostProcessor를 등록해야
-         * Spring이 이른 시점에 처리할 수 있습니다.
+         * A static factory method lets Spring process this registry post-processor early.
          */
         @Bean
         @ConditionalOnMissingBean

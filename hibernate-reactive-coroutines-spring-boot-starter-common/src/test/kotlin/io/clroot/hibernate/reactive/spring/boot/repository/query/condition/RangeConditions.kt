@@ -3,10 +3,9 @@ package io.clroot.hibernate.reactive.spring.boot.repository.query.condition
 import io.clroot.hibernate.reactive.spring.boot.repository.query.ParameterBinder
 
 /**
- * 범위/컬렉션 조건 빌더들.
+ * Builders for range and collection conditions.
  */
 
-/** BETWEEN :p0 AND :p1 */
 internal data object BetweenCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property BETWEEN :p$paramIndex AND :p${paramIndex + 1}",
@@ -15,7 +14,6 @@ internal data object BetweenCondition : ConditionBuilder {
     )
 }
 
-/** IN */
 internal data object InCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IN :p$paramIndex",
@@ -24,7 +22,6 @@ internal data object InCondition : ConditionBuilder {
     )
 }
 
-/** NOT IN */
 internal data object NotInCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property NOT IN :p$paramIndex",

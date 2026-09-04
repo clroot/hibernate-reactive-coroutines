@@ -19,27 +19,27 @@ class HibernateReactiveRepositoryTypeFilterTest : DescribeSpec({
 
         context("match") {
 
-            it("CoroutineCrudRepository를 직접 상속하는 인터페이스는 true") {
+            it("matches an interface that directly extends CoroutineCrudRepository") {
                 val reader = createMetadataReader(DirectRepository::class.java)
                 filter.match(reader, metadataReaderFactory) shouldBe true
             }
 
-            it("CoroutineCrudRepository를 간접 상속하는 인터페이스는 true") {
+            it("matches an interface that indirectly extends CoroutineCrudRepository") {
                 val reader = createMetadataReader(IndirectRepository::class.java)
                 filter.match(reader, metadataReaderFactory) shouldBe true
             }
 
-            it("CoroutineCrudRepository 자체는 false") {
+            it("does not match CoroutineCrudRepository itself") {
                 val reader = createMetadataReader(CoroutineCrudRepository::class.java)
                 filter.match(reader, metadataReaderFactory) shouldBe false
             }
 
-            it("CoroutineCrudRepository를 상속하지 않는 인터페이스는 false") {
+            it("does not match an unrelated interface") {
                 val reader = createMetadataReader(UnrelatedInterface::class.java)
                 filter.match(reader, metadataReaderFactory) shouldBe false
             }
 
-            it("클래스(인터페이스가 아닌)는 false") {
+            it("does not match a class") {
                 val reader = createMetadataReader(SomeClass::class.java)
                 filter.match(reader, metadataReaderFactory) shouldBe false
             }
@@ -47,7 +47,6 @@ class HibernateReactiveRepositoryTypeFilterTest : DescribeSpec({
     }
 }) {
     companion object {
-        // 테스트용 타입들
         interface DirectRepository : CoroutineCrudRepository<TestEntity, Long>
         interface IndirectRepository : DirectRepository
         interface UnrelatedInterface

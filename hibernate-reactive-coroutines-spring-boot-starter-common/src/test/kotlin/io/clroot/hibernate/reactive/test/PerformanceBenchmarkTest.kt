@@ -12,12 +12,13 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.domain.PageRequest
 
 /**
- * 성능 벤치마크 테스트.
+ * Performance benchmark tests.
  *
- * 라이브러리의 기본 성능을 측정하고 기준선을 검증합니다.
- * `@Tag("benchmark")`로 표시되어 일반 테스트에서 제외됩니다.
+ * Measures baseline library performance.
+ * `@Tag("benchmark")` excludes these tests from the regular suite.
  *
- * 실행: `./gradlew :hibernate-reactive-coroutines-spring-boot-starter:benchmark` 또는 `:hibernate-reactive-coroutines-spring-boot-starter-boot4:benchmark`
+ * Run with `./gradlew :hibernate-reactive-coroutines-spring-boot-starter:benchmark` or
+ * `:hibernate-reactive-coroutines-spring-boot-starter-boot4:benchmark`.
  */
 @Tag("benchmark")
 @SpringBootTest(classes = [TestApplication::class])
@@ -35,11 +36,11 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
     )
 
     init {
-        describe("성능 벤치마크") {
+        describe("Performance benchmarks") {
 
-            context("단일 엔티티 CRUD") {
+            context("single-entity CRUD") {
 
-                it("Create 레이턴시") {
+                it("measures create latency") {
                     var counter = 0
                     val result = runner.benchmark("Single Create") {
                         tx.transactional {
@@ -53,12 +54,11 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: P95 < 100ms
+                    // Regression threshold: P95 must remain below 100 ms.
                     result.p95Ms shouldBeLessThan 100
                 }
 
-                it("Read 레이턴시") {
-                    // Setup: 조회할 엔티티 생성
+                it("measures read latency") {
                     val entity = tx.transactional {
                         repository.save(TestEntity(name = "bench-read", value = 1))
                     }
@@ -70,12 +70,11 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: P95 < 50ms
+                    // Regression threshold: P95 must remain below 50 ms.
                     result.p95Ms shouldBeLessThan 50
                 }
 
-                it("Update 레이턴시") {
-                    // Setup
+                it("measures update latency") {
                     val entity = tx.transactional {
                         repository.save(TestEntity(name = "bench-update", value = 1))
                     }
@@ -90,11 +89,11 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: P95 < 100ms
+                    // Regression threshold: P95 must remain below 100 ms.
                     result.p95Ms shouldBeLessThan 100
                 }
 
-                it("Delete 레이턴시") {
+                it("measures delete latency") {
                     var counter = 0
                     val result = runner.benchmark(
                         name = "Single Delete",
@@ -110,14 +109,14 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: P95 < 100ms
+                    // Regression threshold: P95 must remain below 100 ms.
                     result.p95Ms shouldBeLessThan 100
                 }
             }
 
-            context("배치 작업") {
+            context("batch operations") {
 
-                it("100개 엔티티 배치 저장") {
+                it("measures saving a batch of 100 entities") {
                     var batchCounter = 0
                     val result = runner.benchmark(
                         name = "Batch Save 100",
@@ -141,15 +140,14 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: 평균 < 500ms
+                    // Regression threshold: average time must remain below 500 ms.
                     result.avgTimeMs shouldBeLessThan 500.0
                 }
             }
 
-            context("페이징 조회") {
+            context("paginated reads") {
 
                 beforeEach {
-                    // 1000개 테스트 데이터 생성
                     tx.transactional {
                         (1..1000).map { i ->
                             repository.save(TestEntity(name = "paging-$i", value = i % 10))
@@ -157,22 +155,22 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                 }
 
-                it("1000개 엔티티 페이징 조회") {
+                it("measures paginated reads across 1,000 entities") {
                     val result = runner.benchmark("Paging Query") {
                         tx.readOnly {
-                            repository.findAll(PageRequest.of(50, 10)) // 중간 페이지
+                            repository.findAll(PageRequest.of(50, 10))
                         }
                     }
                     result.printReport()
 
-                    // 기준선: P95 < 100ms
+                    // Regression threshold: P95 must remain below 100 ms.
                     result.p95Ms shouldBeLessThan 100
                 }
             }
 
-            context("동시성") {
+            context("concurrency") {
 
-                it("동시 10개 트랜잭션 처리량") {
+                it("measures throughput for 10 concurrent transactions") {
                     val result = runner.benchmarkConcurrent(
                         name = "Concurrent 10 Transactions",
                         concurrency = 10,
@@ -189,7 +187,7 @@ class PerformanceBenchmarkTest : IntegrationTestBase() {
                     }
                     result.printReport()
 
-                    // 기준선: 최소 50 ops/sec
+                    // Regression threshold: throughput must remain above 50 ops/sec.
                     result.throughput shouldBeGreaterThan 50.0
                 }
             }

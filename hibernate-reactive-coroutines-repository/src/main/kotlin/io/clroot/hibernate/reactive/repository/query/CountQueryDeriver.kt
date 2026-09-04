@@ -181,11 +181,7 @@ public object CountQueryDeriver {
         )
     }
 
-    /**
-     * 최상위 `ORDER BY` 절이 있는지 확인합니다.
-     *
-     * 문자열 리터럴과 주석 안의 키워드는 [scan]이 걸러내므로 오탐이 없습니다.
-     */
+    /** Detects a top-level `ORDER BY`, ignoring keywords inside literals and comments. */
     public fun hasOrderBy(query: String): Boolean =
         scan(query).tokens.findSequence(query, "ORDER", "BY") != null
 

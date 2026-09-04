@@ -5,12 +5,9 @@ import org.testcontainers.utility.DockerImageName
 import java.sql.DriverManager
 
 /**
- * PostgreSQL TestContainer 싱글톤.
+ * Singleton PostgreSQL Testcontainer for integration tests.
  *
- * 테스트 실행 시 PostgreSQL 컨테이너를 시작하고,
- * Spring DataSource 프로퍼티를 자동으로 설정합니다.
- *
- * 스키마 격리를 통해 병렬 테스트 실행을 지원합니다.
+ * It is started on demand and supports schema isolation for parallel test execution.
  */
 object PostgreSQLTestContainer {
     private const val POSTGRES_IMAGE = "postgres:16-alpine"
@@ -29,7 +26,7 @@ object PostgreSQLTestContainer {
     }
 
     /**
-     * 컨테이너를 시작하고 JDBC URL을 반환합니다.
+     * Starts the container when necessary and returns its JDBC URL.
      */
     fun start(): String {
         if (!instance.isRunning) {
@@ -39,7 +36,7 @@ object PostgreSQLTestContainer {
     }
 
     /**
-     * 컨테이너를 정지합니다.
+     * Stops the running container.
      */
     fun stop() {
         if (instance.isRunning) {
@@ -48,9 +45,9 @@ object PostgreSQLTestContainer {
     }
 
     /**
-     * 스키마를 생성합니다.
+     * Creates a schema for test isolation.
      *
-     * @param schemaName 생성할 스키마 이름
+     * @param schemaName Schema name to create.
      */
     fun createSchema(schemaName: String) {
         DriverManager.getConnection(
@@ -63,9 +60,9 @@ object PostgreSQLTestContainer {
     }
 
     /**
-     * 스키마를 삭제합니다.
+     * Drops an isolated test schema.
      *
-     * @param schemaName 삭제할 스키마 이름
+     * @param schemaName Schema name to drop.
      */
     fun dropSchema(schemaName: String) {
         DriverManager.getConnection(
@@ -78,9 +75,9 @@ object PostgreSQLTestContainer {
     }
 
     /**
-     * Spring DataSource 시스템 프로퍼티를 설정합니다.
+     * Configures Spring DataSource system properties for the container.
      *
-     * @param schemaName 사용할 스키마 이름 (null이면 기본 스키마 사용)
+     * @param schemaName Schema to use, or the default schema when null.
      */
     fun configureSystemProperties(schemaName: String? = null) {
         val baseUrl = instance.jdbcUrl
@@ -95,7 +92,7 @@ object PostgreSQLTestContainer {
         System.setProperty("spring.datasource.username", instance.username)
         System.setProperty("spring.datasource.password", instance.password)
 
-        // 스키마 격리 시 DDL Auto를 create로 설정하여 테이블 자동 생성
+        // Isolated schemas require table creation because they start empty.
         if (schemaName != null) {
             System.setProperty("spring.jpa.hibernate.ddl-auto", "create")
         }

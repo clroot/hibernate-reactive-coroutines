@@ -10,8 +10,7 @@ import org.springframework.transaction.support.ResourceHolderSupport
 import kotlin.time.Duration
 
 /**
- * Mutiny.Session을 래핑하여 Spring TransactionSynchronizationManager에서 관리할 수 있도록 합니다.
- * Vert.x Context와 트랜잭션 메타데이터도 함께 저장하여 [ReactiveSessionContext]와 통합합니다.
+ * Spring-managed Mutiny session state, including the owning Vert.x context and transaction metadata.
  */
 public class MutinySessionHolder(
     private var session: Mutiny.Session?,
@@ -40,10 +39,7 @@ public class MutinySessionHolder(
         this.vertxContext = context
     }
 
-    /**
-     * 세션 작업에 사용할 CoroutineDispatcher를 반환합니다.
-     * Vert.x Context가 있으면 해당 dispatcher를, 없으면 null을 반환합니다.
-     */
+    /** Returns the dispatcher for the session's owning Vert.x context, when available. */
     public fun getDispatcher(): CoroutineDispatcher? {
         return vertxContext?.dispatcher()
     }
@@ -68,10 +64,7 @@ public class MutinySessionHolder(
 
     internal fun isTransactionTimedOut(): Boolean = transactionTimedOut
 
-    /**
-     * 현재 세션 홀더에서 ReactiveSessionContext를 생성합니다.
-     * 코루틴 컨텍스트에 세션을 전파할 때 사용합니다.
-     */
+    /** Creates the session context propagated through coroutine execution. */
     public fun toReactiveSessionContext(): ReactiveSessionContext {
         return ReactiveSessionContext(
             session = getSession(),

@@ -16,8 +16,7 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
 
         context("registerBeanDefinitions") {
 
-            it("basePackages가 지정되면 해당 패키지로 Registrar를 등록한다") {
-                // given
+            it("registers a registrar for the specified base packages") {
                 val selector = HibernateReactiveRepositoriesRegistrarSelector()
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
@@ -30,16 +29,13 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
 
                 val beanDefSlot = slot<BeanDefinition>()
 
-                // when
                 selector.registerBeanDefinitions(metadata, registry)
 
-                // then
                 verify { registry.registerBeanDefinition("hibernateReactiveRepositoryRegistrar", capture(beanDefSlot)) }
                 beanDefSlot.captured.beanClassName shouldBe HibernateReactiveRepositoryRegistrar::class.java.name
             }
 
-            it("basePackageClasses가 지정되면 해당 클래스의 패키지를 사용한다") {
-                // given
+            it("uses the packages of specified base package classes") {
                 val selector = HibernateReactiveRepositoriesRegistrarSelector()
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
@@ -50,15 +46,12 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 )
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns false
 
-                // when
                 selector.registerBeanDefinitions(metadata, registry)
 
-                // then
                 verify { registry.registerBeanDefinition(eq("hibernateReactiveRepositoryRegistrar"), any()) }
             }
 
-            it("아무 속성도 지정되지 않으면 어노테이션이 붙은 클래스의 패키지를 사용한다") {
-                // given
+            it("uses the annotated class package when no base package is specified") {
                 val selector = HibernateReactiveRepositoriesRegistrarSelector()
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
@@ -67,19 +60,16 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                     "basePackages" to emptyArray<String>(),
                     "basePackageClasses" to emptyArray<Class<*>>(),
                 )
-                // 실제 존재하는 클래스 사용
+                // Use a loadable class so the selector can resolve its package.
                 every { metadata.className } returns HibernateReactiveRepositoriesRegistrarSelectorTest::class.java.name
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns false
 
-                // when
                 selector.registerBeanDefinitions(metadata, registry)
 
-                // then
                 verify { registry.registerBeanDefinition(eq("hibernateReactiveRepositoryRegistrar"), any()) }
             }
 
-            it("기존에 등록된 registrar가 있으면 제거 후 새로 등록한다") {
-                // given
+            it("replaces an existing registrar") {
                 val selector = HibernateReactiveRepositoriesRegistrarSelector()
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
@@ -90,26 +80,21 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 )
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns true
 
-                // when
                 selector.registerBeanDefinitions(metadata, registry)
 
-                // then
                 verify { registry.removeBeanDefinition("hibernateReactiveRepositoryRegistrar") }
                 verify { registry.registerBeanDefinition(eq("hibernateReactiveRepositoryRegistrar"), any()) }
             }
 
-            it("어노테이션 속성이 없으면 아무것도 등록하지 않는다") {
-                // given
+            it("does not register a bean definition when annotation attributes are absent") {
                 val selector = HibernateReactiveRepositoriesRegistrarSelector()
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
                 every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns null
 
-                // when
                 selector.registerBeanDefinitions(metadata, registry)
 
-                // then
                 verify(exactly = 0) { registry.registerBeanDefinition(any(), any()) }
             }
         }

@@ -4,9 +4,9 @@ import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import org.springframework.stereotype.Component
 
 /**
- * 테스트용 AuditorAware 구현체.
+ * AuditorAware implementation for tests.
  *
- * 테스트에서 currentAuditor를 동적으로 설정할 수 있습니다.
+ * Tests can set the current auditor dynamically.
  */
 @Component
 class TestAuditorAware : ReactiveAuditorAware<String> {
@@ -15,14 +15,14 @@ class TestAuditorAware : ReactiveAuditorAware<String> {
         private val currentAuditor = ThreadLocal<String?>()
 
         /**
-         * 현재 감사자를 설정합니다.
+         * Sets the current auditor.
          */
         fun setCurrentAuditor(auditor: String?) {
             currentAuditor.set(auditor)
         }
 
         /**
-         * 현재 감사자를 초기화합니다.
+         * Clears the current auditor.
          */
         fun clear() {
             currentAuditor.remove()

@@ -21,15 +21,14 @@ class PaginationIntegrationTest : IntegrationTestBase() {
     private lateinit var tx: ReactiveTransactionExecutor
 
     init {
-        describe("페이징") {
+        describe("Pagination") {
 
-            context("findAllByValue(value, pageable) - 기본 페이징") {
-                // 각 테스트에서 고유한 value 사용 (1500 미만으로 설정하여 QueryMethodIntegrationTest와 격리)
+            context("findAllByValue(value, pageable) - basic pagination") {
+                // Values below 1500 isolate these tests from QueryMethodIntegrationTest.
                 val baseValue = 100
 
-                it("첫 번째 페이지를 조회한다") {
+                it("retrieves the first page") {
                     val testValue = baseValue + 1
-                    // 테스트 데이터 준비: 10개 엔티티
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
@@ -52,7 +51,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     page.hasPrevious() shouldBe false
                 }
 
-                it("마지막 페이지를 조회한다") {
+                it("retrieves the final page") {
                     val testValue = baseValue + 2
                     tx.transactional {
                         repeat(10) { i ->
@@ -75,7 +74,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     page.hasPrevious() shouldBe true
                 }
 
-                it("정렬을 적용한다") {
+                it("applies sorting") {
                     val testValue = baseValue + 3
                     tx.transactional {
                         repeat(10) { i ->
@@ -97,8 +96,8 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("findAllByValueOrderByNameDesc - 기본 정렬") {
-                it("메서드명의 정렬을 적용하여 조회한다") {
+            context("findAllByValueOrderByNameDesc - default sorting") {
+                it("applies the method-name sort") {
                     val testValue = 200
                     tx.transactional {
                         repeat(10) { i ->
@@ -118,8 +117,8 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("findAllByValue(value, pageable) - 커스텀 쿼리 + Page") {
-                it("조건과 페이징을 함께 적용한다") {
+            context("findAllByValue(value, pageable) - custom query + Page") {
+                it("applies the predicate and pagination together") {
                     val testValue = 300
                     tx.transactional {
                         repeat(10) { i ->
@@ -142,7 +141,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
             }
 
             context("findAllByValueGreaterThan(value, pageable) - Slice") {
-                it("COUNT 없이 다음 페이지 여부만 확인한다") {
+                it("checks for a next page without a COUNT query") {
                     val sliceValue = 400
                     tx.transactional {
                         repeat(5) { i ->
@@ -162,7 +161,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     slice.hasNext() shouldBe true
                 }
 
-                it("마지막 페이지에서 hasNext는 false") {
+                it("sets hasNext to false on the final page") {
                     val lastSliceValue = 500
                     tx.transactional {
                         repeat(2) { i ->
@@ -183,8 +182,8 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("정렬 우선순위") {
-                it("Pageable의 Sort가 메서드명 정렬보다 우선한다") {
+            context("sorting precedence") {
+                it("gives the Pageable Sort precedence over the method-name sort") {
                     val testValue = 600
                     tx.transactional {
                         repeat(10) { i ->
@@ -200,13 +199,12 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                         testEntityRepository.findAllByValueOrderByNameDesc(testValue, pageable)
                     }
 
-                    // Pageable의 ASC가 적용되어야 함
                     page.content.map { it.name } shouldContainExactly listOf(
                         "priority_asc_00", "priority_asc_01", "priority_asc_02"
                     )
                 }
 
-                it("Pageable에 Sort가 없으면 메서드명 정렬을 적용한다") {
+                it("uses method-name sorting when Pageable has no Sort") {
                     val testValue = 700
                     tx.transactional {
                         repeat(10) { i ->
@@ -222,15 +220,14 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                         testEntityRepository.findAllByValueOrderByNameDesc(testValue, pageable)
                     }
 
-                    // 메서드명의 DESC가 적용되어야 함
                     page.content.map { it.name } shouldContainExactly listOf(
                         "priority_desc_09", "priority_desc_08", "priority_desc_07"
                     )
                 }
             }
 
-            context("스마트 스킵 최적화") {
-                it("마지막 페이지에서는 COUNT 쿼리를 스킵한다") {
+            context("smart skip optimization") {
+                it("skips the COUNT query when the first page is also the final page") {
                     val smartSkipValue = 800
                     tx.transactional {
                         repeat(3) { i ->
@@ -251,8 +248,8 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                 }
             }
 
-            context("빈 결과") {
-                it("일치하는 데이터가 없으면 빈 Page를 반환한다") {
+            context("empty results") {
+                it("returns an empty Page when no data matches") {
                     val pageable = PageRequest.of(0, 10)
 
                     val page = tx.readOnly {

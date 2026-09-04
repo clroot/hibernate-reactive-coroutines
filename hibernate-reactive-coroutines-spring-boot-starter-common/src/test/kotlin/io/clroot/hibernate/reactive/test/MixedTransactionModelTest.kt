@@ -11,10 +11,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 
 /**
- * Spring `@Transactional`과 `tx.transactional {}`을 함께 쓸 때의 동작을 검증합니다.
+ * Verifies behavior when Spring `@Transactional` and `tx.transactional {}` are combined.
  *
- * `tx.transactional`이 바깥 Spring 트랜잭션을 감지하지 못하면 별도 세션과 트랜잭션이 열려
- * 롤백 경계가 어긋납니다.
+ * Failure to detect the outer Spring transaction would open a separate session and transaction,
+ * causing rollback boundaries to diverge.
  */
 @SpringBootTest(classes = [TestApplication::class, TransactionalTestService::class])
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
@@ -30,13 +30,13 @@ class MixedTransactionModelTest : IntegrationTestBase() {
     private lateinit var testEntityRepository: TestEntityRepository
 
     init {
-        describe("@Transactional 안의 tx.transactional") {
+        describe("tx.transactional within @Transactional") {
 
-            it("중복 세션을 열지 않는다") {
+            it("does not open a redundant session") {
                 testService.opensRedundantSession() shouldBe false
             }
 
-            it("바깥 트랜잭션에 참여하여 함께 롤백된다") {
+            it("joins and rolls back with the outer transaction") {
                 shouldThrow<RuntimeException> {
                     testService.saveNestedAndFail("nested-rollback", 1)
                 }
@@ -44,7 +44,7 @@ class MixedTransactionModelTest : IntegrationTestBase() {
                 tx.readOnly { testEntityRepository.count() } shouldBe 0L
             }
 
-            it("읽기 전용 트랜잭션을 쓰기로 승격하지 못한다") {
+            it("cannot upgrade a read-only transaction to read-write") {
                 shouldThrow<ReadOnlyTransactionException> {
                     testService.upgradeReadOnlyTransaction("should-not-persist")
                 }

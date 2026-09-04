@@ -15,17 +15,18 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 /**
- * Spring @Transactional timeout 속성 테스트.
+ * Tests Spring's `@Transactional` timeout property.
  *
  * @see <a href="https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html">
  *     Using @Transactional - timeout</a>
  *
- * ## Spring 표준 동작
- * - timeout 속성은 트랜잭션이 완료되어야 하는 최대 시간(초)을 지정
- * - 기본값은 -1 (타임아웃 없음, 기반 트랜잭션 시스템의 기본값 사용)
- * - 타임아웃 초과 시 TransactionTimedOutException 발생
+ * ## Default behavior
+ * - `timeout` specifies the maximum transaction duration in seconds.
+ * - The default is `-1`, which delegates to the underlying transaction system.
+ * - Expiration raises `TransactionTimedOutException`.
  *
- * 제한 시간을 넘긴 트랜잭션은 커밋되지 않고 Spring의 표준 timeout 예외를 발생시켜야 합니다.
+ * A transaction that exceeds its deadline must not commit and must report Spring's
+ * standard timeout exception.
  */
 @SpringBootTest(
     classes = [TestApplication::class, PropagationTestService::class],
@@ -37,9 +38,9 @@ class TransactionTimeoutTest : IntegrationTestBase() {
     private lateinit var propagationService: PropagationTestService
 
     init {
-        describe("timeout 설정") {
-            context("충분한 timeout 범위 내 작업") {
-                it("timeout=10 설정 시 빠른 작업은 정상 완료된다") {
+        describe("timeout configuration") {
+            context("work within the timeout") {
+                it("completes a fast operation with timeout=10") {
                     val entity = propagationService.transactionWithLongTimeout("timeout-ok")
 
                     entity.id.shouldNotBeNull()
@@ -47,8 +48,8 @@ class TransactionTimeoutTest : IntegrationTestBase() {
                 }
             }
 
-            context("timeout 초과") {
-                it("timeout=1을 넘긴 트랜잭션은 롤백된다") {
+            context("timeout expiration") {
+                it("rolls back a transaction that exceeds timeout=1") {
                     val error = shouldThrow<UnexpectedRollbackException> {
                         propagationService.transactionWithShortTimeout("timeout-expired", 1_500)
                     }
@@ -57,7 +58,7 @@ class TransactionTimeoutTest : IntegrationTestBase() {
                     propagationService.findByName("timeout-expired").shouldBeNull()
                 }
 
-                it("실행 중인 PostgreSQL 쿼리를 deadline에 중단하고 커넥션을 반환한다") {
+                it("cancels an in-flight PostgreSQL query at the deadline and returns its connection") {
                     val started = TimeSource.Monotonic.markNow()
 
                     shouldThrow<TransactionTimedOutException> {
@@ -69,7 +70,7 @@ class TransactionTimeoutTest : IntegrationTestBase() {
                     propagationService.currentStatementTimeout() shouldBe "0"
                 }
 
-                it("deadline 이후의 리포지토리 호출은 실행 전에 거부된다") {
+                it("rejects repository calls after the deadline before executing them") {
                     shouldThrow<TransactionTimedOutException> {
                         propagationService.repositoryCallAfterTimeout("timeout-before-query", 1_100)
                     }
@@ -77,7 +78,7 @@ class TransactionTimeoutTest : IntegrationTestBase() {
                     propagationService.findByName("timeout-before-query").shouldBeNull()
                 }
 
-                it("호출자가 timeout 예외를 잡아도 트랜잭션은 커밋되지 않는다") {
+                it("does not commit when the caller catches the timeout exception") {
                     val error = shouldThrow<UnexpectedRollbackException> {
                         propagationService.catchRepositoryTimeout("timeout-caught", 1_100)
                     }

@@ -10,8 +10,8 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 
 /**
- * 애플리케이션이 직접 정의한 Vertx 빈이 있으면 스타터가 물러나고
- * 그 빈을 Hibernate Reactive에 주입하는지 검증합니다.
+ * Verifies that the starter backs off for an application-provided Vertx bean
+ * and injects that instance into Hibernate Reactive.
  */
 @SpringBootTest(classes = [TestApplication::class, UserProvidedVertxTest.UserVertxConfig::class])
 class UserProvidedVertxTest : IntegrationTestBase() {
@@ -29,9 +29,9 @@ class UserProvidedVertxTest : IntegrationTestBase() {
     private lateinit var hibernateSessionFactory: org.hibernate.SessionFactory
 
     init {
-        describe("사용자 정의 Vertx 빈") {
+        describe("application-provided Vertx bean") {
 
-            it("스타터의 vertx 빈은 물러나고 사용자 빈이 Hibernate Reactive에 주입된다") {
+            it("backs off and injects the application bean into Hibernate Reactive") {
                 val vertxInstance = (hibernateSessionFactory as SessionFactoryImplementor)
                     .serviceRegistry
                     .getService(VertxInstance::class.java)!!

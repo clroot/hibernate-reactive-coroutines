@@ -17,9 +17,9 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 /**
- * JPA 스펙 호환성 테스트용 서비스.
+ * Service for JPA specification compatibility tests.
  *
- * @Transactional 어노테이션을 통해 트랜잭션 경계를 정의합니다.
+ * `@Transactional` defines the transaction boundary.
  */
 @Service
 class JpaSpecTestService(
@@ -30,7 +30,7 @@ class JpaSpecTestService(
     private val sessionProvider: TransactionalAwareSessionProvider,
 ) {
 
-    // ==================== Dirty Checking 테스트 ====================
+    // Dirty checking
 
     @Transactional
     suspend fun saveEntity(name: String, value: Int): TestEntity {
@@ -43,18 +43,17 @@ class JpaSpecTestService(
     }
 
     /**
-     * 엔티티를 수정하지만 save()를 호출하지 않습니다.
-     * Dirty Checking이 작동하면 트랜잭션 커밋 시 자동으로 flush됩니다.
+     * Modifies a managed entity without calling `save()`.
+     *
+     * Dirty checking should flush the changes when the transaction commits.
      */
     @Transactional
     suspend fun modifyEntityWithoutSave(id: Long, newName: String, newValue: Int) {
         val entity = testEntityRepository.findById(id)
             ?: throw IllegalArgumentException("Entity not found: $id")
 
-        // 명시적 save 없이 필드만 수정
         entity.name = newName
         entity.value = newValue
-        // save() 호출 없음 - Dirty Checking으로 자동 반영되어야 함
     }
 
     @Transactional
@@ -65,8 +64,9 @@ class JpaSpecTestService(
     }
 
     /**
-     * readOnly 트랜잭션에서 엔티티 수정 시도.
-     * 변경사항이 DB에 반영되지 않아야 합니다.
+     * Attempts to modify an entity in a read-only transaction.
+     *
+     * The changes must not be persisted.
      */
     @Transactional(readOnly = true)
     suspend fun modifyInReadOnlyTransaction(id: Long, newName: String, newValue: Int) {
@@ -76,7 +76,7 @@ class JpaSpecTestService(
     }
 
     /**
-     * 엔티티 수정 후 예외를 발생시켜 롤백을 유도합니다.
+     * Modifies an entity, then throws an exception to trigger rollback.
      */
     @Transactional
     suspend fun modifyAndThrowException(id: Long, newName: String, newValue: Int) {
@@ -86,23 +86,22 @@ class JpaSpecTestService(
         throw RuntimeException("Intentional exception for rollback test")
     }
 
-    // ==================== First-level Cache 테스트 ====================
+    // First-level cache
 
     /**
-     * 같은 트랜잭션 내에서 두 번 조회하여 동일 인스턴스인지 확인합니다.
+     * Verifies that repeated lookups in one transaction return the same instance.
      */
     @Transactional(readOnly = true)
     suspend fun verifyFirstLevelCache(id: Long) {
         val entity1 = testEntityRepository.findById(id)
         val entity2 = testEntityRepository.findById(id)
 
-        // 같은 트랜잭션 내에서는 동일 인스턴스여야 함
         require(entity1 === entity2) {
             "First-level cache not working: different instances returned for same ID"
         }
     }
 
-    // ==================== Optimistic Locking 테스트 ====================
+    // Optimistic locking
 
     @Transactional
     suspend fun saveVersionedEntity(name: String, value: Int): VersionedEntity {
@@ -123,7 +122,7 @@ class JpaSpecTestService(
     }
 
     /**
-     * 동시에 같은 엔티티를 수정하여 OptimisticLockException을 유발합니다.
+     * Updates the same entity concurrently to trigger an optimistic lock exception.
      */
     suspend fun concurrentUpdate(id: Long) {
         coroutineScope {
@@ -151,7 +150,7 @@ class JpaSpecTestService(
         return versionedEntityRepository.save(entity)
     }
 
-    // ==================== Lazy Loading 테스트 ====================
+    // Lazy loading
 
     @Transactional
     suspend fun saveParentWithChildren(parentName: String, childNames: List<String>): Long {
@@ -164,20 +163,18 @@ class JpaSpecTestService(
     }
 
     /**
-     * 트랜잭션 내에서 Lazy 컬렉션에 접근합니다.
+     * Accesses a lazy collection within a transaction.
      *
-     * Vert.x EventLoop 디스패처에서 실행되면 동기적 Lazy Loading도 작동하는지 테스트합니다.
+     * Verifies synchronous lazy loading on the Vert.x event-loop dispatcher.
      */
     @Transactional(readOnly = true)
     suspend fun getChildCountInTransaction(parentId: Long): Int {
         val parent = parentEntityRepository.findById(parentId)!!
 
-        // Vert.x 디스패처에서 실행하여 동기적 접근 시도
         return sessionProvider.read { session ->
-            // 먼저 세션에서 parent를 다시 조회하여 영속 상태로 만듦
+            // Re-fetch the parent in this session so it is managed.
             session.find(ParentEntity::class.java, parentId)
                 .chain { managedParent ->
-                    // 같은 세션에서 fetch
                     session.fetch(managedParent.children)
                 }
                 .map { children -> children.size }
@@ -185,7 +182,7 @@ class JpaSpecTestService(
     }
 
     /**
-     * JOIN FETCH를 사용하여 자식을 Eager 로딩합니다.
+     * Eagerly loads children with a fetch join.
      */
     @Transactional(readOnly = true)
     suspend fun findParentWithChildrenEager(parentId: Long): ParentEntity? {
@@ -193,9 +190,9 @@ class JpaSpecTestService(
     }
 
     /**
-     * sessionProvider.fetch()를 사용하여 Lazy 연관관계를 로딩합니다.
+     * Loads a lazy association with `sessionProvider.fetch()`.
      *
-     * FETCH JOIN이 어려운 경우의 대안입니다.
+     * This is an alternative when a fetch join is unsuitable.
      */
     @Transactional(readOnly = true)
     suspend fun getChildrenUsingFetch(parentId: Long): List<ChildEntity> {
@@ -204,7 +201,7 @@ class JpaSpecTestService(
     }
 
     /**
-     * sessionProvider.fetchAll()을 사용하여 여러 Lazy 연관관계를 한 번에 로딩합니다.
+     * Loads all requested lazy associations with `sessionProvider.fetchAll()`.
      */
     @Transactional(readOnly = true)
     suspend fun getParentWithAllAssociations(parentId: Long): ParentEntity {
@@ -214,7 +211,7 @@ class JpaSpecTestService(
     }
 
     /**
-     * sessionProvider.fetchFromDetached()를 사용하여 detached 엔티티의 연관관계를 로딩합니다.
+     * Loads an association from a detached entity with `sessionProvider.fetchFromDetached()`.
      */
     suspend fun getChildrenFromDetachedParent(detachedParent: ParentEntity): List<ChildEntity> {
         return sessionProvider.fetchFromDetached(
@@ -224,19 +221,17 @@ class JpaSpecTestService(
         )
     }
 
-    // ==================== Flush 동작 테스트 ====================
+    // Flush behavior
 
     /**
-     * flush가 쿼리 전에 발생하는지 검증합니다.
+     * Verifies that changes are flushed before a query.
      */
     @Transactional
     suspend fun verifyFlushBeforeQuery() {
-        // 1. 새 엔티티 저장 (아직 flush 안 됨)
         val uniqueValue = System.currentTimeMillis().toInt()
         val entity = testEntityRepository.save(TestEntity(name = "flush-test", value = uniqueValue))
 
-        // 2. 같은 트랜잭션에서 쿼리 실행
-        // JPA 스펙: 쿼리 전에 자동 flush되어 결과에 포함되어야 함
+        // JPA requires automatic flushing before the query so this entity is included.
         val found = testEntityRepository.findAllByValue(uniqueValue)
 
         require(found.isNotEmpty()) {

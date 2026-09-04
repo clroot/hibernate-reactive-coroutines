@@ -9,14 +9,9 @@ import io.kotest.matchers.string.shouldNotContain
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.query.parser.PartTree
 
-/**
- * PartTreeHqlBuilder 유닛 테스트.
- *
- * Spring Data Commons의 PartTree를 HQL로 변환하는 기능을 검증합니다.
- */
+/** Verifies conversion of Spring Data Commons PartTree instances to HQL. */
 class PartTreeHqlBuilderTest : DescribeSpec({
 
-    // 테스트용 엔티티 클래스
     data class User(
         val id: Long,
         val name: String,
@@ -27,9 +22,9 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
     describe("PartTreeHqlBuilder") {
 
-        context("SELECT 쿼리") {
+        context("SELECT queries") {
 
-            it("findByName - 단순 조건") {
+            it("findByName - simple predicate") {
                 val partTree = PartTree("findByName", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -40,18 +35,17 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 result.parameterBinders[0] shouldBe ParameterBinder.Direct
             }
 
-            it("findByNameAndEmail - AND 조건") {
+            it("findByNameAndEmail - AND predicate") {
                 val partTree = PartTree("findByNameAndEmail", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
                 val result = builder.build()
 
-                // AND 조건이 여러 개일 때 괄호로 감싸짐
                 result.hql shouldBe "FROM User e WHERE (e.name = :p0 AND e.email = :p1)"
                 result.parameterBinders shouldHaveSize 2
             }
 
-            it("findByNameOrEmail - OR 조건") {
+            it("findByNameOrEmail - OR predicate") {
                 val partTree = PartTree("findByNameOrEmail", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -61,13 +55,12 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 result.parameterBinders shouldHaveSize 2
             }
 
-            it("findByNameAndAgeOrEmail - 복합 조건") {
+            it("findByNameAndAgeOrEmail - compound predicate") {
                 val partTree = PartTree("findByNameAndAgeOrEmail", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
                 val result = builder.build()
 
-                // (name AND age) OR email
                 result.hql shouldContain "e.name = :p0 AND e.age = :p1"
                 result.hql shouldContain "OR"
                 result.hql shouldContain "e.email = :p2"
@@ -75,9 +68,9 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("LIKE 패턴 쿼리") {
+        context("LIKE pattern queries") {
 
-            it("findByNameContaining - %value% 패턴") {
+            it("findByNameContaining - %value% pattern") {
                 val partTree = PartTree("findByNameContaining", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -88,7 +81,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 result.parameterBinders[0] shouldBe ParameterBinder.Containing
             }
 
-            it("findByNameStartingWith - value% 패턴") {
+            it("findByNameStartingWith - value% pattern") {
                 val partTree = PartTree("findByNameStartingWith", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -99,7 +92,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 result.parameterBinders[0] shouldBe ParameterBinder.StartingWith
             }
 
-            it("findByNameEndingWith - %value 패턴") {
+            it("findByNameEndingWith - %value pattern") {
                 val partTree = PartTree("findByNameEndingWith", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -110,7 +103,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 result.parameterBinders[0] shouldBe ParameterBinder.EndingWith
             }
 
-            it("findByNameNotContaining - NOT LIKE 패턴") {
+            it("findByNameNotContaining - NOT LIKE pattern") {
                 val partTree = PartTree("findByNameNotContaining", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -121,7 +114,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("비교 연산자 쿼리") {
+        context("comparison operator queries") {
 
             it("findByAgeGreaterThan") {
                 val partTree = PartTree("findByAgeGreaterThan", User::class.java)
@@ -171,7 +164,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("NULL 체크 쿼리") {
+        context("NULL check queries") {
 
             it("findByEmailIsNull") {
                 val partTree = PartTree("findByEmailIsNull", User::class.java)
@@ -194,7 +187,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("Boolean 쿼리") {
+        context("Boolean queries") {
 
             it("findByActiveTrue") {
                 val partTree = PartTree("findByActiveTrue", User::class.java)
@@ -217,7 +210,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("IN 쿼리") {
+        context("IN queries") {
 
             it("findByNameIn") {
                 val partTree = PartTree("findByNameIn", User::class.java)
@@ -240,7 +233,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("정렬 쿼리") {
+        context("sorting queries") {
 
             it("findByAgeOrderByNameAsc") {
                 val partTree = PartTree("findByAgeOrderByNameAsc", User::class.java)
@@ -261,7 +254,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("COUNT 쿼리") {
+        context("COUNT queries") {
 
             it("countByName") {
                 val partTree = PartTree("countByName", User::class.java)
@@ -282,7 +275,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("EXISTS 쿼리") {
+        context("EXISTS queries") {
 
             it("existsByName") {
                 val partTree = PartTree("existsByName", User::class.java)
@@ -303,9 +296,9 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("지원하지 않는 조건") {
+        context("unsupported predicates") {
 
-            it("Regex 조건을 LIKE로 대체하지 않고 거부한다") {
+            it("rejects Regex rather than substituting LIKE") {
                 val partTree = PartTree("findByNameRegex", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -316,7 +309,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 error.message shouldBe "Derived query type is not supported: REGEX"
             }
 
-            it("Exists 조건으로 잘못된 HQL을 만들지 않고 거부한다") {
+            it("rejects Exists rather than generating invalid HQL") {
                 val partTree = PartTree("findByNameExists", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -328,7 +321,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("DELETE 쿼리") {
+        context("DELETE queries") {
 
             it("deleteByName") {
                 val partTree = PartTree("deleteByName", User::class.java)
@@ -349,9 +342,9 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("부정 조건 쿼리") {
+        context("negated predicate queries") {
 
-            it("findByNameNot - 부정 조건") {
+            it("findByNameNot - negated predicate") {
                 val partTree = PartTree("findByNameNot", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -361,10 +354,10 @@ class PartTreeHqlBuilderTest : DescribeSpec({
             }
         }
 
-        context("Sort 병합") {
+        context("Sort merging") {
 
-            context("동적 Sort가 주어졌을 때") {
-                it("동적 Sort를 우선 적용한다") {
+            context("when a dynamic Sort is supplied") {
+                it("prioritizes the dynamic Sort") {
                     val partTree = PartTree("findAllByNameOrderByEmailAsc", User::class.java)
                     val builder = PartTreeHqlBuilder("User", partTree)
                     val dynamicSort = Sort.by(Sort.Direction.DESC, "age")
@@ -375,7 +368,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                     result.hql shouldNotContain "e.email"
                 }
 
-                it("ignoreCase를 LOWER 정렬로 변환한다") {
+                it("converts ignoreCase to LOWER sorting") {
                     val partTree = PartTree("findAllByName", User::class.java)
                     val builder = PartTreeHqlBuilder("User", partTree)
                     val dynamicSort = Sort.by(Sort.Order.by("name").ignoreCase())
@@ -384,8 +377,8 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 }
             }
 
-            context("동적 Sort가 없을 때") {
-                it("메서드명의 정렬을 적용한다") {
+            context("when no dynamic Sort is supplied") {
+                it("applies method-name sorting") {
                     val partTree = PartTree("findAllByNameOrderByEmailAsc", User::class.java)
                     val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -395,8 +388,8 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 }
             }
 
-            context("동적 Sort가 unsorted일 때") {
-                it("메서드명의 정렬을 적용한다") {
+            context("when the dynamic Sort is unsorted") {
+                it("applies method-name sorting") {
                     val partTree = PartTree("findAllByNameOrderByEmailDesc", User::class.java)
                     val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -409,7 +402,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
 
         context("buildCountHql") {
 
-            it("SELECT COUNT HQL을 생성한다") {
+            it("builds SELECT COUNT HQL") {
                 val partTree = PartTree("findAllByName", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -418,7 +411,7 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 countHql shouldBe "SELECT COUNT(e) FROM User e WHERE e.name = :p0"
             }
 
-            it("복합 조건에 대해서도 COUNT HQL을 생성한다") {
+            it("builds COUNT HQL for compound predicates") {
                 val partTree = PartTree("findAllByNameAndAge", User::class.java)
                 val builder = PartTreeHqlBuilder("User", partTree)
 
@@ -427,9 +420,8 @@ class PartTreeHqlBuilderTest : DescribeSpec({
                 countHql shouldBe "SELECT COUNT(e) FROM User e WHERE (e.name = :p0 AND e.age = :p1)"
             }
 
-            // Note: PartTree는 "findAll"처럼 조건이 없는 메서드명을 지원하지 않습니다.
-            // 조건 없는 쿼리(findAll, count 등)는 SimpleHibernateReactiveRepository에서
-            // 기본 CRUD 메서드로 별도 처리됩니다.
+            // PartTree does not support conditionless method names such as "findAll".
+            // Conditionless queries are handled as base CRUD methods by SimpleHibernateReactiveRepository.
         }
     }
 })

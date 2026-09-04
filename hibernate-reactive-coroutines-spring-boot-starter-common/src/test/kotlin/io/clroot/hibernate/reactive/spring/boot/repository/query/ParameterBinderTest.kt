@@ -6,17 +6,12 @@ import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import org.springframework.data.repository.query.parser.Part
 
-/**
- * ParameterBinder 유닛 테스트.
- *
- * LIKE 패턴 변환 등 파라미터 바인딩 로직을 검증합니다.
- */
 class ParameterBinderTest : DescribeSpec({
 
     describe("ParameterBinder") {
 
         context("Direct binder") {
-            it("값을 그대로 반환한다") {
+            it("returns values unchanged") {
                 val binder = ParameterBinder.Direct
 
                 binder.bind("test") shouldBe "test"
@@ -24,7 +19,7 @@ class ParameterBinderTest : DescribeSpec({
                 binder.bind(true) shouldBe true
             }
 
-            it("null을 그대로 반환한다") {
+            it("returns null unchanged") {
                 val binder = ParameterBinder.Direct
 
                 binder.bind(null).shouldBeNull()
@@ -32,30 +27,30 @@ class ParameterBinderTest : DescribeSpec({
         }
 
         context("collection binders") {
-            it("빈 컬렉션은 Hibernate가 방언에 맞게 정규화하도록 그대로 전달한다") {
+            it("passes empty collections through so Hibernate can normalize them for the dialect") {
                 ParameterBinder.InCollection.bind(emptyList<String>()) shouldBe emptyList<String>()
                 ParameterBinder.NotInCollection.bind(emptyList<String>()) shouldBe emptyList<String>()
             }
 
-            it("null 컬렉션은 명확하게 거부한다") {
+            it("rejects null collections") {
                 shouldThrow<IllegalArgumentException> { ParameterBinder.InCollection.bind(null) }
                 shouldThrow<IllegalArgumentException> { ParameterBinder.NotInCollection.bind(null) }
             }
 
-            it("컬렉션이 아닌 값은 거부한다") {
+            it("rejects non-collection values") {
                 shouldThrow<IllegalArgumentException> { ParameterBinder.InCollection.bind("not-a-collection") }
             }
         }
 
         context("Containing binder") {
-            it("값 양쪽에 %를 추가한다") {
+            it("adds % to both sides of a value") {
                 val binder = ParameterBinder.Containing
 
                 binder.bind("test") shouldBe "%test%"
                 binder.bind("hello world") shouldBe "%hello world%"
             }
 
-            it("null이면 null을 반환한다") {
+            it("returns null for null") {
                 val binder = ParameterBinder.Containing
 
                 binder.bind(null).shouldBeNull()
@@ -63,14 +58,14 @@ class ParameterBinderTest : DescribeSpec({
         }
 
         context("StartingWith binder") {
-            it("값 뒤에 %를 추가한다") {
+            it("adds % after a value") {
                 val binder = ParameterBinder.StartingWith
 
                 binder.bind("test") shouldBe "test%"
                 binder.bind("prefix") shouldBe "prefix%"
             }
 
-            it("null이면 null을 반환한다") {
+            it("returns null for null") {
                 val binder = ParameterBinder.StartingWith
 
                 binder.bind(null).shouldBeNull()
@@ -78,44 +73,44 @@ class ParameterBinderTest : DescribeSpec({
         }
 
         context("EndingWith binder") {
-            it("값 앞에 %를 추가한다") {
+            it("adds % before a value") {
                 val binder = ParameterBinder.EndingWith
 
                 binder.bind("test") shouldBe "%test"
                 binder.bind("suffix") shouldBe "%suffix"
             }
 
-            it("null이면 null을 반환한다") {
+            it("returns null for null") {
                 val binder = ParameterBinder.EndingWith
 
                 binder.bind(null).shouldBeNull()
             }
         }
 
-        context("forType 팩토리 메서드") {
-            it("CONTAINING 타입에 Containing 반환") {
+        context("forType factory method") {
+            it("returns Containing for CONTAINING") {
                 ParameterBinder.forType(Part.Type.CONTAINING) shouldBe ParameterBinder.Containing
             }
 
-            it("NOT_CONTAINING 타입에 Containing 반환") {
+            it("returns Containing for NOT_CONTAINING") {
                 ParameterBinder.forType(Part.Type.NOT_CONTAINING) shouldBe ParameterBinder.Containing
             }
 
-            it("STARTING_WITH 타입에 StartingWith 반환") {
+            it("returns StartingWith for STARTING_WITH") {
                 ParameterBinder.forType(Part.Type.STARTING_WITH) shouldBe ParameterBinder.StartingWith
             }
 
-            it("ENDING_WITH 타입에 EndingWith 반환") {
+            it("returns EndingWith for ENDING_WITH") {
                 ParameterBinder.forType(Part.Type.ENDING_WITH) shouldBe ParameterBinder.EndingWith
             }
 
-            it("다른 타입에는 Direct 반환") {
+            it("returns Direct for other types") {
                 ParameterBinder.forType(Part.Type.SIMPLE_PROPERTY) shouldBe ParameterBinder.Direct
                 ParameterBinder.forType(Part.Type.BETWEEN) shouldBe ParameterBinder.Direct
                 ParameterBinder.forType(Part.Type.GREATER_THAN) shouldBe ParameterBinder.Direct
             }
 
-            it("IN 계열 타입에는 컬렉션 바인더를 반환한다") {
+            it("returns collection binders for IN types") {
                 ParameterBinder.forType(Part.Type.IN) shouldBe ParameterBinder.InCollection
                 ParameterBinder.forType(Part.Type.NOT_IN) shouldBe ParameterBinder.NotInCollection
             }

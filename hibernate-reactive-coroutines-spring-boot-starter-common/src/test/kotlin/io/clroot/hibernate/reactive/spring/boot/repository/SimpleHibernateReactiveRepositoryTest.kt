@@ -59,9 +59,9 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
 
     describe("SimpleHibernateReactiveRepository") {
 
-        context("Object 메서드 처리") {
+        context("Object method handling") {
 
-            it("toString은 엔티티명Repository(proxy) 형식을 반환한다") {
+            it("returns the entity name, Repository, and proxy from toString") {
                 val proxy = createProxy()
 
                 proxy.toString() shouldContain "TestEntity"
@@ -69,7 +69,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                 proxy.toString() shouldContain "proxy"
             }
 
-            it("hashCode는 일관된 값을 반환한다") {
+            it("returns a consistent hashCode") {
                 val proxy = createProxy()
 
                 val hash1 = proxy.hashCode()
@@ -78,25 +78,25 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                 hash1 shouldBe hash2
             }
 
-            it("equals는 자기 자신과 비교할 때 true를 반환한다") {
+            it("returns true when compared with itself") {
                 val proxy = createProxy()
 
                 (proxy == proxy) shouldBe true
             }
 
-            it("equals는 다른 프록시와 비교할 때 false를 반환한다") {
+            it("returns false when compared with another proxy") {
                 val proxy1 = createProxy()
                 val proxy2 = createProxy()
 
                 (proxy1 == proxy2) shouldBe false
             }
 
-            it("equals는 null과 비교할 때 false를 반환한다") {
+            it("is not equal to null") {
                 val proxy = createProxy()
                 proxy shouldNotBe null
             }
 
-            it("서로 다른 프록시는 서로 다른 hashCode를 가진다") {
+            it("returns different hashCodes for different proxies") {
                 val proxy1 = createProxy()
                 val proxy2 = createProxy()
 
@@ -104,9 +104,9 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
             }
         }
 
-        context("에러 메시지 개선") {
+        context("error messages") {
 
-            it("리포지토리 예외를 잡은 뒤에도 호출자 코루틴을 활성 상태로 유지한다") {
+            it("keeps the caller coroutine active after a repository exception") {
                 val proxy = createCustomProxy()
                 var caught = false
 
@@ -120,7 +120,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                 currentCoroutineContext().isActive shouldBe true
             }
 
-            it("알 수 없는 메서드 호출 시 유사한 메서드를 추천한다") {
+            it("suggests a similar method for an unknown invocation") {
                 val handler = SimpleHibernateReactiveRepository(
                     entityClass = TestEntity::class.java,
                     idClass = Long::class.java,
@@ -128,7 +128,6 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                     transactionExecutor = transactionExecutor,
                 )
 
-                // findByld (오타: Id -> ld) 호출 시뮬레이션
                 val method = RepositoryWithCustomMethod::class.java.getMethod(
                     "findByld",
                     Long::class.java,
@@ -138,7 +137,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                     every { context } returns EmptyCoroutineContext
                 }
 
-                // invoke는 COROUTINE_SUSPENDED를 반환하고, 예외는 continuation으로 전달됨
+                // Invocation failures are delivered to the continuation.
                 var capturedError: Throwable? = null
                 val capturingContinuation = object : kotlin.coroutines.Continuation<Any?> {
                     override val context = EmptyCoroutineContext
@@ -149,7 +148,6 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
 
                 handler.invoke(mockk(), method, arrayOf(1L, capturingContinuation))
 
-                // 비동기 작업 완료 대기
                 delay(100)
 
                 capturedError shouldNotBe null
@@ -158,7 +156,7 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                 capturedError!!.message shouldContain "findById"
             }
 
-            it("save 오타 시 save를 추천한다") {
+            it("suggests save for a misspelled save invocation") {
                 val handler = SimpleHibernateReactiveRepository(
                     entityClass = TestEntity::class.java,
                     idClass = Long::class.java,
@@ -166,7 +164,6 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
                     transactionExecutor = transactionExecutor,
                 )
 
-                // sav (오타) 호출 시뮬레이션
                 val method = RepositoryWithCustomMethod::class.java.getMethod(
                     "sav",
                     TestEntity::class.java,
@@ -183,7 +180,6 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
 
                 handler.invoke(mockk(), method, arrayOf(TestEntity(), capturingContinuation))
 
-                // 비동기 작업 완료 대기
                 delay(100)
 
                 capturedError shouldNotBe null
@@ -197,12 +193,12 @@ class SimpleHibernateReactiveRepositoryTest : DescribeSpec({
         interface TestRepository : CoroutineCrudRepository<TestEntity, Long>
         class TestEntity
 
-        // 에러 메시지 테스트용 인터페이스 (오타가 포함된 메서드명)
+        // Intentionally misspelled methods verify error-message suggestions.
         @Suppress("unused")
         interface RepositoryWithCustomMethod : CoroutineCrudRepository<TestEntity, Long> {
             @Suppress("SpellCheckingInspection")
-            suspend fun findByld(id: Long): TestEntity?  // findById 오타
-            suspend fun sav(entity: TestEntity): TestEntity  // save 오타
+            suspend fun findByld(id: Long): TestEntity?
+            suspend fun sav(entity: TestEntity): TestEntity
         }
     }
 }

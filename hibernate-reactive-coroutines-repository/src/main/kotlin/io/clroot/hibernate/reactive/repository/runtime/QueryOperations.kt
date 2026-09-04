@@ -14,23 +14,12 @@ import io.smallrye.mutiny.Uni
 import jakarta.persistence.metamodel.SingularAttribute
 import org.hibernate.reactive.mutiny.Mutiny
 
-/**
- * 쿼리 실행을 담당하는 내부 헬퍼 클래스.
- *
- * 메서드명 기반 파생 쿼리와 @Query 어노테이션 쿼리의 실행을 처리합니다.
- * 페이징 관련 쿼리는 PaginationOperations에서 처리합니다.
- *
- * @param T 엔티티 타입
- */
+/** Executes derived and `@Query` repository queries; pagination is handled separately. */
 internal class QueryOperations<T : Any>(
     private val entityClass: Class<T>,
     private val sessionOperations: ReactiveSessionOperations,
     private val metamodel: Metamodel,
 ) {
-
-    // ============================================
-    // 파생 쿼리 실행
-    // ============================================
 
     suspend fun executeSingleQuery(hql: String, args: List<Any?>, maxResults: Int? = null): T? =
         sessionOperations.read { session ->
@@ -64,9 +53,9 @@ internal class QueryOperations<T : Any>(
         } ?: 0L
 
     /**
-     * 파생 `deleteBy...` 쿼리를 실행하고 삭제된 행 수를 반환합니다.
+     * Deletes entities matched by a derived `deleteBy...` query.
      *
-     * 대상 엔티티를 먼저 로드한 뒤 제거하므로 cascade와 `@Version`이 정상 동작합니다.
+     * Loading entities before removal preserves cascades and `@Version` optimistic locking.
      */
     suspend fun executeDeleteQuery(hql: String, args: List<Any?>): Long =
         sessionOperations.write { session ->
@@ -91,10 +80,6 @@ internal class QueryOperations<T : Any>(
         val hql = applyDynamicSort(prepared.hql, sort)
         return executeListQuery(hql, args, prepared.maxResults)
     }
-
-    // ============================================
-    // @Query 어노테이션 쿼리 실행
-    // ============================================
 
     suspend fun executeModifyingAnnotatedQuery(
         prepared: PreparedRepositoryQuery,
@@ -157,8 +142,9 @@ internal class QueryOperations<T : Any>(
     }
 
     /**
-     * @Query의 선언된 결과 클래스를 typed query에 사용할 형태로 반환합니다.
-     * 엔티티의 상위 타입을 선언한 기존 메서드는 실제 엔티티 클래스를 유지합니다.
+     * Returns the result class used to create the typed query.
+     *
+     * Keep the concrete entity class when a legacy method declares one of its supertypes.
      */
     @Suppress("UNCHECKED_CAST")
     internal fun annotatedResultClass(prepared: PreparedRepositoryQuery): Class<Any> {
@@ -168,10 +154,6 @@ internal class QueryOperations<T : Any>(
         val queryClass = if (declaredClass.isAssignableFrom(entityClass)) entityClass else declaredClass
         return queryClass as Class<Any>
     }
-
-    // ============================================
-    // 파라미터 바인딩 헬퍼
-    // ============================================
 
     private fun <R> bindIndexedParameters(
         query: Mutiny.SelectionQuery<R>,
@@ -253,14 +235,10 @@ internal class QueryOperations<T : Any>(
                 }
             }
 
-            QueryParameterStyle.NONE -> { /* 파라미터 없음 */
+            QueryParameterStyle.NONE -> {
             }
         }
     }
-
-    // ============================================
-    // Sort 유틸리티
-    // ============================================
 
     internal fun applyDynamicSort(hql: String, sort: List<QueryOrder>): String {
         if (sort.isEmpty()) return hql
@@ -272,10 +250,10 @@ internal class QueryOperations<T : Any>(
     }
 
     /**
-     * `@Query`로 선언된 쿼리에 동적 정렬을 적용합니다.
+     * Appends dynamic sorting to an `@Query`.
      *
-     * 쿼리가 이미 `ORDER BY`를 갖고 있으면 뒤에 덧붙여 작성자의 정렬 의도를 보존합니다.
-     * 안전하게 적용할 수 없으면 조용히 무시하지 않고 예외를 던집니다.
+     * Existing ordering remains first to preserve the query author's precedence. Ambiguous aliases
+     * are rejected rather than risking an invalid or semantically different query.
      */
     internal fun applyAnnotatedQuerySort(
         prepared: PreparedRepositoryQuery,

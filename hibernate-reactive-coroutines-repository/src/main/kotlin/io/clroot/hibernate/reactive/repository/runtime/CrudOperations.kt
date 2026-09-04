@@ -10,14 +10,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import org.hibernate.reactive.mutiny.Mutiny
 
-/**
- * 기본 CRUD 작업을 담당하는 내부 헬퍼 클래스.
- *
- * CoroutineCrudRepository의 기본 메서드(save, find, delete, count 등)를 구현합니다.
- *
- * @param T 엔티티 타입
- * @param ID 엔티티의 ID 타입
- */
+/** Implements the persistence operations behind `CoroutineCrudRepository`. */
 internal class CrudOperations<T : Any, ID : Any>(
     private val entityClass: Class<T>,
     private val entityName: String,
@@ -41,10 +34,6 @@ internal class CrudOperations<T : Any, ID : Any>(
         } else {
             session.merge(entity)
         }
-
-    // ============================================
-    // Save 작업
-    // ============================================
 
     suspend fun save(entity: T): T {
         val isNew = prepareEntity(entity)
@@ -77,10 +66,6 @@ internal class CrudOperations<T : Any, ID : Any>(
         emitAll(saveAll(list))
     }
 
-    // ============================================
-    // Find 작업
-    // ============================================
-
     suspend fun findById(id: ID): T? = sessionOperations.read { session ->
         session.find(entityClass, RepositoryIdAdapter.unwrap(id))
     }
@@ -109,10 +94,6 @@ internal class CrudOperations<T : Any, ID : Any>(
         emitAll(findAllById(idList))
     }
 
-    // ============================================
-    // Exists / Count 작업
-    // ============================================
-
     suspend fun existsById(id: ID): Boolean = sessionOperations.read { session ->
         session.createQuery("SELECT 1 FROM $entityName e WHERE e.id = :id", Int::class.javaObjectType)
             .setParameter("id", RepositoryIdAdapter.unwrap(id))
@@ -126,16 +107,11 @@ internal class CrudOperations<T : Any, ID : Any>(
             .singleResult
     }
 
-    // ============================================
-    // Delete 작업
-    // ============================================
-
     /**
-     * 엔티티를 로드한 뒤 제거합니다.
+     * Removes a managed entity after loading it.
      *
-     * bulk `DELETE` 문은 cascade, `@Version` 낙관적 락, 영속성 컨텍스트 정리를 모두 건너뛰므로
-     * Spring Data JPA와 동일하게 로드 후 제거하는 방식을 사용합니다.
-     * 대상이 없으면 조용히 무시합니다.
+     * Bulk `DELETE` bypasses cascades, `@Version` optimistic locking, and persistence-context
+     * synchronization. Loading first preserves Spring Data JPA semantics; a missing entity is ignored.
      */
     suspend fun deleteById(id: ID) {
         sessionOperations.write<Unit> { session ->

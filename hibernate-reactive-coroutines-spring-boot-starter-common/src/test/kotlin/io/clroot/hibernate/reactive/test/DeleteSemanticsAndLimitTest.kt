@@ -14,10 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
 /**
- * 삭제 의미론과 결과 개수 제한 동작을 검증합니다.
+ * Verifies deletion semantics and result-size limits.
  *
- * bulk `DELETE` 문은 cascade와 영속성 컨텍스트를 건너뛰므로, 로드 후 제거 방식으로
- * 동작하는지 실제 DB에 대해 확인합니다.
+ * Verifies against a real database that deletion loads and removes entities instead of issuing a
+ * bulk `DELETE`, which bypasses cascades and the persistence context.
  */
 @SpringBootTest
 class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
@@ -37,7 +37,7 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
     init {
         describe("deleteById") {
 
-            it("자식까지 cascade 삭제한다") {
+            it("cascades deletion to children") {
                 val parentId = tx.transactional {
                     val parent = ParentEntity(name = "parent")
                     parent.addChild(ChildEntity(name = "child-1"))
@@ -55,13 +55,13 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
                 countChildRows() shouldBe 0L
             }
 
-            it("존재하지 않는 ID는 조용히 무시한다") {
+            it("silently ignores a nonexistent ID") {
                 tx.transactional {
                     testEntityRepository.deleteById(-1L)
                 }
             }
 
-            it("같은 트랜잭션 안에서 삭제한 엔티티는 다시 조회되지 않는다") {
+            it("does not find an entity deleted in the same transaction") {
                 val id = tx.transactional {
                     testEntityRepository.save(TestEntity(name = "gone", value = 1)).id!!
                 }
@@ -75,7 +75,7 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
 
         describe("deleteAll") {
 
-            it("자식까지 cascade 삭제한다") {
+            it("cascades deletion to children") {
                 tx.transactional {
                     val parent = ParentEntity(name = "parent")
                     parent.addChild(ChildEntity(name = "child-1"))
@@ -93,9 +93,9 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
             }
         }
 
-        describe("파생 deleteBy 메서드") {
+        describe("derived deleteBy method") {
 
-            it("삭제 건수를 반환한다") {
+            it("returns the number of deleted entities") {
                 tx.transactional {
                     testEntityRepository.save(TestEntity(name = "a", value = 7))
                     testEntityRepository.save(TestEntity(name = "b", value = 7))
@@ -111,9 +111,9 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
             }
         }
 
-        describe("Top/First 개수 제한") {
+        describe("Top/First result limits") {
 
-            it("findTop2By는 상위 2건만 반환한다") {
+            it("findTop2By returns only the first two results") {
                 tx.transactional {
                     testEntityRepository.save(TestEntity(name = "low", value = 1))
                     testEntityRepository.save(TestEntity(name = "mid", value = 5))
@@ -125,7 +125,7 @@ class DeleteSemanticsAndLimitTest : IntegrationTestBase() {
                 top.map { it.name } shouldContainExactly listOf("high", "mid")
             }
 
-            it("findFirstBy는 여러 건이 매칭돼도 예외 없이 첫 건을 반환한다") {
+            it("findFirstBy returns the first result without an error when multiple entities match") {
                 tx.transactional {
                     testEntityRepository.save(TestEntity(name = "low", value = 1))
                     testEntityRepository.save(TestEntity(name = "high", value = 9))

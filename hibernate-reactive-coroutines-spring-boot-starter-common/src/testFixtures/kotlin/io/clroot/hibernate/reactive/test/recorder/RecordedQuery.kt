@@ -1,11 +1,9 @@
 package io.clroot.hibernate.reactive.test.recorder
 
 /**
- * 기록된 HQL 쿼리 정보.
+ * Recorded HQL query.
  *
- * @property hql 실행된 HQL 쿼리 문자열
- * @property queryType 쿼리 타입 (SELECT, UPDATE, DELETE, COUNT, NATIVE)
- * @property timestamp 쿼리 기록 시간 (밀리초)
+ * @property timestamp Recording time in milliseconds.
  */
 data class RecordedQuery(
     val hql: String,
@@ -13,9 +11,7 @@ data class RecordedQuery(
     val timestamp: Long = System.currentTimeMillis(),
 )
 
-/**
- * 쿼리 타입.
- */
+/** Query type. */
 enum class QueryType {
     SELECT,
     UPDATE,

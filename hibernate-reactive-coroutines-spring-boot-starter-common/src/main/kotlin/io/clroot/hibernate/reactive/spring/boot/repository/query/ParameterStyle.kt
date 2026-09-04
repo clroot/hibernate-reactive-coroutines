@@ -1,8 +1,6 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
-/**
- * 파라미터 바인딩 스타일.
- */
+/** Query parameter binding style. */
 public enum class ParameterStyle {
     /** Named Parameter (:name) */
     NAMED,
@@ -10,6 +8,6 @@ public enum class ParameterStyle {
     /** Positional Parameter (?1) */
     POSITIONAL,
 
-    /** 파라미터 없음 */
+    /** No parameters. */
     NONE,
 }

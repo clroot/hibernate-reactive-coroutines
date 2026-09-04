@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
 /**
- * 엔티티 이름 해석과 LIKE 와일드카드 이스케이프를 실제 DB에 대해 검증합니다.
+ * Verifies entity-name resolution and LIKE wildcard escaping against a real database.
  */
 @SpringBootTest
 class EntityNamingAndLikeEscapingTest : IntegrationTestBase() {
@@ -27,9 +27,9 @@ class EntityNamingAndLikeEscapingTest : IntegrationTestBase() {
     private lateinit var testEntityRepository: TestEntityRepository
 
     init {
-        describe("@Entity(name = ...)로 이름을 바꾼 엔티티") {
+        describe("an entity renamed with @Entity(name = ...)") {
 
-            it("기본 CRUD가 동작한다") {
+            it("supports basic CRUD operations") {
                 val saved = tx.transactional {
                     renamedEntityRepository.save(RenamedEntity(name = "renamed"))
                 }
@@ -40,7 +40,7 @@ class EntityNamingAndLikeEscapingTest : IntegrationTestBase() {
                 }
             }
 
-            it("파생 쿼리가 동작한다") {
+            it("supports derived queries") {
                 tx.transactional {
                     renamedEntityRepository.save(RenamedEntity(name = "target"))
                     renamedEntityRepository.save(RenamedEntity(name = "other"))
@@ -57,9 +57,9 @@ class EntityNamingAndLikeEscapingTest : IntegrationTestBase() {
             }
         }
 
-        describe("LIKE 와일드카드 이스케이프") {
+        describe("LIKE wildcard escaping") {
 
-            it("Containing에 %를 넘겨도 전체 행이 매칭되지 않는다") {
+            it("does not match every row when Containing receives a percent sign") {
                 tx.transactional {
                     testEntityRepository.save(TestEntity(name = "plain", value = 1))
                     testEntityRepository.save(TestEntity(name = "100% cotton", value = 2))
@@ -70,7 +70,7 @@ class EntityNamingAndLikeEscapingTest : IntegrationTestBase() {
                 matched.map { it.name } shouldContainExactlyInAnyOrder listOf("100% cotton")
             }
 
-            it("Containing의 _는 임의의 한 글자가 아니라 밑줄 자체로 매칭된다") {
+            it("matches an underscore in Containing literally rather than as a single-character wildcard") {
                 tx.transactional {
                     testEntityRepository.save(TestEntity(name = "a_b", value = 1))
                     testEntityRepository.save(TestEntity(name = "axb", value = 2))

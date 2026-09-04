@@ -17,9 +17,9 @@ import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * 엔티티 클래스의 Auditing 메타데이터를 캐싱하고 관리합니다.
+ * Caches auditing metadata for entity classes.
  *
- * 리플렉션 비용을 줄이기 위해 클래스별로 필드 정보를 캐싱합니다.
+ * Field metadata is cached per class to avoid repeated reflection.
  */
 internal object AuditMetadata {
 
@@ -27,9 +27,6 @@ internal object AuditMetadata {
 
     private val cache = ConcurrentHashMap<Class<*>, EntityAuditInfo>()
 
-    /**
-     * 엔티티의 Auditing 정보를 가져옵니다.
-     */
     fun getAuditInfo(entityClass: Class<*>): EntityAuditInfo {
         return cache.computeIfAbsent(entityClass) { cls ->
             extractAuditInfo(cls)
@@ -37,9 +34,9 @@ internal object AuditMetadata {
     }
 
     /**
-     * @CreatedDate 필드에 현재 시간을 설정합니다.
+     * Sets the `@CreatedDate` field when it has not already been set.
      *
-     * @param now 기준 시각. 생략하면 현재 시각을 사용합니다.
+     * @param now The reference time. Defaults to the current time.
      */
     fun setCreatedDate(entity: Any, now: Instant = Instant.now()) {
         val auditInfo = getAuditInfo(entity.javaClass)
@@ -54,10 +51,10 @@ internal object AuditMetadata {
     }
 
     /**
-     * @LastModifiedDate 필드에 현재 시간을 설정합니다.
+     * Sets the `@LastModifiedDate` field.
      *
-     * @param now 기준 시각. 생성 시점에는 createdDate와 같은 값을 넘겨야
-     *   `createdAt == updatedAt`으로 "한 번도 수정되지 않음"을 판별할 수 있습니다.
+     * @param now The reference time. During creation, pass the same value used for the
+     *   creation timestamp so `createdAt == updatedAt` identifies an unmodified entity.
      */
     fun setLastModifiedDate(entity: Any, now: Instant = Instant.now()) {
         val auditInfo = getAuditInfo(entity.javaClass)
@@ -66,9 +63,6 @@ internal object AuditMetadata {
         }
     }
 
-    /**
-     * @CreatedBy 필드에 감사자를 설정합니다.
-     */
     fun setCreatedBy(entity: Any, auditor: Any) {
         val auditInfo = getAuditInfo(entity.javaClass)
         auditInfo.createdByField?.let { field ->
@@ -78,9 +72,6 @@ internal object AuditMetadata {
         }
     }
 
-    /**
-     * @LastModifiedBy 필드에 감사자를 설정합니다.
-     */
     fun setLastModifiedBy(entity: Any, auditor: Any) {
         val auditInfo = getAuditInfo(entity.javaClass)
         auditInfo.lastModifiedByField?.let { field ->
@@ -89,8 +80,7 @@ internal object AuditMetadata {
     }
 
     /**
-     * 필드 값을 안전하게 읽습니다.
-     * SecurityException 발생 시 null을 반환하고 경고를 로깅합니다.
+     * Reads a field value, logging reflection access failures and treating them as absent.
      */
     private fun getFieldValueSafely(entity: Any, field: Field): Any? {
         return try {
@@ -108,8 +98,7 @@ internal object AuditMetadata {
     }
 
     /**
-     * 필드 값을 안전하게 설정합니다.
-     * 예외 발생 시 경고를 로깅하고 무시합니다.
+     * Writes a field value and logs reflection access failures.
      */
     private fun setFieldValueSafely(entity: Any, field: Field, value: Any) {
         try {
@@ -122,9 +111,9 @@ internal object AuditMetadata {
     }
 
     /**
-     * 필드 타입에 맞는 시간 값을 설정합니다.
+     * Converts the reference time to the field's supported temporal type.
      *
-     * @param now 기준 시각. 같은 저장에서 생성/수정 시각을 동일하게 맞추기 위해 호출자가 전달합니다.
+     * The caller supplies the reference time so creation and modification timestamps can match.
      */
     private fun setTemporalValue(entity: Any, field: Field, now: Instant) {
         val value: Any = when (field.type) {
@@ -134,14 +123,11 @@ internal object AuditMetadata {
             ZonedDateTime::class.java -> ZonedDateTime.ofInstant(now, ZoneId.systemDefault())
             Date::class.java -> Date.from(now)
             Long::class.javaObjectType, Long::class.javaPrimitiveType -> now.toEpochMilli()
-            else -> return // isSupportedTemporalType이 걸러내므로 도달하지 않음
+            else -> return
         }
         setFieldValueSafely(entity, field, value)
     }
 
-    /**
-     * 클래스에서 Auditing 관련 필드를 추출합니다.
-     */
     private fun extractAuditInfo(cls: Class<*>): EntityAuditInfo {
         var idField: Field? = null
         var versionField: Field? = null
@@ -150,12 +136,12 @@ internal object AuditMetadata {
         var createdByField: Field? = null
         var lastModifiedByField: Field? = null
 
-        // 상위 클래스 포함 모든 필드 탐색
+        // Include inherited fields because auditing annotations may be declared on a mapped superclass.
         var currentClass: Class<*>? = cls
         while (currentClass != null && currentClass != Any::class.java) {
             for (field in currentClass.declaredFields) {
                 if (!tryMakeAccessible(field)) {
-                    continue // 접근 불가한 필드는 스킵
+                    continue
                 }
 
                 when {
@@ -206,13 +192,12 @@ internal object AuditMetadata {
     }
 
     /**
-     * 필드를 접근 가능하게 설정합니다.
+     * Makes a field accessible for reflection.
      *
-     * @return 접근 가능하게 설정되었으면 true, 실패하면 false
+     * Packages that are not opened on the module path can reject reflective access.
      */
     private fun tryMakeAccessible(field: Field): Boolean {
         return try {
-            // 모듈 경로에서 열리지 않은 패키지는 InaccessibleObjectException을 던진다.
             field.trySetAccessible()
         } catch (e: SecurityException) {
             logger.debug("Cannot make field '${field.name}' accessible due to security restrictions", e)
@@ -223,9 +208,6 @@ internal object AuditMetadata {
         }
     }
 
-    /**
-     * 지원되는 시간 타입인지 확인합니다.
-     */
     private fun isSupportedTemporalType(type: Class<*>): Boolean {
         return type == Instant::class.java ||
                 type == LocalDateTime::class.java ||
@@ -237,9 +219,9 @@ internal object AuditMetadata {
     }
 
     /**
-     * 지원하지 않는 타입에 auditing 어노테이션이 붙으면 조용히 넘어가지 않고 경고합니다.
+     * Warns when an auditing annotation targets an unsupported temporal type.
      *
-     * 경고가 없으면 필드가 계속 null로 남아 NOT NULL 제약 위반으로만 문제가 드러납니다.
+     * Without this warning, the issue may only surface later as a NOT NULL constraint violation.
      */
     private fun warnUnsupportedTemporalType(cls: Class<*>, field: Field, annotation: String) {
         logger.warn(

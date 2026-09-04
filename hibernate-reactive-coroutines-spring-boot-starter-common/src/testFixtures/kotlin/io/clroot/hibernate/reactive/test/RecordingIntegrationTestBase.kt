@@ -13,32 +13,10 @@ import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 
 /**
- * HQL 쿼리 기록 기능이 포함된 통합 테스트 베이스 클래스.
+ * Integration test base class with HQL query recording.
  *
- * [IntegrationTestBase]의 모든 기능에 더해 [HqlRecorder]를 통한
- * 쿼리 캡처 및 검증 기능을 제공합니다.
- *
- * 각 테스트 전에 쿼리 기록이 자동으로 초기화됩니다.
- *
- * 사용 예:
- * ```kotlin
- * @SpringBootTest
- * class QueryVerificationTest : RecordingIntegrationTestBase() {
- *     @Autowired
- *     private lateinit var repository: TestEntityRepository
- *
- *     init {
- *         describe("쿼리 검증") {
- *             it("findByName은 올바른 HQL을 생성한다") {
- *                 repository.findByName("test")
- *
- *                 hqlRecorder.assertQueryCount(1)
- *                 hqlRecorder.assertLastQueryContains("WHERE e.name = :p0")
- *             }
- *         }
- *     }
- * }
- * ```
+ * [HqlRecorder] captures queries for assertions. Its records are cleared before each
+ * test so assertions include only queries executed by the current test.
  */
 @ActiveProfiles("test")
 @Import(HibernateReactiveAutoConfiguration::class, RecordingTestConfiguration::class)
@@ -63,7 +41,7 @@ abstract class RecordingIntegrationTestBase : DescribeSpec() {
 
     private suspend fun clearAllTables() {
         sessionFactory.withTransaction { session ->
-            // FK 제약조건 순서: 자식 → 부모
+            // Delete child tables before parent tables to satisfy foreign key constraints.
             session.createMutationQuery("DELETE FROM ChildEntity").executeUpdate()
             session.createMutationQuery("DELETE FROM ParentEntity").executeUpdate()
             session.createMutationQuery("DELETE FROM VersionedEntity").executeUpdate()

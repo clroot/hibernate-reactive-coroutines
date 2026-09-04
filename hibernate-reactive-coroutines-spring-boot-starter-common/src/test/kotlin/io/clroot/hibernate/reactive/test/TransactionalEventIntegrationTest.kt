@@ -32,13 +32,13 @@ class TransactionalEventIntegrationTest : IntegrationTestBase() {
         }
 
         describe("reactive transactional events") {
-            it("AFTER_COMMIT listener를 커밋 후 호출한다") {
+            it("calls AFTER_COMMIT listeners after commit") {
                 service.publish("committed")
 
                 listener.events shouldContainExactly listOf("committed")
             }
 
-            it("롤백된 트랜잭션의 AFTER_COMMIT listener는 호출하지 않는다") {
+            it("does not call AFTER_COMMIT listeners for rolled-back transactions") {
                 shouldThrow<ExpectedRollbackException> {
                     service.publishAndRollback("rolled-back")
                 }
@@ -77,6 +77,7 @@ class TransactionalEventIntegrationTest : IntegrationTestBase() {
     class TransactionalEventRecorder {
         val events: MutableList<String> = CopyOnWriteArrayList()
 
+        // The listener must observe only successfully committed events.
         @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
         fun onCommitted(event: CommittedEvent) {
             events += event.value

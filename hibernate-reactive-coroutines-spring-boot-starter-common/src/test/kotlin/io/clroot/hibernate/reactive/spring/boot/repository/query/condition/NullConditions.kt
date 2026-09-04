@@ -1,10 +1,9 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query.condition
 
 /**
- * Null 체크 및 Boolean 조건 빌더들.
+ * Builders for null and Boolean conditions.
  */
 
-/** IS NULL */
 internal data object IsNullCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IS NULL",
@@ -13,7 +12,6 @@ internal data object IsNullCondition : ConditionBuilder {
     )
 }
 
-/** IS NOT NULL */
 internal data object IsNotNullCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IS NOT NULL",
@@ -22,7 +20,6 @@ internal data object IsNotNullCondition : ConditionBuilder {
     )
 }
 
-/** = TRUE */
 internal data object TrueCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property = TRUE",
@@ -31,7 +28,6 @@ internal data object TrueCondition : ConditionBuilder {
     )
 }
 
-/** = FALSE */
 internal data object FalseCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property = FALSE",
@@ -40,7 +36,6 @@ internal data object FalseCondition : ConditionBuilder {
     )
 }
 
-/** IS EMPTY (컬렉션) */
 internal data object IsEmptyCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IS EMPTY",
@@ -49,7 +44,6 @@ internal data object IsEmptyCondition : ConditionBuilder {
     )
 }
 
-/** IS NOT EMPTY (컬렉션) */
 internal data object IsNotEmptyCondition : ConditionBuilder {
     override fun build(property: String, paramIndex: Int) = ConditionResult(
         condition = "$property IS NOT EMPTY",
