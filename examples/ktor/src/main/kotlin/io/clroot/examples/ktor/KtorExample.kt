@@ -3,30 +3,16 @@ package io.clroot.examples.ktor
 import io.clroot.hibernate.reactive.ktor.HibernateReactive
 import io.clroot.hibernate.reactive.ktor.hibernateRepository
 import io.clroot.hibernate.reactive.ktor.hibernateTransactionExecutor
-import io.clroot.hibernate.reactive.repository.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.repository.auditing.ReactiveAuditorAware
 import io.ktor.http.ContentType
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-
-@Entity
-@Table(name = "ktor_smoke_records")
-class SmokeRecord(
-    var value: String = "",
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null,
-)
-
-interface SmokeRecordRepository : CoroutineCrudRepository<SmokeRecord, Long>
+import jakarta.data.Sort
+import jakarta.data.page.PageRequest
 
 fun main() {
     val host = System.getenv("DB_HOST") ?: "localhost"
@@ -43,18 +29,54 @@ fun main() {
                 this.password = password
                 schemaGeneration = "create-drop"
             }
-            repository<SmokeRecordRepository, SmokeRecord, Long>()
+            auditorAware = ReactiveAuditorAware { "demo-user" }
+            repository<KtorDemoTeamRepository, KtorDemoTeam, Long>()
+            repository<KtorDemoMemberRepository, KtorDemoMember, Long>()
         }
 
-        val records = hibernateRepository<SmokeRecordRepository>()
+        val teams = hibernateRepository<KtorDemoTeamRepository>()
+        val members = hibernateRepository<KtorDemoMemberRepository>()
         val transactions = hibernateTransactionExecutor
         routing {
-            get("/smoke") {
-                val count = transactions.transactional {
-                    records.save(SmokeRecord(value = "ktor"))
-                    records.count()
+            post("/demo") {
+                val teamId = transactions.transactional {
+                    members.deleteAll()
+                    teams.deleteAll()
+
+                    val team = KtorDemoTeam(name = "platform").apply {
+                        addMember("alice", active = true)
+                        addMember("bob", active = true)
+                        addMember("carol", active = false)
+                    }
+                    val saved = teams.save(team)
+                    check(saved.createdBy == "demo-user")
+                    check(saved.createdAt != null)
+                    checkNotNull(saved.id)
                 }
-                call.respondText("ktor-ok:$count", ContentType.Text.Plain)
+                val summary = transactions.readOnly {
+                    val team = checkNotNull(teams.findByIdWithMembers(teamId))
+                    val activeMembers = members.findByActive(
+                        active = true,
+                        pageRequest = PageRequest.ofPage(1, 1, true),
+                        sort = Sort.asc("name"),
+                    )
+
+                    check(team.members.size == 3)
+                    check(activeMembers.totalElements() == 2L)
+                    check(activeMembers.hasNext())
+
+                    listOf(
+                        "ktor-demo-ok",
+                        team.name,
+                        team.members.size,
+                        activeMembers.content().single().name,
+                        activeMembers.totalElements(),
+                        activeMembers.hasNext(),
+                        team.createdBy,
+                        team.createdAt != null,
+                    ).joinToString(":")
+                }
+                call.respondText(summary, ContentType.Text.Plain)
             }
         }
     }.start(wait = true)
