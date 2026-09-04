@@ -19,6 +19,12 @@ plugins {
     `java-test-fixtures`
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=io.clroot.hibernate.reactive.InternalHrcApi")
+    }
+}
+
 val sharedStarterRoot = rootProject.layout.projectDirectory
     .dir("hibernate-reactive-coroutines-spring-boot-starter-common/src")
 val sharedStarterMain = sharedStarterRoot.dir("main")

@@ -9,12 +9,14 @@ import kotlin.time.Duration.Companion.INFINITE
 import kotlin.time.Duration.Companion.nanoseconds
 
 /** Monotonic nanosecond clock used to evaluate transaction deadlines. */
+@InternalHrcApi
 public fun interface MonotonicClock {
     /** Returns an arbitrary monotonic nanosecond reading. */
     public fun nanoTime(): Long
 }
 
 /** Production monotonic clock backed by [System.nanoTime]. */
+@InternalHrcApi
 public object SystemMonotonicClock : MonotonicClock {
     override fun nanoTime(): Long = System.nanoTime()
 }
@@ -22,6 +24,7 @@ public object SystemMonotonicClock : MonotonicClock {
 /**
  * Transaction mode for a session in the coroutine context.
  */
+@InternalHrcApi
 public enum class TransactionMode {
     READ_ONLY,
     READ_WRITE,
@@ -37,6 +40,7 @@ public enum class TransactionMode {
  * @param timeout transaction timeout; unbounded by default
  * @param startTimeNanos transaction start reading from a monotonic clock
  */
+@InternalHrcApi
 public class ReactiveSessionContext(
     public val session: Mutiny.Session,
     public val mode: TransactionMode,
@@ -87,5 +91,6 @@ public suspend fun currentSessionOrNull(): Mutiny.Session? =
 /**
  * Returns the reactive session context, if any.
  */
+@InternalHrcApi
 public suspend fun currentContextOrNull(): ReactiveSessionContext? =
     currentCoroutineContext()[ReactiveSessionContext]

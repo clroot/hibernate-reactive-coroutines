@@ -1,11 +1,13 @@
 package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
 
 /** Framework-neutral execution metadata prepared by a repository integration at startup. */
+@InternalHrcApi
 public data class PreparedRepositoryQuery(
     public val methodName: String,
     public val hql: String,
@@ -32,12 +34,14 @@ public data class PreparedRepositoryQuery(
 }
 
 /** Identifies whether query text came from method-name derivation or an integration annotation. */
+@InternalHrcApi
 public enum class RepositoryQueryKind {
     DERIVED,
     ANNOTATED,
 }
 
 /** Result shape understood by the framework-neutral repository runtime. */
+@InternalHrcApi
 public enum class RepositoryQueryReturnType {
     SINGLE,
     LIST,

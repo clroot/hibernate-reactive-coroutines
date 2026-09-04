@@ -19,7 +19,7 @@ import java.time.Duration
  * ```
  */
 @ConfigurationProperties(prefix = "spring.jpa.properties.hibernate.reactive")
-public data class HibernateReactiveProperties(
+internal data class HibernateReactiveProperties(
     /**
      * Hibernate Reactive connection-pool size. Defaults to 10.
      *

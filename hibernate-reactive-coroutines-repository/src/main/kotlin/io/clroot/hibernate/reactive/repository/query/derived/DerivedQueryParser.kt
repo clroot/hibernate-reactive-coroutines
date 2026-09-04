@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.repository.query.derived
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import java.lang.reflect.GenericArrayType
 import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
@@ -8,6 +9,7 @@ import java.lang.reflect.WildcardType
 import java.util.Optional
 
 /** Parses Spring-Data-style repository method names without depending on Spring Data. */
+@InternalHrcApi
 public object DerivedQueryParser {
     private val prefixPattern = Regex(
         "^(find|read|get|query|search|stream|count|exists|delete|remove)((\\p{Lu}.*?))??By",

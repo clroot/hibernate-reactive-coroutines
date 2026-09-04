@@ -45,7 +45,7 @@ import reactor.netty.resources.LoopResources
     name = ["share-event-loops"],
     havingValue = "true",
 )
-public class VertxEventLoopSharingAutoConfiguration {
+internal class VertxEventLoopSharingAutoConfiguration {
 
     /**
      * [ReactorResourceFactory] used by the embedded server.

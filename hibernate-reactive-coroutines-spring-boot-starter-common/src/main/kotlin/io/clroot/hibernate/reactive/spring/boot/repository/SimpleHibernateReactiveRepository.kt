@@ -17,7 +17,7 @@ import java.lang.reflect.Method
  * [transactionExecutor] is retained for that compatibility even though writes now use the shared
  * session-operation SPI directly.
  */
-public class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
+internal class SimpleHibernateReactiveRepository<T : Any, ID : Any>(
     entityClass: Class<T>,
     idClass: Class<ID>,
     sessionProvider: TransactionalAwareSessionProvider,

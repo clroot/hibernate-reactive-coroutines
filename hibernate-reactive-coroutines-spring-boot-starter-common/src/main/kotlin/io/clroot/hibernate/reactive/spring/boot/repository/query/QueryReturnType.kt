@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.spring.boot.repository.query
 
 /** Query method return types. */
-public enum class QueryReturnType {
+internal enum class QueryReturnType {
     /** A nullable single entity. */
     SINGLE,
 

@@ -1,10 +1,12 @@
 package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import jakarta.persistence.metamodel.Metamodel
 import java.lang.reflect.Proxy
 
 /** Creates JDK repository proxies without requiring an application framework container. */
+@InternalHrcApi
 public class RepositoryFactory(
     private val sessionOperations: ReactiveSessionOperations,
     private val metamodel: Metamodel,

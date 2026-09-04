@@ -9,6 +9,7 @@ import kotlin.time.Duration.Companion.INFINITE
  * @param isReadOnly whether the transaction is read-only
  * @param remainingTimeout remaining timeout, or [INFINITE] when unbounded
  */
+@InternalHrcApi
 public class AmbientTransaction(
     public val isReadOnly: Boolean,
     public val remainingTimeout: Duration = INFINITE,
@@ -20,6 +21,7 @@ public class AmbientTransaction(
  * The core module is framework-independent. Integrations use this hook to
  * detect framework-managed transactions and avoid opening an unused session.
  */
+@InternalHrcApi
 public fun interface AmbientTransactionProbe {
 
     /**

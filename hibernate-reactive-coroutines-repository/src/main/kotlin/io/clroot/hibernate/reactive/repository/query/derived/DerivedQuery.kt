@@ -1,8 +1,11 @@
 package io.clroot.hibernate.reactive.repository.query.derived
 
+import io.clroot.hibernate.reactive.InternalHrcApi
+
 /**
  * Framework-neutral representation of a query derived from a repository method name.
  */
+@InternalHrcApi
 public data class DerivedQuery(
     public val subject: QuerySubject,
     public val distinct: Boolean,
@@ -12,6 +15,7 @@ public data class DerivedQuery(
 )
 
 /** The operation selected by a derived-query method prefix. */
+@InternalHrcApi
 public enum class QuerySubject {
     FIND,
     COUNT,
@@ -23,16 +27,19 @@ public enum class QuerySubject {
  * A predicate in disjunctive normal form: the outer list is joined with OR and each
  * [Conjunction.predicates] list is joined with AND.
  */
+@InternalHrcApi
 public data class PredicateGroup(
     public val disjuncts: List<Conjunction>,
 )
 
 /** Predicates that must all match. */
+@InternalHrcApi
 public data class Conjunction(
     public val predicates: List<QueryPredicate>,
 )
 
 /** A single property condition. */
+@InternalHrcApi
 public data class QueryPredicate(
     public val property: PropertyPath,
     public val operator: PredicateOperator,
@@ -40,12 +47,14 @@ public data class QueryPredicate(
 )
 
 /** An entity property path resolved and validated against its owning type. */
+@InternalHrcApi
 public data class PropertyPath(
     public val value: String,
     public val leafType: Class<*>,
 )
 
 /** An order expression attached to a derived query or supplied by an adapter. */
+@InternalHrcApi
 public data class QueryOrder(
     public val property: String,
     public val direction: SortDirection = SortDirection.ASC,
@@ -53,12 +62,14 @@ public data class QueryOrder(
 )
 
 /** Sort direction independent of any framework pagination API. */
+@InternalHrcApi
 public enum class SortDirection {
     ASC,
     DESC,
 }
 
 /** Case handling requested by a derived-query keyword. */
+@InternalHrcApi
 public enum class IgnoreCaseMode {
     NEVER,
     ALWAYS,
@@ -66,6 +77,7 @@ public enum class IgnoreCaseMode {
 }
 
 /** Operators recognized in the predicate portion of a derived-query method name. */
+@InternalHrcApi
 public enum class PredicateOperator(public val argumentCount: Int) {
     EQUALS(1),
     NOT_EQUALS(1),

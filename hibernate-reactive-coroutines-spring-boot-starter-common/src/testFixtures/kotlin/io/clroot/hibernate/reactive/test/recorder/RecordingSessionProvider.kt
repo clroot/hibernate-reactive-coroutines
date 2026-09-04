@@ -9,7 +9,7 @@ import org.hibernate.reactive.mutiny.Mutiny
  *
  * Wraps every session so queries are recorded without changing production code.
  */
-class RecordingSessionProvider(
+internal class RecordingSessionProvider(
     sessionFactory: Mutiny.SessionFactory,
     private val recorder: HqlRecorder,
 ) : TransactionalAwareSessionProvider(sessionFactory) {

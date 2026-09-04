@@ -9,6 +9,9 @@ public abstract interface class io/clroot/hibernate/reactive/AmbientTransactionP
 	public abstract fun currentTransaction (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
+public abstract interface annotation class io/clroot/hibernate/reactive/InternalHrcApi : java/lang/annotation/Annotation {
+}
+
 public abstract interface class io/clroot/hibernate/reactive/MonotonicClock {
 	public abstract fun nanoTime ()J
 }

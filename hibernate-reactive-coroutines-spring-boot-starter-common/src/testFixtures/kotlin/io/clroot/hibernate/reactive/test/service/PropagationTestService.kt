@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional
  * Service for transaction propagation tests.
  */
 @Service
-class PropagationTestService(
+internal class PropagationTestService(
     private val testEntityRepository: TestEntityRepository,
     private val sessionProvider: TransactionalAwareSessionProvider,
 ) {

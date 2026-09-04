@@ -4,6 +4,12 @@ plugins {
     id("hrc.published")
 }
 
+kotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=io.clroot.hibernate.reactive.InternalHrcApi")
+    }
+}
+
 description = "Ktor application plugin for Hibernate Reactive coroutine repositories"
 
 dependencies {

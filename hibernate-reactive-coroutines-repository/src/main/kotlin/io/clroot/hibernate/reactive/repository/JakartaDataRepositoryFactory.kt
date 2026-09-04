@@ -1,11 +1,13 @@
 package io.clroot.hibernate.reactive.repository
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryEntityLifecycle
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryFactory
 import jakarta.persistence.metamodel.Metamodel
 
 /** Creates non-Spring coroutine repositories from HRC query metadata and Jakarta Data paging types. */
+@InternalHrcApi
 public class JakartaDataRepositoryFactory(
     sessionOperations: ReactiveSessionOperations,
     metamodel: Metamodel,

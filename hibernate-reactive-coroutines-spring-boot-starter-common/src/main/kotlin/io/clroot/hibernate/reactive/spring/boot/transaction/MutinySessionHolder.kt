@@ -14,7 +14,7 @@ import kotlin.time.Duration
 /**
  * Spring-managed Mutiny session state, including the owning Vert.x context and transaction metadata.
  */
-public class MutinySessionHolder(
+internal class MutinySessionHolder(
     private var session: Mutiny.Session?,
     private var vertxContext: Context? = null,
     private var mode: TransactionMode = TransactionMode.READ_WRITE,

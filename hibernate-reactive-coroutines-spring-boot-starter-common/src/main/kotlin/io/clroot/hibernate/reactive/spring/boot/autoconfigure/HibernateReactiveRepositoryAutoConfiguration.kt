@@ -14,7 +14,7 @@ import org.springframework.data.repository.kotlin.CoroutineCrudRepository
  */
 @AutoConfiguration(after = [HibernateReactiveAutoConfiguration::class])
 @ConditionalOnClass(CoroutineCrudRepository::class)
-public class HibernateReactiveRepositoryAutoConfiguration {
+internal class HibernateReactiveRepositoryAutoConfiguration {
 
     public companion object {
         /**

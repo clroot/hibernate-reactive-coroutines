@@ -7,7 +7,7 @@ import org.springframework.data.repository.query.parser.Part
  *
  * For example, `CONTAINING` produces `"%value%"` and `STARTING_WITH` produces `"value%"`.
  */
-public sealed class ParameterBinder {
+internal sealed class ParameterBinder {
 
     public abstract fun bind(value: Any?): Any?
 

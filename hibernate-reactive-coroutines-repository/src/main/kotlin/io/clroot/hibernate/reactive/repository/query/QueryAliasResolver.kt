@@ -8,7 +8,7 @@ import java.util.Locale
  * Dynamic sorting requires an alias to qualify property paths. Returning `null` for ambiguous
  * queries lets the caller reject unsafe sorting instead of silently changing query semantics.
  */
-public object QueryAliasResolver {
+internal object QueryAliasResolver {
 
     private const val IDENTIFIER = "[\\p{L}_$][\\p{L}\\p{N}_$]*"
 

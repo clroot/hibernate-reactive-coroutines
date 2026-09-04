@@ -1,5 +1,6 @@
 package io.clroot.hibernate.reactive.repository.runtime
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import io.clroot.hibernate.reactive.ReactiveSessionOperations
 import jakarta.persistence.metamodel.Metamodel
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +12,7 @@ import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.coroutines.startCoroutine
 
 /** Framework-neutral invocation handler shared by repository integrations. */
+@InternalHrcApi
 public class RepositoryInvocationHandler<T : Any, ID : Any>(
     private val entityClass: Class<T>,
     @Suppress("UNUSED_PARAMETER") idClass: Class<ID>,

@@ -1,13 +1,16 @@
 package io.clroot.hibernate.reactive.repository.query
 
+import io.clroot.hibernate.reactive.InternalHrcApi
 import java.util.Locale
 
+@InternalHrcApi
 public enum class QueryStatementType {
     SELECT,
     MODIFYING,
     UNKNOWN,
 }
 
+@InternalHrcApi
 public object CountQueryDeriver {
     private val selectClauseRegex = Regex(
         "^SELECT\\s+(?:(DISTINCT)\\s+)?(.+?)\\s+FROM\\s+",

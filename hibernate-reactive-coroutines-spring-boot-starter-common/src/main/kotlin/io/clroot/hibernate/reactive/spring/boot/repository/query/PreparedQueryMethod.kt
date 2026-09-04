@@ -25,7 +25,7 @@ import java.lang.reflect.WildcardType
  * @param parameterNames Names used for named parameters.
  * @param maxResults Maximum result count from `Top` or `First`; null when unlimited.
  */
-public data class PreparedQueryMethod(
+internal data class PreparedQueryMethod(
     val method: Method,
     val partTree: PartTree?,
     val hql: String,

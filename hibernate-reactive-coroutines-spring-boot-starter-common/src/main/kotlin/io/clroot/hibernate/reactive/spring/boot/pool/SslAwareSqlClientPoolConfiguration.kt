@@ -22,7 +22,7 @@ internal fun copyPostgresConnectOptions(source: SqlConnectOptions): SqlConnectOp
 }
 
 /** Applies PostgreSQL SSL modes while keeping `vertx-pg-client` optional through reflection. */
-public class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
+internal class SslAwareSqlClientPoolConfiguration : DefaultSqlClientPoolConfiguration() {
 
     public companion object {
         private const val SSL_MODE_PROPERTY = "hibernate.vertx.pool.ssl.mode"
