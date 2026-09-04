@@ -70,7 +70,7 @@ ORM 7, so the two starters cannot coexist and the application will not boot. On 
 can.
 
 ```kotlin
-val hrcVersion = "2.0.1"
+val hrcVersion = "2.0.2"
 
 dependencies {
     // Remove

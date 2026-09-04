@@ -57,7 +57,7 @@ the actual database I/O, so nothing blocks along the way.
 | Ktor 3 | `hibernate-reactive-coroutines-ktor` |
 
 ```kotlin
-val hrcVersion = "2.0.1"
+val hrcVersion = "2.0.2"
 
 dependencies {
     // Pick the module that matches your stack.
