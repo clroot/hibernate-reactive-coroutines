@@ -13,6 +13,7 @@ import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
 import io.clroot.hibernate.reactive.repository.query.derived.QuerySubject
 import io.clroot.hibernate.reactive.repository.runtime.PreparedRepositoryQuery
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryMethodScanner
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryReturnType
 import jakarta.data.Order
 import jakarta.data.Sort
@@ -20,7 +21,6 @@ import jakarta.data.page.Page
 import jakarta.data.page.PageRequest
 import jakarta.persistence.Tuple
 import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 import java.lang.reflect.Parameter
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
@@ -33,10 +33,8 @@ internal class JakartaDataQueryMethodParser(
     private val entityName: String = entityClass.simpleName,
 ) {
     fun parseRepository(repositoryInterface: Class<*>): Map<String, PreparedRepositoryQuery> =
-        repositoryInterface.methods
-            .asSequence()
-            .filter(::isCustomQueryMethod)
-            .associate { method -> createMethodKey(method) to parse(method) }
+        RepositoryMethodScanner.queryMethods(repositoryInterface)
+            .associate { method -> RepositoryMethodScanner.methodKey(method) to parse(method) }
 
     fun parse(method: Method): PreparedRepositoryQuery {
         val query = method.getAnnotation(Query::class.java)
@@ -50,22 +48,6 @@ internal class JakartaDataQueryMethodParser(
             parseAnnotatedQueryMethod(method, query, modifying)
         }
     }
-
-    private fun isCustomQueryMethod(method: Method): Boolean =
-        isDeclaredRepositoryMethod(method) && isSuspendMethod(method)
-
-    private fun isDeclaredRepositoryMethod(method: Method): Boolean {
-        if (method.name in BASE_METHODS) return false
-        if (method.declaringClass == Any::class.java) return false
-        if (method.isDefault || method.isSynthetic || method.isBridge) return false
-        return !Modifier.isStatic(method.modifiers)
-    }
-
-    private fun isSuspendMethod(method: Method): Boolean =
-        method.parameterTypes.lastOrNull()?.let(Continuation::class.java::isAssignableFrom) == true
-
-    private fun createMethodKey(method: Method): String =
-        "${method.name}#${method.parameterTypes.size - 1}"
 
     private fun parseAnnotatedQueryMethod(
         method: Method,
@@ -364,10 +346,6 @@ internal class JakartaDataQueryMethodParser(
     }
 
     private companion object {
-        val BASE_METHODS = setOf(
-            "save", "saveAll", "findById", "findAll", "findAllById", "existsById", "count",
-            "deleteById", "delete", "deleteAllById", "deleteAll",
-        )
         val RESULT_BEARING_TYPES = setOf(
             RepositoryQueryReturnType.SINGLE,
             RepositoryQueryReturnType.LIST,
