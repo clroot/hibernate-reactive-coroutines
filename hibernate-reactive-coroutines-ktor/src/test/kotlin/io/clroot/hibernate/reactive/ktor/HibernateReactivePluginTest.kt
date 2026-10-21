@@ -125,6 +125,18 @@ class HibernateReactivePluginTest : DescribeSpec({
             }
         }
 
+        it("rejects a repository with a non-suspend query method at startup") {
+            val message = startupFailure<NonSuspendRepository>()
+
+            message shouldContain "NonSuspendRepository.findByName' must be a suspend function"
+        }
+
+        it("rejects a repository with overloads that share a name and argument count at startup") {
+            val message = startupFailure<AmbiguousOverloadRepository>()
+
+            message shouldContain "ambiguous overloads for 'findByName#1'"
+        }
+
         it("registers a repository entity as a managed entity") {
             val configuration = HibernateReactiveConfiguration()
 
@@ -202,8 +214,39 @@ class HibernateReactivePluginTest : DescribeSpec({
     }
 })
 
+private inline fun <reified R : CoroutineCrudRepository<UnregisteredEntity, Long>> startupFailure(): String? {
+    val sessionFactory = mockk<Mutiny.SessionFactory>(relaxed = true)
+    val vertx = Vertx.vertx()
+    try {
+        return shouldThrow<IllegalStateException> {
+            testApplication {
+                application {
+                    install(HibernateReactive) {
+                        this.sessionFactory = sessionFactory
+                        this.vertx = vertx
+                        repository<R, UnregisteredEntity, Long>()
+                    }
+                }
+                startApplication()
+            }
+        }.message
+    } finally {
+        vertx.close().toCompletionStage().toCompletableFuture().join()
+    }
+}
+
 private class UnregisteredEntity(val id: Long)
 
 private interface UnregisteredRepository : CoroutineCrudRepository<UnregisteredEntity, Long>
 
 private interface GenericRepository<T : Any> : CoroutineCrudRepository<T, Long>
+
+private interface NonSuspendRepository : CoroutineCrudRepository<UnregisteredEntity, Long> {
+    fun findByName(name: String): List<UnregisteredEntity>
+}
+
+private interface AmbiguousOverloadRepository : CoroutineCrudRepository<UnregisteredEntity, Long> {
+    suspend fun findByName(name: String): List<UnregisteredEntity>
+
+    suspend fun findByName(id: Long): List<UnregisteredEntity>
+}

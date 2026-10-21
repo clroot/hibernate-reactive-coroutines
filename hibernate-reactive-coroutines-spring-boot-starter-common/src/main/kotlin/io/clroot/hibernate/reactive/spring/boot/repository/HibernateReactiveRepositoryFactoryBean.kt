@@ -2,6 +2,7 @@ package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryFactory
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryMethodScanner
 import io.clroot.hibernate.reactive.spring.boot.auditing.ReactiveAuditingHandler
 import io.clroot.hibernate.reactive.spring.boot.repository.query.PreparedQueryMethod
 import io.clroot.hibernate.reactive.spring.boot.repository.query.toRuntimeQuery
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.FactoryBean
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.GenericTypeResolver
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
-import java.lang.reflect.Method
 
 /**
  * FactoryBean that creates [CoroutineCrudRepository] proxies.
@@ -102,48 +102,8 @@ internal class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepositor
         entityName: String,
     ): Map<String, PreparedQueryMethod> {
         val parser = QueryMethodParser(entityClass, entityName)
-        val declaredMethods = repositoryInterface.methods
-            .filter { parser.isDeclaredRepositoryMethod(it) }
-
-        rejectNonSuspendMethods(parser, declaredMethods)
-
-        val queryMethods = declaredMethods.filter { parser.isSuspendMethod(it) }
-        rejectAmbiguousOverloads(parser, queryMethods)
-
-        return queryMethods.associate { method ->
-            parser.createMethodKey(method) to parser.parse(method)
+        return RepositoryMethodScanner.queryMethods(repositoryInterface).associate { method ->
+            RepositoryMethodScanner.methodKey(method) to parser.parse(method)
         }
-    }
-
-    private fun rejectNonSuspendMethods(parser: QueryMethodParser, methods: List<Method>) {
-        val offender = methods.firstOrNull { !parser.isSuspendMethod(it) } ?: return
-
-        throw IllegalStateException(
-            "Repository method '${repositoryInterface.name}.${offender.name}' must be a suspend function. " +
-                    "Non-suspend query methods (including Flow-returning ones) are not supported; " +
-                    "declare it as 'suspend fun ${offender.name}(...): List<T>' instead.",
-        )
-    }
-
-    /**
-     * Runtime lookup keys contain only the method name and argument count, so overloads with the same key
-     * cannot be selected deterministically.
-     */
-    private fun rejectAmbiguousOverloads(parser: QueryMethodParser, methods: List<Method>) {
-        methods
-            .groupBy { parser.createMethodKey(it) }
-            .forEach { (key, overloads) ->
-                val distinctSignatures = overloads.distinctBy { it.parameterTypes.toList() }
-                if (distinctSignatures.size > 1) {
-                    val signatures = distinctSignatures.joinToString(", ") { method ->
-                        method.parameterTypes.dropLast(1).joinToString(", ") { it.simpleName }
-                    }
-                    throw IllegalStateException(
-                        "Repository '${repositoryInterface.name}' declares ambiguous overloads for '$key': " +
-                                "[$signatures]. Query methods are resolved by name and argument count, " +
-                                "so overloads with the same argument count are not supported.",
-                    )
-                }
-            }
     }
 }

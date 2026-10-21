@@ -376,6 +376,14 @@ public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryInv
 public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryInvocationHandler$Companion {
 }
 
+public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryMethodScanner {
+	public static final field INSTANCE Lio/clroot/hibernate/reactive/repository/runtime/RepositoryMethodScanner;
+	public final fun isDeclaredRepositoryMethod (Ljava/lang/reflect/Method;)Z
+	public final fun isSuspendMethod (Ljava/lang/reflect/Method;)Z
+	public final fun methodKey (Ljava/lang/reflect/Method;)Ljava/lang/String;
+	public final fun queryMethods (Ljava/lang/Class;)Ljava/util/List;
+}
+
 public final class io/clroot/hibernate/reactive/repository/runtime/RepositoryPage {
 	public fun <init> (Ljava/util/List;Lio/clroot/hibernate/reactive/repository/runtime/RepositoryPageRequest;J)V
 	public final fun component1 ()Ljava/util/List;

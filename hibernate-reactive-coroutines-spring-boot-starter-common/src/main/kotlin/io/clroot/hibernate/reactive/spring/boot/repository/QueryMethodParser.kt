@@ -23,7 +23,6 @@ import org.springframework.data.domain.Slice
 import org.springframework.data.domain.Sort
 import org.springframework.data.repository.query.parser.PartTree
 import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
@@ -41,16 +40,6 @@ internal class QueryMethodParser(
     private val entityName: String = entityClass.simpleName,
 ) {
 
-    companion object {
-        /** Names inherited from `CoroutineCrudRepository`, which are not custom queries. */
-        private val BASE_METHODS = setOf(
-            "save", "saveAll",
-            "findById", "findAll", "findAllById",
-            "existsById", "count",
-            "deleteById", "delete", "deleteAllById", "deleteAll",
-        )
-    }
-
     fun parse(method: Method): PreparedQueryMethod {
         val queryAnnotation = method.getAnnotation(Query::class.java)
         require(queryAnnotation != null || !method.isAnnotationPresent(Modifying::class.java)) {
@@ -62,39 +51,6 @@ internal class QueryMethodParser(
         } else {
             parseDerivedQueryMethod(method)
         }
-    }
-
-    fun isCustomQueryMethod(method: Method): Boolean =
-        isDeclaredRepositoryMethod(method) && isSuspendMethod(method)
-
-    /**
-     * Identifies methods declared directly by the repository interface.
-     *
-     * Excludes inherited CRUD and `Object` methods plus compiler-generated and non-abstract methods.
-     */
-    fun isDeclaredRepositoryMethod(method: Method): Boolean {
-        if (method.name in BASE_METHODS) return false
-        if (method.declaringClass == Any::class.java) return false
-        if (method.isDefault) return false
-        if (method.isSynthetic || method.isBridge) return false
-        if (Modifier.isStatic(method.modifiers)) return false
-        return true
-    }
-
-    /**
-     * Kotlin compiles suspend functions with a trailing [Continuation] parameter.
-     */
-    fun isSuspendMethod(method: Method): Boolean {
-        val params = method.parameterTypes
-        return params.isNotEmpty() && Continuation::class.java.isAssignableFrom(params.last())
-    }
-
-    /**
-     * Distinguishes overloads by their name and declared argument count.
-     */
-    fun createMethodKey(method: Method): String {
-        val paramCount = method.parameterTypes.size - 1
-        return "${method.name}#$paramCount"
     }
 
     private fun parseAnnotatedQueryMethod(
