@@ -646,7 +646,8 @@ the after-commit callback never registers.
 ## 5. Loading Associations
 
 Hibernate Reactive has no synchronous lazy loading. Touching an uninitialized association raises
-`HR000069`, so load associations explicitly in one of two ways.
+`HR000056` for a collection or `HR000037` for an entity, so load associations explicitly in one
+of two ways.
 
 ### 5.1 FETCH JOIN (recommended)
 
