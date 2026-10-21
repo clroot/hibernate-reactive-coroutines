@@ -142,7 +142,7 @@ suspend fun rename(id: Long, name: String): User {
 ### 2.4 Lazy Loading
 
 Every place that relied on touching an association to load it has to change. Touching an
-uninitialized association now raises `HR000069`.
+uninitialized association now raises `HR000056` for a collection or `HR000037` for an entity.
 
 ```kotlin
 // Before
