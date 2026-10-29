@@ -6,11 +6,11 @@ import io.clroot.hibernate.reactive.repository.query.QueryAliasResolver
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.QueryPropertyPathValidator
 import io.clroot.hibernate.reactive.repository.query.derived.QueryOrder
+import io.smallrye.mutiny.Uni
 import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
 import jakarta.persistence.metamodel.Metamodel
 import jakarta.persistence.metamodel.PluralAttribute
-import io.smallrye.mutiny.Uni
 import jakarta.persistence.metamodel.SingularAttribute
 import org.hibernate.reactive.mutiny.Mutiny
 
@@ -264,14 +264,14 @@ internal class QueryOperations<T : Any>(
         if (prepared.isNativeQuery) {
             throw UnsupportedOperationException(
                 "Sorting a native @Query is not supported for method '${prepared.methodName}'. " +
-                        "Declare the ORDER BY clause inside the query instead.",
+                    "Declare the ORDER BY clause inside the query instead.",
             )
         }
 
         val alias = QueryAliasResolver.resolve(prepared.hql)
             ?: throw IllegalStateException(
                 "Cannot apply Sort to @Query method '${prepared.methodName}' because its root alias " +
-                        "could not be determined. Declare the ORDER BY clause inside the query instead.",
+                    "could not be determined. Declare the ORDER BY clause inside the query instead.",
             )
 
         val sortClause = buildSortClause(sort, alias)

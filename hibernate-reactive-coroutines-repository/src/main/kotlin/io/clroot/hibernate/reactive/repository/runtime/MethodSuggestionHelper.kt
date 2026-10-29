@@ -45,7 +45,7 @@ internal object MethodSuggestionHelper {
                 dp[i][j] = minOf(
                     dp[i - 1][j] + 1,
                     dp[i][j - 1] + 1,
-                    dp[i - 1][j - 1] + cost
+                    dp[i - 1][j - 1] + cost,
                 )
             }
         }

@@ -75,7 +75,6 @@ internal class HibernateReactiveRepositoryRegistrar(
             .setScope(BeanDefinition.SCOPE_SINGLETON)
             .beanDefinition
     }
-
 }
 
 internal object HibernateReactiveRepositoryBeanNameGenerator {

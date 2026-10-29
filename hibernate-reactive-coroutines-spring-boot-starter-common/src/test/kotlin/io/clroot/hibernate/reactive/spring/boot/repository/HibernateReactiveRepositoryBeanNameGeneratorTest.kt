@@ -1,7 +1,5 @@
 package io.clroot.hibernate.reactive.spring.boot.repository
 
-import io.clroot.hibernate.reactive.spring.boot.repository.collision.alpha.OrderRepository as AlphaOrderRepository
-import io.clroot.hibernate.reactive.spring.boot.repository.collision.beta.OrderRepository as BetaOrderRepository
 import io.clroot.hibernate.reactive.spring.boot.repository.collision.customer.CustomerRepository
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.maps.shouldContainExactly
@@ -9,6 +7,8 @@ import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.support.RootBeanDefinition
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
+import io.clroot.hibernate.reactive.spring.boot.repository.collision.alpha.OrderRepository as AlphaOrderRepository
+import io.clroot.hibernate.reactive.spring.boot.repository.collision.beta.OrderRepository as BetaOrderRepository
 
 class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
     fun registerRepositories(
@@ -91,7 +91,6 @@ class HibernateReactiveRepositoryBeanNameGeneratorTest : DescribeSpec({
             }
         }
     }
-
 }) {
     private class TestEntity
 

@@ -192,7 +192,7 @@ internal class PaginationOperations<T : Any>(
 internal fun Long.toHibernateFirstResult(): Int {
     require(this in 0..Int.MAX_VALUE.toLong()) {
         "Page offset $this exceeds Hibernate's supported first-result range 0..${Int.MAX_VALUE}; " +
-                "use a smaller page or keyset pagination"
+            "use a smaller page or keyset pagination"
     }
     return toInt()
 }

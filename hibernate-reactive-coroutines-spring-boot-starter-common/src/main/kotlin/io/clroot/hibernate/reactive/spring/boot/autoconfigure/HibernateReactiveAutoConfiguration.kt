@@ -73,22 +73,34 @@ internal class HibernateReactiveAutoConfiguration(
     @Value("\${spring.jpa.properties.hibernate.format_sql:false}") private val formatSql: Boolean,
     @Value("\${spring.jpa.properties.hibernate.use_sql_comments:false}") private val useSqlComments: Boolean,
     @Value("\${spring.jpa.properties.hibernate.highlight_sql:false}") private val highlightSql: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.default_batch_fetch_size:#{null}}") private val defaultBatchFetchSize: Int?,
+    @Value("\${spring.jpa.properties.hibernate.default_batch_fetch_size:#{null}}") private val defaultBatchFetchSize:
+    Int?,
     @Value("\${spring.jpa.properties.hibernate.max_fetch_depth:#{null}}") private val maxFetchDepth: Int?,
     @Value("\${spring.jpa.properties.hibernate.jdbc.batch_size:#{null}}") private val jdbcBatchSize: Int?,
     @Value("\${spring.jpa.properties.hibernate.jdbc.fetch_size:#{null}}") private val jdbcFetchSize: Int?,
     @Value("\${spring.jpa.properties.hibernate.order_inserts:false}") private val orderInserts: Boolean,
     @Value("\${spring.jpa.properties.hibernate.order_updates:false}") private val orderUpdates: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.jdbc.batch_versioned_data:true}") private val batchVersionedData: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.query.plan_cache_max_size:#{null}}") private val queryPlanCacheMaxSize: Int?,
-    @Value("\${spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch:false}") private val failOnPaginationOverCollectionFetch: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.query.in_clause_parameter_padding:false}") private val inClauseParameterPadding: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.globally_quoted_identifiers:false}") private val globallyQuotedIdentifiers: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.physical_naming_strategy:#{null}}") private val physicalNamingStrategy: String?,
-    @Value("\${spring.jpa.properties.hibernate.implicit_naming_strategy:#{null}}") private val implicitNamingStrategy: String?,
+    @Value("\${spring.jpa.properties.hibernate.jdbc.batch_versioned_data:true}") private val batchVersionedData:
+    Boolean,
+    @Value("\${spring.jpa.properties.hibernate.query.plan_cache_max_size:#{null}}") private val queryPlanCacheMaxSize:
+    Int?,
+    @Value(
+        "\${spring.jpa.properties.hibernate.query.fail_on_pagination_over_collection_fetch:false}",
+    ) private val failOnPaginationOverCollectionFetch: Boolean,
+    @Value(
+        "\${spring.jpa.properties.hibernate.query.in_clause_parameter_padding:false}",
+    ) private val inClauseParameterPadding: Boolean,
+    @Value(
+        "\${spring.jpa.properties.hibernate.globally_quoted_identifiers:false}",
+    ) private val globallyQuotedIdentifiers: Boolean,
+    @Value("\${spring.jpa.properties.hibernate.physical_naming_strategy:#{null}}") private val physicalNamingStrategy:
+    String?,
+    @Value("\${spring.jpa.properties.hibernate.implicit_naming_strategy:#{null}}") private val implicitNamingStrategy:
+    String?,
     @Value("\${spring.jpa.properties.hibernate.jdbc.time_zone:#{null}}") private val jdbcTimeZone: String?,
     @Value("\${spring.jpa.properties.hibernate.generate_statistics:false}") private val generateStatistics: Boolean,
-    @Value("\${spring.jpa.properties.hibernate.cache.use_second_level_cache:false}") private val useSecondLevelCache: Boolean,
+    @Value("\${spring.jpa.properties.hibernate.cache.use_second_level_cache:false}") private val useSecondLevelCache:
+    Boolean,
     @Value("\${spring.jpa.properties.hibernate.cache.use_query_cache:false}") private val useQueryCache: Boolean,
 ) {
     /**
@@ -109,8 +121,8 @@ internal class HibernateReactiveAutoConfiguration(
     public fun hibernateSessionFactory(vertx: Vertx): org.hibernate.SessionFactory {
         val resolvedJdbcUrl = jdbcUrl?.takeIf { it.isNotBlank() } ?: throw IllegalStateException(
             "Hibernate Reactive is on the classpath but 'spring.datasource.url' is not set. " +
-                    "Set it, define your own Mutiny.SessionFactory bean, or exclude " +
-                    "${javaClass.name} from auto-configuration.",
+                "Set it, define your own Mutiny.SessionFactory bean, or exclude " +
+                "${javaClass.name} from auto-configuration.",
         )
         val reactiveUrl = ReactiveConnectionUrl.fromJdbc(resolvedJdbcUrl)
 
@@ -130,7 +142,10 @@ internal class HibernateReactiveAutoConfiguration(
                 .setProperty(AvailableSettings.ORDER_INSERTS, orderInserts.toString())
                 .setProperty(AvailableSettings.ORDER_UPDATES, orderUpdates.toString())
                 .setProperty("hibernate.jdbc.batch_versioned_data", batchVersionedData.toString())
-                .setProperty(AvailableSettings.FAIL_ON_PAGINATION_OVER_COLLECTION_FETCH, failOnPaginationOverCollectionFetch.toString())
+                .setProperty(
+                    AvailableSettings.FAIL_ON_PAGINATION_OVER_COLLECTION_FETCH,
+                    failOnPaginationOverCollectionFetch.toString(),
+                )
                 .setProperty(AvailableSettings.IN_CLAUSE_PARAMETER_PADDING, inClauseParameterPadding.toString())
                 .setProperty(AvailableSettings.GLOBALLY_QUOTED_IDENTIFIERS, globallyQuotedIdentifiers.toString())
                 .setProperty(AvailableSettings.GENERATE_STATISTICS, generateStatistics.toString())
@@ -199,7 +214,7 @@ internal class HibernateReactiveAutoConfiguration(
         if (sslMode != null && sslMode != "disable") {
             configuration.setProperty(
                 "hibernate.vertx.pool.configuration_class",
-                SslAwareSqlClientPoolConfiguration::class.java.name
+                SslAwareSqlClientPoolConfiguration::class.java.name,
             )
             configuration.setProperty("hibernate.vertx.pool.ssl.mode", sslMode)
             applicationContext.environment

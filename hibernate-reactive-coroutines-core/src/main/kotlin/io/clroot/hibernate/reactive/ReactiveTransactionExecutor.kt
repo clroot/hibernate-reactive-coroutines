@@ -5,7 +5,13 @@ import io.smallrye.mutiny.coroutines.asUni
 import io.smallrye.mutiny.coroutines.awaitSuspending
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.dispatcher
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.hibernate.FlushMode
 import org.hibernate.reactive.mutiny.Mutiny
 import kotlin.time.Duration
@@ -25,7 +31,6 @@ public class ReactiveTransactionExecutor(
     private val ambientTransactionProbe: AmbientTransactionProbe? = null,
 ) {
     public constructor(sessionFactory: Mutiny.SessionFactory) : this(sessionFactory, null)
-
 
     public companion object {
         public val DEFAULT_TIMEOUT: Duration = 30.seconds
@@ -89,7 +94,7 @@ public class ReactiveTransactionExecutor(
         if (mode == TransactionMode.READ_WRITE && parentContext?.isReadOnly == true) {
             throw ReadOnlyTransactionException(
                 "Cannot start a write transaction within a read-only context. " +
-                        "Move tx.transactional {} outside tx.readOnly {}",
+                    "Move tx.transactional {} outside tx.readOnly {}",
             )
         }
 
@@ -103,7 +108,7 @@ public class ReactiveTransactionExecutor(
         if (mode == TransactionMode.READ_WRITE && ambientTransaction?.isReadOnly == true) {
             throw ReadOnlyTransactionException(
                 "Cannot start a write transaction within a read-only transaction. " +
-                        "Remove readOnly = true from the surrounding @Transactional annotation.",
+                    "Remove readOnly = true from the surrounding @Transactional annotation.",
             )
         }
 
@@ -143,7 +148,7 @@ public class ReactiveTransactionExecutor(
         return Vertx.currentContext()
             ?: throw IllegalStateException(
                 "ReactiveTransactionExecutor must be called within a Vert.x context. " +
-                        "Ensure the application is running on Vert.x or within a reactive pipeline."
+                    "Ensure the application is running on Vert.x or within a reactive pipeline.",
             )
     }
 

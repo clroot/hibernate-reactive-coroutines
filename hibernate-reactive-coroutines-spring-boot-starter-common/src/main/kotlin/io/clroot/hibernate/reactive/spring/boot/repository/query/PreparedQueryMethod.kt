@@ -7,12 +7,12 @@ import io.clroot.hibernate.reactive.repository.query.derived.ParameterBinding
 import io.clroot.hibernate.reactive.repository.runtime.PreparedRepositoryQuery
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryReturnType
-import kotlin.coroutines.Continuation
 import org.springframework.data.repository.query.parser.PartTree
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
+import kotlin.coroutines.Continuation
 
 /**
  * Query method metadata parsed at application startup.

@@ -1,7 +1,7 @@
 package io.clroot.hibernate.reactive.test.repository.inheritance
 
-import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.NoRepositoryBean
+import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 
 /**
  * Base repository interface for inheritance tests.

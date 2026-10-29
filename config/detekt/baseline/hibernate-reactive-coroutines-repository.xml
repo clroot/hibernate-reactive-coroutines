@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:CountQueryDeriver.kt:CountQueryDeriver$next != null &amp;&amp; !next.qualified &amp;&amp; operandStartsQuery &amp;&amp; query.hasOnlySeparators(previous.end, next.start)</ID>
+    <ID>CyclomaticComplexMethod:CountQueryDeriver.kt:CountQueryDeriver$private fun ScanResult.hasUnsafeRootPath: Boolean</ID>
+    <ID>CyclomaticComplexMethod:CountQueryDeriver.kt:CountQueryDeriver$private fun findRootAlias: RootAlias?</ID>
+    <ID>CyclomaticComplexMethod:CountQueryDeriver.kt:CountQueryDeriver$private fun scan: ScanResult</ID>
+    <ID>CyclomaticComplexMethod:CountQueryDeriver.kt:CountQueryDeriver$public fun derive: String</ID>
+    <ID>CyclomaticComplexMethod:DerivedQueryHqlCompiler.kt:DerivedQueryHqlCompiler$private fun buildCondition: String</ID>
+    <ID>CyclomaticComplexMethod:DerivedQueryParser.kt:PropertyPathResolver$private fun actualClass: Class&lt;*></ID>
+    <ID>CyclomaticComplexMethod:DerivedQueryParser.kt:PropertyPathResolver$private fun inspectProperties: Map&lt;String, ResolvedProperty></ID>
+    <ID>CyclomaticComplexMethod:QueryParameterParser.kt:QueryParameterParser$public fun parse: QueryParameters</ID>
+    <ID>CyclomaticComplexMethod:RepositoryInvocationHandler.kt:RepositoryInvocationHandler$private suspend fun executeQueryMethod: Any?</ID>
+    <ID>LongMethod:CountQueryDeriver.kt:CountQueryDeriver$private fun scan: ScanResult</ID>
+    <ID>LongMethod:QueryParameterParser.kt:QueryParameterParser$public fun parse: QueryParameters</ID>
+    <ID>LoopWithTooManyJumpStatements:CountQueryDeriver.kt:CountQueryDeriver$for</ID>
+    <ID>LoopWithTooManyJumpStatements:CountQueryDeriver.kt:CountQueryDeriver$while</ID>
+    <ID>LoopWithTooManyJumpStatements:QueryParameterParser.kt:QueryParameterParser$while</ID>
+    <ID>MagicNumber:DerivedQueryParser.kt:DerivedQueryParser$0x7f</ID>
+    <ID>ReturnCount:CountQueryDeriver.kt:CountQueryDeriver$private fun List&lt;QueryToken>.findSetOperation: QueryToken?</ID>
+    <ID>ReturnCount:CountQueryDeriver.kt:CountQueryDeriver$private fun ScanResult.hasUnsafeRootPath: Boolean</ID>
+    <ID>ReturnCount:CountQueryDeriver.kt:CountQueryDeriver$private fun String.dollarDelimiterAt: String?</ID>
+    <ID>ReturnCount:CountQueryDeriver.kt:CountQueryDeriver$private fun String.nextCodeCharacter: Char?</ID>
+    <ID>ReturnCount:CountQueryDeriver.kt:CountQueryDeriver$private fun findRootAlias: RootAlias?</ID>
+    <ID>ReturnCount:JakartaDataQueryMethodParser.kt:JakartaDataQueryMethodParser$private fun resolveResultClass: Class&lt;*>?</ID>
+    <ID>ReturnCount:JakartaDataQueryMethodParser.kt:private fun extractSuspendReturnType: Type?</ID>
+    <ID>ReturnCount:QueryParameterParser.kt:QueryParameterParser$private fun String.dollarDelimiterAt: String?</ID>
+    <ID>ReturnCount:RepositoryInvocationHandler.kt:RepositoryInvocationHandler$override fun invoke: Any</ID>
+    <ID>ReturnCount:RepositoryInvocationHandler.kt:RepositoryInvocationHandler$private suspend fun executeQueryMethod: Any?</ID>
+    <ID>ReturnCount:RepositoryMethodScanner.kt:RepositoryMethodScanner$public fun isDeclaredRepositoryMethod: Boolean</ID>
+    <ID>ThrowsCount:JakartaDataQueryMethodParser.kt:JakartaDataQueryMethodParser$private fun validateAnnotatedResultType</ID>
+    <ID>ThrowsCount:JakartaDataQueryMethodParser.kt:JakartaDataQueryMethodParser$private fun validateQueryParameters</ID>
+    <ID>ThrowsCount:QueryOperations.kt:QueryOperations$internal fun buildSortClause: String</ID>
+    <ID>ThrowsCount:RepositoryInvocationHandler.kt:RepositoryInvocationHandler$private fun invokeFlowMethod: Flow&lt;*></ID>
+    <ID>TooManyFunctions:CoroutineCrudRepository.kt:CoroutineCrudRepository&lt;T : Any, ID : Any> : DataRepository</ID>
+    <ID>TooManyFunctions:CountQueryDeriver.kt:CountQueryDeriver</ID>
+    <ID>TooManyFunctions:CrudOperations.kt:CrudOperations&lt;T : Any, ID : Any></ID>
+    <ID>TooManyFunctions:DerivedQueryHqlCompiler.kt:DerivedQueryHqlCompiler</ID>
+    <ID>TooManyFunctions:JakartaDataQueryMethodParser.kt:JakartaDataQueryMethodParser</ID>
+    <ID>TooManyFunctions:JakartaDataRepositoryRuntimeAdapter.kt:JakartaDataPage&lt;T : Any> : Page</ID>
+    <ID>TooManyFunctions:PaginationOperations.kt:PaginationOperations&lt;T : Any></ID>
+    <ID>TooManyFunctions:QueryOperations.kt:QueryOperations&lt;T : Any></ID>
+  </CurrentIssues>
+</SmellBaseline>

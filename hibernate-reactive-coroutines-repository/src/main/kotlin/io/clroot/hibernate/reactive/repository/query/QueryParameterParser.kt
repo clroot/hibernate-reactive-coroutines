@@ -99,7 +99,7 @@ public object QueryParameterParser {
                     }
 
                     current == ':' && query.getOrNull(index - 1) != ':' &&
-                            next?.isIdentifierStart() == true -> {
+                        next?.isIdentifierStart() == true -> {
                         val start = index + 1
                         index = start + 1
                         while (index < query.length && query[index].isIdentifierPart()) index++

@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MagicNumber:HibernateReactiveResources.kt:30</ID>
+    <ID>ThrowsCount:HibernateReactive.kt:private fun bootstrapSessionFactory: Mutiny.SessionFactory</ID>
+    <ID>TooGenericExceptionCaught:HibernateReactive.kt:exception: Throwable</ID>
+    <ID>TooGenericExceptionCaught:HibernateReactiveResources.kt:HibernateReactiveResources$exception: Throwable</ID>
+  </CurrentIssues>
+</SmellBaseline>

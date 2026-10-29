@@ -72,7 +72,7 @@ internal class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepositor
         if (types == null || types.size < 2) {
             throw IllegalArgumentException(
                 "Cannot extract generic types from ${repoInterface.name}. " +
-                        "Make sure it extends CoroutineCrudRepository<T, ID>",
+                    "Make sure it extends CoroutineCrudRepository<T, ID>",
             )
         }
 
@@ -91,8 +91,8 @@ internal class HibernateReactiveRepositoryFactoryBean<T : CoroutineCrudRepositor
         } catch (e: IllegalArgumentException) {
             throw IllegalStateException(
                 "${entityClass.name} is not a managed entity. " +
-                        "Repository '${repositoryInterface.name}' requires its entity type to be registered " +
-                        "with the Hibernate Reactive session factory.",
+                    "Repository '${repositoryInterface.name}' requires its entity type to be registered " +
+                    "with the Hibernate Reactive session factory.",
                 e,
             )
         }

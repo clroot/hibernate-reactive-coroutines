@@ -15,8 +15,8 @@ internal data class EntityAuditInfo(
 ) {
     fun hasAuditingFields(): Boolean {
         return createdDateField != null ||
-                lastModifiedDateField != null ||
-                createdByField != null ||
-                lastModifiedByField != null
+            lastModifiedDateField != null ||
+            createdByField != null ||
+            lastModifiedByField != null
     }
 }

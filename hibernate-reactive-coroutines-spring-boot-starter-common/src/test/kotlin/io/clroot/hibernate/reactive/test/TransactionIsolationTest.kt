@@ -1,8 +1,8 @@
 package io.clroot.hibernate.reactive.test
 
 import io.clroot.hibernate.reactive.test.service.PropagationTestService
-import io.kotest.matchers.shouldBe
 import io.kotest.matchers.nulls.shouldNotBeNull
+import io.kotest.matchers.shouldBe
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 

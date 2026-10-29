@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     id("hrc.base")
+    id("hrc.lint")
     id("org.jetbrains.kotlin.jvm")
     `java-library`
 }

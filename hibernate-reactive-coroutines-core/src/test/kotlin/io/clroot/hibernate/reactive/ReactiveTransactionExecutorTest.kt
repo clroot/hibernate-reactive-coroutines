@@ -4,16 +4,16 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeSameInstanceAs
-import io.mockk.mockk
 import io.mockk.confirmVerified
+import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.hibernate.reactive.mutiny.Mutiny
@@ -48,9 +48,12 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
             val factory = mockk<Mutiny.SessionFactory>()
             val session = mockk<Mutiny.Session>()
             val parent = ReactiveSessionContext(session, TransactionMode.READ_WRITE)
-            val executor = ReactiveTransactionExecutor(factory, AmbientTransactionProbe {
-                error("The probe must not run when a coroutine transaction exists")
-            })
+            val executor = ReactiveTransactionExecutor(
+                factory,
+                AmbientTransactionProbe {
+                    error("The probe must not run when a coroutine transaction exists")
+                },
+            )
 
             withContext(parent) {
                 executor.transactional {
@@ -80,10 +83,13 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
             it("joins an ambient transaction with readOnly=$readOnly without opening a session") {
                 val factory = mockk<Mutiny.SessionFactory>()
                 var probes = 0
-                val executor = ReactiveTransactionExecutor(factory, AmbientTransactionProbe {
-                    probes++
-                    AmbientTransaction(isReadOnly = readOnly)
-                })
+                val executor = ReactiveTransactionExecutor(
+                    factory,
+                    AmbientTransactionProbe {
+                        probes++
+                        AmbientTransaction(isReadOnly = readOnly)
+                    },
+                )
 
                 executor.readOnly { "read" } shouldBe "read"
                 if (readOnly) {
@@ -113,12 +119,17 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
         )
         for (ambient in listOf(false, true)) {
             for ((remaining, requested, expected) in budgets) {
-                it("limits ${if (ambient) "ambient" else "coroutine"} work to $expected for $remaining remaining and $requested requested") {
+                it(
+                    "limits ${if (ambient) "ambient" else "coroutine"} work to $expected for $remaining remaining and $requested requested",
+                ) {
                     runTest {
                         val factory = mockk<Mutiny.SessionFactory>()
-                        val executor = ReactiveTransactionExecutor(factory, AmbientTransactionProbe {
-                            AmbientTransaction(false, remaining)
-                        })
+                        val executor = ReactiveTransactionExecutor(
+                            factory,
+                            AmbientTransactionProbe {
+                                AmbientTransaction(false, remaining)
+                            },
+                        )
                         var completed = false
                         var started = false
                         val block: suspend () -> Unit = {
@@ -134,7 +145,9 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
                                 block()
                             } else {
                                 val parent = ReactiveSessionContext(
-                                    mockk(), TransactionMode.READ_WRITE, remaining,
+                                    mockk(),
+                                    TransactionMode.READ_WRITE,
+                                    remaining,
                                     clock = MonotonicClock { testScheduler.currentTime * 1_000_000 },
                                 )
                                 withContext(parent) { block() }
@@ -154,7 +167,9 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
                 val factory = mockk<Mutiny.SessionFactory>()
                 val executor = ReactiveTransactionExecutor(factory)
                 val parent = ReactiveSessionContext(
-                    mockk(), TransactionMode.READ_WRITE, 10.seconds,
+                    mockk(),
+                    TransactionMode.READ_WRITE,
+                    10.seconds,
                     clock = MonotonicClock { testScheduler.currentTime * 1_000_000 },
                 )
                 var cleanedUp = false
@@ -181,9 +196,12 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
         it("allows unbounded work when both the ambient and requested timeout are infinite") {
             runTest {
                 val factory = mockk<Mutiny.SessionFactory>()
-                val executor = ReactiveTransactionExecutor(factory, AmbientTransactionProbe {
-                    AmbientTransaction(false, INFINITE)
-                })
+                val executor = ReactiveTransactionExecutor(
+                    factory,
+                    AmbientTransactionProbe {
+                        AmbientTransaction(false, INFINITE)
+                    },
+                )
 
                 executor.transactional(timeout = INFINITE) {
                     delay(120.seconds)
@@ -197,9 +215,12 @@ class ReactiveTransactionExecutorTest : DescribeSpec({
         it("enforces the default timeout when joining an unbounded ambient transaction") {
             runTest {
                 val factory = mockk<Mutiny.SessionFactory>()
-                val executor = ReactiveTransactionExecutor(factory, AmbientTransactionProbe {
-                    AmbientTransaction(false)
-                })
+                val executor = ReactiveTransactionExecutor(
+                    factory,
+                    AmbientTransactionProbe {
+                        AmbientTransaction(false)
+                    },
+                )
 
                 shouldThrow<TimeoutCancellationException> {
                     executor.transactional { awaitCancellation() }

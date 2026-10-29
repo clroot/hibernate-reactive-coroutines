@@ -1,0 +1,7 @@
+# Overrides on top of the detekt default configuration (buildUponDefaultConfig = true).
+# Findings that predate detekt live in config/detekt/baseline/; new code is held to these rules.
+
+style:
+  MaxLineLength:
+    # ktlint owns formatting, including line length (see .editorconfig).
+    active: false

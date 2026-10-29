@@ -88,7 +88,7 @@ internal object AuditMetadata {
         } catch (e: SecurityException) {
             logger.warn(
                 "Cannot access field '${field.name}' on ${entity.javaClass.name} due to security restrictions",
-                e
+                e,
             )
             null
         } catch (e: IllegalAccessException) {
@@ -210,12 +210,12 @@ internal object AuditMetadata {
 
     private fun isSupportedTemporalType(type: Class<*>): Boolean {
         return type == Instant::class.java ||
-                type == LocalDateTime::class.java ||
-                type == OffsetDateTime::class.java ||
-                type == ZonedDateTime::class.java ||
-                type == Date::class.java ||
-                type == Long::class.javaObjectType ||
-                type == Long::class.javaPrimitiveType
+            type == LocalDateTime::class.java ||
+            type == OffsetDateTime::class.java ||
+            type == ZonedDateTime::class.java ||
+            type == Date::class.java ||
+            type == Long::class.javaObjectType ||
+            type == Long::class.javaPrimitiveType
     }
 
     /**
@@ -226,8 +226,8 @@ internal object AuditMetadata {
     private fun warnUnsupportedTemporalType(cls: Class<*>, field: Field, annotation: String) {
         logger.warn(
             "{}.{} is annotated with {} but its type {} is not supported; " +
-                    "the field will not be populated. Supported types: " +
-                    "Instant, LocalDateTime, OffsetDateTime, ZonedDateTime, java.util.Date, Long.",
+                "the field will not be populated. Supported types: " +
+                "Instant, LocalDateTime, OffsetDateTime, ZonedDateTime, java.util.Date, Long.",
             cls.name,
             field.name,
             annotation,

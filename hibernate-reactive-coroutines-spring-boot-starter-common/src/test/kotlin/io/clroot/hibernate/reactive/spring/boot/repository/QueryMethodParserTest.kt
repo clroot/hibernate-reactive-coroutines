@@ -23,29 +23,29 @@ class QueryMethodParserTest : DescribeSpec({
     describe("@Query Page count query derivation") {
         it("derives a count query for a simple select and removes a multiline order by") {
             parse("findActive").countHql shouldBe
-                    "SELECT COUNT(*) FROM User e WHERE e.active = true"
+                "SELECT COUNT(*) FROM User e WHERE e.active = true"
         }
 
         it("preserves distinct entity semantics") {
             parse("findDistinct").countHql shouldBe
-                    "SELECT COUNT(DISTINCT e) FROM User e WHERE e.active = true"
+                "SELECT COUNT(DISTINCT e) FROM User e WHERE e.active = true"
         }
 
         it("derives a count query from a FROM query") {
             parse("findFrom").countHql shouldBe
-                    "SELECT COUNT(*) FROM User e WHERE e.active = true"
+                "SELECT COUNT(*) FROM User e WHERE e.active = true"
         }
 
         it("ignores structural keywords inside a string literal") {
             parse("findByNote").countHql shouldBe
-                    "SELECT COUNT(*) FROM User e " +
-                    "WHERE e.note = 'contains ORDER BY, GROUP BY, and JOIN FETCH words'"
+                "SELECT COUNT(*) FROM User e " +
+                "WHERE e.note = 'contains ORDER BY, GROUP BY, and JOIN FETCH words'"
         }
 
         it("ignores structural keywords inside a comment") {
             parse("findWithComment").countHql shouldBe
-                    "SELECT COUNT(*) FROM User e /* ORDER BY GROUP BY JOIN FETCH */ " +
-                    "WHERE e.active = true"
+                "SELECT COUNT(*) FROM User e /* ORDER BY GROUP BY JOIN FETCH */ " +
+                "WHERE e.active = true"
         }
 
         it("requires an explicit count query for join fetch") {
@@ -82,12 +82,12 @@ class QueryMethodParserTest : DescribeSpec({
 
         it("uses an explicit count query for join fetch") {
             parse("findWithRolesAndCount").countHql shouldBe
-                    "SELECT COUNT(e) FROM User e WHERE e.active = true"
+                "SELECT COUNT(e) FROM User e WHERE e.active = true"
         }
 
         it("uses an explicit count query for group by") {
             parse("countByActiveWithCount").countHql shouldBe
-                    "SELECT COUNT(DISTINCT e.active) FROM User e"
+                "SELECT COUNT(DISTINCT e.active) FROM User e"
         }
 
         it("tracks count query parameters separately from order parameters") {
@@ -217,7 +217,8 @@ private interface QueryRepository {
     suspend fun findSummaries(): List<UserSummary>
 
     @Query(
-        value = "SELECT new io.clroot.hibernate.reactive.spring.boot.repository.UserSummary(e.note, e.active) FROM User e",
+        value = "SELECT new io.clroot.hibernate.reactive.spring.boot.repository.UserSummary(e.note, e.active) " +
+            "FROM User e",
         countQuery = "SELECT COUNT(e) FROM User e",
     )
     suspend fun findSummaryPage(pageable: Pageable): Page<UserSummary>
@@ -258,13 +259,13 @@ private interface QueryRepository {
 
     @Query(
         "SELECT e FROM User e " +
-                "WHERE e.note = 'contains ORDER BY, GROUP BY, and JOIN FETCH words' ORDER BY e.id",
+            "WHERE e.note = 'contains ORDER BY, GROUP BY, and JOIN FETCH words' ORDER BY e.id",
     )
     suspend fun findByNote(pageable: Pageable): Page<User>
 
     @Query(
         "SELECT e FROM User e /* ORDER BY GROUP BY JOIN FETCH */ " +
-                "WHERE e.active = true ORDER BY e.id",
+            "WHERE e.active = true ORDER BY e.id",
     )
     suspend fun findWithComment(pageable: Pageable): Page<User>
 
@@ -298,7 +299,7 @@ private interface QueryRepository {
 
     @Query(
         value = "SELECT e FROM User e WHERE e.active = :active " +
-                "ORDER BY CASE WHEN :priority = true THEN 0 ELSE 1 END",
+            "ORDER BY CASE WHEN :priority = true THEN 0 ELSE 1 END",
         countQuery = "SELECT COUNT(e) FROM User e WHERE e.active = :active",
     )
     suspend fun findOrderedWithCount(

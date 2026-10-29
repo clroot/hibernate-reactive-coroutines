@@ -10,24 +10,24 @@ class CountQueryDeriverTest : DescribeSpec({
         it("does not treat keyword-shaped path segments as clauses") {
             CountQueryDeriver.derive(
                 "SELECT e FROM User e " +
-                        "WHERE e.order = 1 AND e.join = true AND e.union = false ORDER BY e.id",
+                    "WHERE e.order = 1 AND e.join = true AND e.union = false ORDER BY e.id",
             ) shouldBe
-                    "SELECT COUNT(*) FROM User e " +
-                    "WHERE e.order = 1 AND e.join = true AND e.union = false"
+                "SELECT COUNT(*) FROM User e " +
+                "WHERE e.order = 1 AND e.join = true AND e.union = false"
         }
 
         it("keeps dollar signs inside identifiers") {
             CountQueryDeriver.derive(
                 "SELECT e FROM User e WHERE e.order\$by = true ORDER BY e.id",
             ) shouldBe
-                    "SELECT COUNT(*) FROM User e WHERE e.order\$by = true"
+                "SELECT COUNT(*) FROM User e WHERE e.order\$by = true"
         }
 
         it("does not treat unqualified soft keywords as clauses") {
             CountQueryDeriver.derive(
                 "FROM Thing e WHERE order = by AND group = by AND join = fetch",
             ) shouldBe
-                    "SELECT COUNT(*) FROM Thing e WHERE order = by AND group = by AND join = fetch"
+                "SELECT COUNT(*) FROM Thing e WHERE order = by AND group = by AND join = fetch"
         }
 
         it("supports soft keywords as entity aliases") {
@@ -78,17 +78,17 @@ class CountQueryDeriverTest : DescribeSpec({
         it("does not treat keyword-shaped parameters as clauses") {
             CountQueryDeriver.derive(
                 "FROM User e WHERE e.rank = :order + :by " +
-                        "AND e.score = :group + :by AND e.other = :join + :fetch",
+                    "AND e.score = :group + :by AND e.other = :join + :fetch",
             ) shouldBe
-                    "SELECT COUNT(*) FROM User e WHERE e.rank = :order + :by " +
-                    "AND e.score = :group + :by AND e.other = :join + :fetch"
+                "SELECT COUNT(*) FROM User e WHERE e.rank = :order + :by " +
+                "AND e.score = :group + :by AND e.other = :join + :fetch"
         }
 
         it("keeps escaped double-quoted literals intact") {
             CountQueryDeriver.derive(
                 """SELECT e FROM User e WHERE e.note = "escaped \" ORDER BY still string" ORDER BY e.id""",
             ) shouldBe
-                    """SELECT COUNT(*) FROM User e WHERE e.note = "escaped \" ORDER BY still string""""
+                """SELECT COUNT(*) FROM User e WHERE e.note = "escaped \" ORDER BY still string""""
         }
 
         it("ignores keywords inside backtick-quoted identifiers") {
@@ -120,7 +120,7 @@ class CountQueryDeriverTest : DescribeSpec({
             val error = shouldThrow<IllegalStateException> {
                 CountQueryDeriver.derive(
                     "SELECT e FROM User e WHERE e.active = true " +
-                            "ORDER BY CASE WHEN :priority = true THEN 0 ELSE 1 END",
+                        "ORDER BY CASE WHEN :priority = true THEN 0 ELSE 1 END",
                 )
             }
 

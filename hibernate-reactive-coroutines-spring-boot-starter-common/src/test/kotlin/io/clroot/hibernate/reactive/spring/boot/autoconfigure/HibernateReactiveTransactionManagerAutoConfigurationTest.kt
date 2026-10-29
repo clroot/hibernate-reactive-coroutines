@@ -24,14 +24,14 @@ class HibernateReactiveTransactionManagerAutoConfigurationTest : DescribeSpec({
                 )
                 .run { context ->
                     context.getBeanNamesForType(ReactiveTransactionManager::class.java).toList() shouldContainExactly
-                            listOf("r2dbcTransactionManager")
+                        listOf("r2dbcTransactionManager")
                 }
         }
 
         it("registers its own transaction manager when none exists") {
             contextRunner().run { context ->
                 context.getBeanNamesForType(ReactiveTransactionManager::class.java).toList() shouldContainExactly
-                        listOf("hibernateReactiveTransactionManager")
+                    listOf("hibernateReactiveTransactionManager")
             }
         }
     }
@@ -43,7 +43,7 @@ class HibernateReactiveTransactionManagerAutoConfigurationTest : DescribeSpec({
                 .withBean("userSessionFactory", Mutiny.SessionFactory::class.java, { mockk<Mutiny.SessionFactory>() })
                 .run { context ->
                     context.getBeanNamesForType(Mutiny.SessionFactory::class.java).toList() shouldContainExactly
-                            listOf("userSessionFactory")
+                        listOf("userSessionFactory")
                     context.containsBean("hibernateSessionFactory") shouldBe false
                     context.getBeanNamesForType(Vertx::class.java).toList() shouldBe emptyList()
                 }

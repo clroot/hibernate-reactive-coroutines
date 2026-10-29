@@ -156,7 +156,7 @@ internal class PartTreeHqlBuilder(
                 if (!isStringProperty) {
                     throw IllegalStateException(
                         "IgnoreCase cannot be applied to non-String property " +
-                                "'${part.property.toDotPath()}' of type ${part.property.leafProperty.type.name}",
+                            "'${part.property.toDotPath()}' of type ${part.property.leafProperty.type.name}",
                     )
                 }
                 true

@@ -2,8 +2,6 @@ package io.clroot.hibernate.reactive.spring.boot.repository
 
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.spring.boot.transaction.TransactionalAwareSessionProvider
-import io.smallrye.mutiny.Uni
-import io.smallrye.mutiny.coroutines.awaitSuspending
 import io.kotest.core.spec.style.DescribeSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -12,12 +10,14 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.smallrye.mutiny.Uni
+import io.smallrye.mutiny.coroutines.awaitSuspending
+import jakarta.persistence.Id
+import jakarta.persistence.metamodel.Metamodel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.isActive
-import jakarta.persistence.Id
-import jakarta.persistence.metamodel.Metamodel
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import java.lang.reflect.Proxy

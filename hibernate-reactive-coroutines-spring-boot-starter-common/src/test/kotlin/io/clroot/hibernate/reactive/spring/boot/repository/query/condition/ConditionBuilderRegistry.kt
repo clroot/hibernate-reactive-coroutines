@@ -19,7 +19,7 @@ internal object ConditionBuilderRegistry {
         Part.Type.LESS_THAN_EQUAL to LessThanEqualCondition,
         Part.Type.GREATER_THAN to GreaterThanCondition,
         Part.Type.GREATER_THAN_EQUAL to GreaterThanEqualCondition,
-        Part.Type.BEFORE to LessThanCondition,   // BEFORE = LESS_THAN
+        Part.Type.BEFORE to LessThanCondition, // BEFORE = LESS_THAN
         Part.Type.AFTER to GreaterThanCondition, // AFTER = GREATER_THAN
 
         Part.Type.BETWEEN to BetweenCondition,

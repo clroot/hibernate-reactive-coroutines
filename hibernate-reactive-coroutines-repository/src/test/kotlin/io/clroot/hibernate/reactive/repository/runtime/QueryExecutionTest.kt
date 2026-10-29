@@ -83,7 +83,8 @@ class QueryExecutionTest : DescribeSpec({
                     every { query.executeUpdate() } returns Uni.createFrom().item(affected)
                     every { fixture.session.clear() } returns fixture.session
 
-                    fixture.operations.executeModifyingAnnotatedQuery(prepared, listOf(7L, false, "unused")) shouldBe affected
+                    fixture.operations.executeModifyingAnnotatedQuery(prepared, listOf(7L, false, "unused")) shouldBe
+                        affected
 
                     fixture.writeCalls shouldBe 1
                     fixture.readCalls shouldBe 0
@@ -158,8 +159,11 @@ class QueryExecutionTest : DescribeSpec({
         for (native in listOf(false, true)) {
             it("uses the projection type for native=$native single and list queries") {
                 val fixture = QueryExecutionFixture()
-                val hql = if (native) "SELECT name FROM query_entity WHERE id = ?1"
-                    else "SELECT e.name FROM QueryEntity e WHERE e.id = ?1"
+                val hql = if (native) {
+                    "SELECT name FROM query_entity WHERE id = ?1"
+                } else {
+                    "SELECT e.name FROM QueryEntity e WHERE e.id = ?1"
+                }
                 val prepared = preparedQuery(hql, QueryParameterStyle.POSITIONAL)
                     .copy(isNativeQuery = native, resultClass = String::class.java)
                 val query = mockk<Mutiny.Query<String>>()

@@ -7,4 +7,6 @@ dependencies {
     implementation(libs.kotlin.spring.gradle.plugin)
     implementation(libs.kotlin.jpa.gradle.plugin)
     implementation(libs.dokka.gradle.plugin)
+    implementation(libs.ktlint.gradle.plugin)
+    implementation(libs.detekt.gradle.plugin)
 }

@@ -3,11 +3,11 @@ package io.clroot.hibernate.reactive.test
 import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.flow.toList
 import org.springframework.beans.factory.annotation.Autowired
@@ -217,15 +217,24 @@ class PaginationEdgeCasesTest : IntegrationTestBase() {
 
                     val sorted = tx.readOnly {
                         testEntityRepository.findAll(
-                            PageRequest.of(0, 10, Sort.by("value").descending().and(Sort.by("name").ascending()))
+                            PageRequest.of(0, 10, Sort.by("value").descending().and(Sort.by("name").ascending())),
                         )
                     }
 
                     val filtered = sorted.content.filter { it.name.startsWith("multi-sort-") }
                     filtered shouldHaveSize 3
-                    filtered[0].let { it.name shouldBe "multi-sort-a"; it.value shouldBe 200 }
-                    filtered[1].let { it.name shouldBe "multi-sort-a"; it.value shouldBe 100 }
-                    filtered[2].let { it.name shouldBe "multi-sort-b"; it.value shouldBe 100 }
+                    filtered[0].let {
+                        it.name shouldBe "multi-sort-a"
+                        it.value shouldBe 200
+                    }
+                    filtered[1].let {
+                        it.name shouldBe "multi-sort-a"
+                        it.value shouldBe 100
+                    }
+                    filtered[2].let {
+                        it.name shouldBe "multi-sort-b"
+                        it.value shouldBe 100
+                    }
                 }
 
                 it("combines method-name sorting with pagination") {
@@ -325,7 +334,7 @@ class PaginationEdgeCasesTest : IntegrationTestBase() {
 
                     sorted.filter { it.name.startsWith("case-sort-", ignoreCase = true) }
                         .map { it.name } shouldBe
-                            listOf("case-sort-apple", "case-sort-Banana", "case-sort-cherry")
+                        listOf("case-sort-apple", "case-sort-Banana", "case-sort-cherry")
                 }
 
                 it("rejects case-insensitive sorting for non-string properties") {

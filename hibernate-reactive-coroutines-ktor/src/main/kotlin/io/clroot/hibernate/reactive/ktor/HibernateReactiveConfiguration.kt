@@ -112,7 +112,7 @@ public class HibernateReactiveConfiguration {
         reified R : CoroutineCrudRepository<T, ID>,
         reified T : Any,
         reified ID : Any,
-    > repository(entityName: String? = null): Unit =
+        > repository(entityName: String? = null): Unit =
         registerRepository(R::class, typeInfo<R>(), T::class, ID::class, entityName)
 
     @PublishedApi
