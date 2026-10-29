@@ -1,8 +1,8 @@
 package io.clroot.hibernate.reactive.test
 
+import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
-import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -88,7 +88,7 @@ class QueryMethodIntegrationTest : IntegrationTestBase() {
                     tx.readOnly {
                         testEntityRepository.findAllByNameIn(emptyList()).shouldBeEmpty()
                         testEntityRepository.findAllByNameNotIn(emptyList()).map { it.name }.toSet() shouldBe
-                                setOf("collection-a", "collection-b")
+                            setOf("collection-a", "collection-b")
                     }
                 }
 

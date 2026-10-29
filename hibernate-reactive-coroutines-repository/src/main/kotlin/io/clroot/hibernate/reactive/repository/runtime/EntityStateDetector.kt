@@ -51,7 +51,7 @@ internal object EntityStateDetector {
 
         check(identifiers.isNotEmpty()) {
             "Cannot determine whether ${entityClass.name} is new because it has no " +
-                    "@Id or @EmbeddedId field/getter"
+                "@Id or @EmbeddedId field/getter"
         }
 
         return EntityStateMetadata(identifiers, version)

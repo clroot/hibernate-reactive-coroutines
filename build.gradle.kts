@@ -5,7 +5,7 @@ import kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension
 
 plugins {
     id("hrc.base")
-    id("org.jetbrains.kotlinx.kover") version "0.9.9"
+    id("org.jetbrains.kotlinx.kover") version "0.9.11"
     // No root publication, but nmcp hangs its all-publications entry points off the root plugin.
     `maven-publish`
 }

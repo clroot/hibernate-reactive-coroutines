@@ -21,10 +21,11 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
-                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns mapOf(
-                    "basePackages" to arrayOf("com.example.repo"),
-                    "basePackageClasses" to emptyArray<Class<*>>(),
-                )
+                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns
+                    mapOf(
+                        "basePackages" to arrayOf("com.example.repo"),
+                        "basePackageClasses" to emptyArray<Class<*>>(),
+                    )
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns false
 
                 val beanDefSlot = slot<BeanDefinition>()
@@ -40,10 +41,11 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
-                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns mapOf(
-                    "basePackages" to emptyArray<String>(),
-                    "basePackageClasses" to arrayOf(MarkerClass::class.java),
-                )
+                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns
+                    mapOf(
+                        "basePackages" to emptyArray<String>(),
+                        "basePackageClasses" to arrayOf(MarkerClass::class.java),
+                    )
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns false
 
                 selector.registerBeanDefinitions(metadata, registry)
@@ -56,10 +58,11 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
-                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns mapOf(
-                    "basePackages" to emptyArray<String>(),
-                    "basePackageClasses" to emptyArray<Class<*>>(),
-                )
+                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns
+                    mapOf(
+                        "basePackages" to emptyArray<String>(),
+                        "basePackageClasses" to emptyArray<Class<*>>(),
+                    )
                 // Use a loadable class so the selector can resolve its package.
                 every { metadata.className } returns HibernateReactiveRepositoriesRegistrarSelectorTest::class.java.name
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns false
@@ -74,10 +77,11 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
-                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns mapOf(
-                    "basePackages" to arrayOf("com.example.custom"),
-                    "basePackageClasses" to emptyArray<Class<*>>(),
-                )
+                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns
+                    mapOf(
+                        "basePackages" to arrayOf("com.example.custom"),
+                        "basePackageClasses" to emptyArray<Class<*>>(),
+                    )
                 every { registry.containsBeanDefinition("hibernateReactiveRepositoryRegistrar") } returns true
 
                 selector.registerBeanDefinitions(metadata, registry)
@@ -91,7 +95,8 @@ class HibernateReactiveRepositoriesRegistrarSelectorTest : DescribeSpec({
                 val metadata = mockk<AnnotationMetadata>()
                 val registry = mockk<BeanDefinitionRegistry>(relaxed = true)
 
-                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns null
+                every { metadata.getAnnotationAttributes(EnableHibernateReactiveRepositories::class.java.name) } returns
+                    null
 
                 selector.registerBeanDefinitions(metadata, registry)
 

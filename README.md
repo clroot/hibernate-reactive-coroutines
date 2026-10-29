@@ -3,8 +3,8 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.clroot/hibernate-reactive-coroutines-core.svg)](https://central.sonatype.com/artifact/io.clroot/hibernate-reactive-coroutines-core)
 [![CI](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/clroot/hibernate-reactive-coroutines/actions/workflows/ci.yml)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)](https://kotlinlang.org)
-[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.2-green.svg)](https://hibernate.org/reactive/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Hibernate Reactive](https://img.shields.io/badge/Hibernate%20Reactive-4.5.12-green.svg)](https://hibernate.org/reactive/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5%20%7C%204.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Ktor](https://img.shields.io/badge/Ktor-3.5-purple.svg)](https://ktor.io)
 
 **English** | [한국어](README.ko.md)
@@ -70,7 +70,7 @@ dependencies {
 ```
 
 Check the Maven Central badge above for the latest release.
-Requires Java 21+. Supports Spring Boot 3.4.x and 4.x, and Ktor 3.5.x.
+Requires Java 21+. Supports Spring Boot 3.5.x and 4.x, and Ktor 3.5.x.
 
 ## Spring Boot Quick Start
 

@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:AuditMetadata.kt:AuditMetadata$private fun extractAuditInfo: EntityAuditInfo</ID>
+    <ID>CyclomaticComplexMethod:HibernateReactiveAutoConfiguration.kt:HibernateReactiveAutoConfiguration$@Bean @ConditionalOnMissingBean(value = [Mutiny.SessionFactory::class], name = ["hibernateSessionFactory"]) public fun hibernateSessionFactory: org.hibernate.SessionFactory</ID>
+    <ID>CyclomaticComplexMethod:PreparedQueryMethod.kt:internal fun PreparedQueryMethod.toRuntimeQuery: PreparedRepositoryQuery</ID>
+    <ID>EmptyCatchBlock:SessionLifecycleTest.kt:SessionLifecycleTest${ }</ID>
+    <ID>EmptyClassBlock:SimpleHibernateReactiveRepository.kt:SimpleHibernateReactiveRepository.Companion${}</ID>
+    <ID>EmptyFunctionBlock:HibernateReactiveRepositoryRegistrar.kt:HibernateReactiveRepositoryRegistrar${ }</ID>
+    <ID>LongMethod:HibernateReactiveAutoConfiguration.kt:HibernateReactiveAutoConfiguration$@Bean @ConditionalOnMissingBean(value = [Mutiny.SessionFactory::class], name = ["hibernateSessionFactory"]) public fun hibernateSessionFactory: org.hibernate.SessionFactory</ID>
+    <ID>NestedClassesVisibility:HibernateReactiveProperties.kt:HibernateReactiveProperties$VertxSettings</ID>
+    <ID>NestedClassesVisibility:ParameterBinder.kt:ParameterBinder$Containing : ParameterBinder</ID>
+    <ID>NestedClassesVisibility:ParameterBinder.kt:ParameterBinder$Direct : ParameterBinder</ID>
+    <ID>NestedClassesVisibility:ParameterBinder.kt:ParameterBinder$EndingWith : ParameterBinder</ID>
+    <ID>NestedClassesVisibility:ParameterBinder.kt:ParameterBinder$StartingWith : ParameterBinder</ID>
+    <ID>ReturnCount:HibernateReactiveRepositoryTypeFilter.kt:HibernateReactiveRepositoryTypeFilter$override fun match: Boolean</ID>
+    <ID>ReturnCount:HibernateReactiveRepositoryTypeFilter.kt:HibernateReactiveRepositoryTypeFilter$private fun isAssignableToCoroutineCrudRepository: Boolean</ID>
+    <ID>ReturnCount:PreparedQueryMethod.kt:private fun extractSuspendReturnType: Type?</ID>
+    <ID>ReturnCount:PreparedQueryMethod.kt:private fun resolveResultClass: Class&lt;*>?</ID>
+    <ID>ReturnCount:QueryMethodParser.kt:QueryMethodParser$private fun extractActualReturnType: Type?</ID>
+    <ID>ReturnCount:ReactiveConnectionUrl.kt:ReactiveConnectionUrl$fun fromJdbc: String</ID>
+    <ID>ReturnCount:TransactionalAwareSessionProvider.kt:TransactionalAwareSessionProvider$public override suspend fun &lt;T> read: T</ID>
+    <ID>SwallowedException:AdvancedConcurrencyTest.kt:AdvancedConcurrencyTest$e: RuntimeException</ID>
+    <ID>SwallowedException:SessionLifecycleTest.kt:SessionLifecycleTest$e: RuntimeException</ID>
+    <ID>SwallowedException:SslAwareSqlClientPoolConfiguration.kt:SslAwareSqlClientPoolConfiguration.Companion$e: ClassNotFoundException</ID>
+    <ID>ThrowsCount:QueryMethodParser.kt:QueryMethodParser$private fun parseDerivedQueryMethod: PreparedQueryMethod</ID>
+    <ID>ThrowsCount:QueryMethodParser.kt:QueryMethodParser$private fun validateAnnotatedResultType</ID>
+    <ID>ThrowsCount:QueryMethodParser.kt:QueryMethodParser$private fun validateQueryAnnotation</ID>
+    <ID>ThrowsCount:QueryMethodParser.kt:QueryMethodParser$private fun validateQueryParameters</ID>
+    <ID>ThrowsCount:SslAwareSqlClientPoolConfiguration.kt:SslAwareSqlClientPoolConfiguration$override fun connectOptions: SqlConnectOptions</ID>
+    <ID>TooGenericExceptionCaught:AuditMetadata.kt:AuditMetadata$e: RuntimeException</ID>
+    <ID>TooGenericExceptionCaught:HibernateReactiveTransactionManager.kt:HibernateReactiveTransactionManager$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:SslAwareSqlClientPoolConfiguration.kt:SslAwareSqlClientPoolConfiguration$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TransactionIsolationConfigurer.kt:TransactionIsolationConfigurer$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:TransactionTimeoutConfigurer.kt:TransactionTimeoutConfigurer$error: Throwable</ID>
+    <ID>TooGenericExceptionCaught:TransactionalAwareSessionProvider.kt:TransactionalAwareSessionProvider$error: Throwable</ID>
+    <ID>TooGenericExceptionThrown:AdvancedConcurrencyTest.kt:AdvancedConcurrencyTest$throw RuntimeException("Intentional failure: $i")</ID>
+    <ID>TooGenericExceptionThrown:ReactiveTransactionIntegrationTest.kt:ReactiveTransactionIntegrationTest$throw RuntimeException("intentional rollback")</ID>
+    <ID>TooGenericExceptionThrown:RepositoryErrorHandlingTest.kt:RepositoryErrorHandlingTest$throw RuntimeException("intentional rollback")</ID>
+    <ID>TooGenericExceptionThrown:RepositoryErrorHandlingTest.kt:RepositoryErrorHandlingTest$throw RuntimeException("rollback all work")</ID>
+    <ID>TooGenericExceptionThrown:RepositoryErrorHandlingTest.kt:RepositoryErrorHandlingTest$throw RuntimeException("rollback deletion")</ID>
+    <ID>TooGenericExceptionThrown:RepositoryErrorHandlingTest.kt:RepositoryErrorHandlingTest$throw RuntimeException("rollback")</ID>
+    <ID>TooGenericExceptionThrown:RepositoryErrorHandlingTest.kt:RepositoryErrorHandlingTest$throw RuntimeException("sequence interrupted")</ID>
+    <ID>TooGenericExceptionThrown:SessionLifecycleTest.kt:SessionLifecycleTest$throw RuntimeException("intentional failure")</ID>
+    <ID>TooGenericExceptionThrown:TransactionErrorScenariosTest.kt:TransactionErrorScenariosTest$throw RuntimeException("compound sequence failure")</ID>
+    <ID>TooGenericExceptionThrown:TransactionErrorScenariosTest.kt:TransactionErrorScenariosTest$throw RuntimeException("failure inside read-only block")</ID>
+    <ID>TooGenericExceptionThrown:TransactionErrorScenariosTest.kt:TransactionErrorScenariosTest$throw RuntimeException("final operation failure")</ID>
+    <ID>TooGenericExceptionThrown:TransactionErrorScenariosTest.kt:TransactionErrorScenariosTest$throw RuntimeException("inner transaction failure")</ID>
+    <ID>TooGenericExceptionThrown:TransactionErrorScenariosTest.kt:TransactionErrorScenariosTest$throw RuntimeException("runtime exception")</ID>
+    <ID>TooManyFunctions:AuditMetadata.kt:AuditMetadata</ID>
+    <ID>TooManyFunctions:HibernateReactiveAutoConfiguration.kt:HibernateReactiveAutoConfiguration</ID>
+    <ID>TooManyFunctions:HibernateReactiveTransactionManager.kt:HibernateReactiveTransactionManager : AbstractReactiveTransactionManagerInitializingBean</ID>
+    <ID>TooManyFunctions:MutinySessionHolder.kt:MutinySessionHolder : ResourceHolderSupport</ID>
+    <ID>TooManyFunctions:QueryMethodParser.kt:QueryMethodParser</ID>
+    <ID>UtilityClassWithPublicConstructor:HibernateReactiveRepositoryAutoConfiguration.kt:HibernateReactiveRepositoryAutoConfiguration</ID>
+  </CurrentIssues>
+</SmellBaseline>

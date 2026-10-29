@@ -9,7 +9,7 @@ class QueryParameterParserTest : DescribeSpec({
         it("extracts unique named parameters outside literals and comments") {
             QueryParameterParser.parse(
                 "SELECT e FROM User e WHERE e.name = :name " +
-                        "AND e.note = ':ignored' /* :alsoIgnored */ OR e.alias = :name",
+                    "AND e.note = ':ignored' /* :alsoIgnored */ OR e.alias = :name",
             ) shouldBe QueryParameters(
                 style = QueryParameterStyle.NAMED,
                 names = listOf("name"),

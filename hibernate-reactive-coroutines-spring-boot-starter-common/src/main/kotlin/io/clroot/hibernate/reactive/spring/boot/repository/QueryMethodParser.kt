@@ -5,8 +5,8 @@ import io.clroot.hibernate.reactive.repository.query.Modifying
 import io.clroot.hibernate.reactive.repository.query.Param
 import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
-import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
+import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.QueryStatementType
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryHqlCompiler
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
@@ -110,10 +110,10 @@ internal class QueryMethodParser(
         val actualReturnType = extractActualReturnType(method)
         return when {
             actualReturnType != null &&
-                    isAssignableToRawType(actualReturnType, Int::class.javaObjectType) -> QueryReturnType.MODIFYING
+                isAssignableToRawType(actualReturnType, Int::class.javaObjectType) -> QueryReturnType.MODIFYING
 
             actualReturnType != null &&
-                    isAssignableToRawType(actualReturnType, Unit::class.java) -> QueryReturnType.VOID
+                isAssignableToRawType(actualReturnType, Unit::class.java) -> QueryReturnType.VOID
 
             else -> throw IllegalStateException(
                 "@Modifying method '${method.name}' must return Int or Unit",
@@ -179,7 +179,7 @@ internal class QueryMethodParser(
         if (maxResults != null && hasPageable) {
             throw IllegalStateException(
                 "Method '${method.name}' combines a Top/First limit with a Pageable parameter, " +
-                        "which is ambiguous. Use either the limit keyword or Pageable, not both.",
+                    "which is ambiguous. Use either the limit keyword or Pageable, not both.",
             )
         }
 
@@ -191,7 +191,7 @@ internal class QueryMethodParser(
         if (parameterBinders.size != declaredArgumentCount) {
             throw IllegalStateException(
                 "Method '${method.name}' derives ${parameterBinders.size} query parameter(s) " +
-                        "from its name but declares $declaredArgumentCount argument(s)",
+                    "from its name but declares $declaredArgumentCount argument(s)",
             )
         }
 
@@ -277,14 +277,14 @@ internal class QueryMethodParser(
         if (countOnlyName != null) {
             throw IllegalStateException(
                 "countQuery for method '${method.name}' references parameter '$countOnlyName' " +
-                        "that is not used by the content query",
+                    "that is not used by the content query",
             )
         }
         val countOnlyPosition = count.positions.firstOrNull { it !in query.positions }
         if (countOnlyPosition != null) {
             throw IllegalStateException(
                 "countQuery for method '${method.name}' references parameter ?$countOnlyPosition " +
-                        "that is not used by the content query",
+                    "that is not used by the content query",
             )
         }
 
@@ -301,7 +301,7 @@ internal class QueryMethodParser(
         if (invalidPosition != null) {
             throw IllegalStateException(
                 "Query for method '${method.name}' references positional parameter ?$invalidPosition " +
-                        "but has only $argumentCount query arguments",
+                    "but has only $argumentCount query arguments",
             )
         }
     }
@@ -312,8 +312,8 @@ internal class QueryMethodParser(
     private fun queryArgumentCount(method: Method): Int =
         method.parameters.count { param ->
             param.type != Continuation::class.java &&
-                    !Pageable::class.java.isAssignableFrom(param.type) &&
-                    !Sort::class.java.isAssignableFrom(param.type)
+                !Pageable::class.java.isAssignableFrom(param.type) &&
+                !Sort::class.java.isAssignableFrom(param.type)
         }
 
     /**
@@ -334,13 +334,13 @@ internal class QueryMethodParser(
         if (resultClass.isInterface) {
             throw IllegalStateException(
                 "@Query method '${prepared.method.name}' declares interface projection " +
-                        "${resultClass.simpleName}, which is not supported. Use a constructor DTO projection instead.",
+                    "${resultClass.simpleName}, which is not supported. Use a constructor DTO projection instead.",
             )
         }
         if (resultClass.isArray || resultClass == Tuple::class.java) {
             throw IllegalStateException(
                 "@Query method '${prepared.method.name}' declares Tuple/array projection " +
-                        "${resultClass.simpleName}, which is not supported. Use a scalar or constructor DTO projection instead.",
+                    "${resultClass.simpleName}, which is not supported. Use a scalar or constructor DTO projection instead.",
             )
         }
     }
@@ -378,13 +378,13 @@ internal class QueryMethodParser(
     private fun isSliceReturnType(method: Method): Boolean {
         val actualReturnType = extractActualReturnType(method) ?: return false
         return isAssignableToRawType(actualReturnType, Slice::class.java) &&
-                !isAssignableToRawType(actualReturnType, Page::class.java)
+            !isAssignableToRawType(actualReturnType, Page::class.java)
     }
 
     private fun isListReturnType(method: Method): Boolean {
         val actualReturnType = extractActualReturnType(method) ?: return false
         return isAssignableToRawType(actualReturnType, List::class.java) ||
-                isAssignableToRawType(actualReturnType, Collection::class.java)
+            isAssignableToRawType(actualReturnType, Collection::class.java)
     }
 
     /**
@@ -424,7 +424,6 @@ internal class QueryMethodParser(
             else -> false
         }
     }
-
 }
 
 private fun ParameterBinding.toSpringBinder(): ParameterBinder = when (this) {

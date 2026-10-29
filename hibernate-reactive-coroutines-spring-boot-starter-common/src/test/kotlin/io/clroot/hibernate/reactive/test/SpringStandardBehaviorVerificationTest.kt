@@ -17,7 +17,7 @@ class SpringStandardBehaviorVerificationTest : IntegrationTestBase() {
 
     init {
         describe("Spring parity: rollback-only with REQUIRED propagation") {
-            /**
+            /*
              * An inner REQUIRED transaction joins the existing transaction. Its exception marks
              * the transaction rollback-only, so catching it in the outer method still causes
              * UnexpectedRollbackException at commit.
@@ -51,7 +51,7 @@ class SpringStandardBehaviorVerificationTest : IntegrationTestBase() {
         }
 
         describe("Spring parity: automatic RuntimeException rollback") {
-            /**
+            /*
              * Spring rolls back RuntimeException and Error by default. Checked exceptions commit
              * by default, although Kotlin does not distinguish checked exceptions.
              *
@@ -76,7 +76,7 @@ class SpringStandardBehaviorVerificationTest : IntegrationTestBase() {
         }
 
         describe("Spring parity: rollbackFor and noRollbackFor") {
-            /**
+            /*
              * rollbackFor rolls back configured exception types; noRollbackFor commits them.
              *
              * Spring reference: RuleBasedTransactionAttribute.rollbackOn(Throwable ex)

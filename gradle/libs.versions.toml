@@ -1,20 +1,23 @@
 [versions]
-kotlin = "2.4.10"
+kotlin = "2.4.21"
 dokka = "2.2.0"
 coroutines = "1.11.0"
-hibernate-reactive = "4.5.2.Final"
-mutiny = "3.3.0"
-vertx = "5.1.5"
-blockhound = "1.0.11.RELEASE"
+hibernate-reactive = "4.5.12.Final"
+mutiny = "3.3.1"
+vertx = "5.1.10"
+blockhound = "1.0.18.RELEASE"
 kotest = "6.0.7"
-mockk = "1.14.7"
+mockk = "1.14.11"
 testcontainers = "2.0.5"
-spring-boot3 = "3.4.13"
-spring-boot4 = "4.0.7"
-hibernate-orm = "7.4.5.Final"
+spring-boot3 = "3.5.16"
+spring-boot4 = "4.0.9"
+hibernate-orm = "7.4.13.Final"
 jakarta-persistence = "3.2.0"
-jakarta-data = "1.0.1"
+jakarta-data = "1.0.2"
 ktor = "3.5.2"
+ktlint = "1.8.0"
+ktlint-gradle = "14.2.0"
+detekt = "2.0.0-alpha.6"
 
 [libraries]
 # Hibernate Reactive
@@ -67,14 +70,16 @@ testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgr
 # Database
 vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx" }
 vertx-pg-client = { module = "io.vertx:vertx-pg-client", version.ref = "vertx" }
-postgresql = { module = "org.postgresql:postgresql", version = "42.7.8" }
-scram-client = { module = "com.ongres.scram:scram-client", version = "3.2" }
+postgresql = { module = "org.postgresql:postgresql", version = "42.7.14" }
+scram-client = { module = "com.ongres.scram:scram-client", version = "3.4" }
 
 # Gradle plugin artifacts, consumed by build-logic convention plugins only
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin.jvm:org.jetbrains.kotlin.jvm.gradle.plugin", version.ref = "kotlin" }
 kotlin-spring-gradle-plugin = { module = "org.jetbrains.kotlin.plugin.spring:org.jetbrains.kotlin.plugin.spring.gradle.plugin", version.ref = "kotlin" }
 kotlin-jpa-gradle-plugin = { module = "org.jetbrains.kotlin.plugin.jpa:org.jetbrains.kotlin.plugin.jpa.gradle.plugin", version.ref = "kotlin" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:org.jetbrains.dokka.gradle.plugin", version.ref = "dokka" }
+ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle.ktlint:org.jlleitschuh.gradle.ktlint.gradle.plugin", version.ref = "ktlint-gradle" }
+detekt-gradle-plugin = { module = "dev.detekt:dev.detekt.gradle.plugin", version.ref = "detekt" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

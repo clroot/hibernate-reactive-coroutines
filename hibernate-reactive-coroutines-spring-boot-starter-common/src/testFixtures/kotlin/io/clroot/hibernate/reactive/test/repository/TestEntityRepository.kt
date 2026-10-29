@@ -87,7 +87,10 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
     suspend fun findByValueWithQueryPageable(@Param("value") value: Int, pageable: Pageable): Page<TestEntity>
 
     @Query("SELECT e FROM TestEntity e WHERE e.value > :minValue")
-    suspend fun findByValueGreaterThanWithQuerySlice(@Param("minValue") minValue: Int, pageable: Pageable): Slice<TestEntity>
+    suspend fun findByValueGreaterThanWithQuerySlice(
+        @Param("minValue") minValue: Int,
+        pageable: Pageable,
+    ): Slice<TestEntity>
 
     // Explicit count query for pagination.
     @Query(
@@ -118,13 +121,13 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
 
     @Query(
         "SELECT new io.clroot.hibernate.reactive.test.projection.TestEntitySummary(e.name, e.value) " +
-                "FROM TestEntity e WHERE e.name = :name",
+            "FROM TestEntity e WHERE e.name = :name",
     )
     suspend fun findProjectedSummaryByName(@Param("name") name: String): TestEntitySummary?
 
     @Query(
         "SELECT new io.clroot.hibernate.reactive.test.projection.TestEntitySummary(e.name, e.value) " +
-                "FROM TestEntity e WHERE e.value >= :minValue ORDER BY e.name",
+            "FROM TestEntity e WHERE e.value >= :minValue ORDER BY e.name",
     )
     suspend fun findProjectedSummariesByMinValue(
         @Param("minValue") minValue: Int,
@@ -132,7 +135,7 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
 
     @Query(
         value = "SELECT new io.clroot.hibernate.reactive.test.projection.TestEntitySummary(e.name, e.value) " +
-                "FROM TestEntity e WHERE e.value = :value ORDER BY e.name",
+            "FROM TestEntity e WHERE e.value = :value ORDER BY e.name",
         countQuery = "SELECT COUNT(e) FROM TestEntity e WHERE e.value = :value",
     )
     suspend fun findProjectedSummariesByValue(
@@ -142,7 +145,7 @@ interface TestEntityRepository : CoroutineCrudRepository<TestEntity, Long> {
 
     @Query(
         "SELECT new io.clroot.hibernate.reactive.test.projection.TestEntitySummary(e.name, e.value) " +
-                "FROM TestEntity e WHERE e.value = :value ORDER BY e.name",
+            "FROM TestEntity e WHERE e.value = :value ORDER BY e.name",
     )
     suspend fun findProjectedSummarySliceByValue(
         @Param("value") value: Int,

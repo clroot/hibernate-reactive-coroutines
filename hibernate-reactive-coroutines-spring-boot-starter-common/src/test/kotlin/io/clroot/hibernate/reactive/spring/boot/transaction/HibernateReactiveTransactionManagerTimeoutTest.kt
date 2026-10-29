@@ -52,7 +52,7 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
 
             events.first() shouldBe "begin"
             events.single { it.startsWith("SET LOCAL statement_timeout = ") } shouldBe
-                    "SET LOCAL statement_timeout = 1000"
+                "SET LOCAL statement_timeout = 1000"
         }
 
         it("rolls back when PostgreSQL statement timeout setup fails") {
@@ -127,8 +127,8 @@ class HibernateReactiveTransactionManagerTimeoutTest : DescribeSpec({
             every { metadata.productName() } returns "H2"
             every { connection.databaseMetadata } returns metadata
             every { session.flush() } returns
-                    Uni.createFrom().voidItem()
-                        .invoke { _: Void? -> clock.advance(1.seconds) }
+                Uni.createFrom().voidItem()
+                    .invoke { _: Void? -> clock.advance(1.seconds) }
             every { connection.rollbackTransaction() } returns CompletableFuture.completedFuture(null)
 
             val error = shouldThrow<UnexpectedRollbackException> {

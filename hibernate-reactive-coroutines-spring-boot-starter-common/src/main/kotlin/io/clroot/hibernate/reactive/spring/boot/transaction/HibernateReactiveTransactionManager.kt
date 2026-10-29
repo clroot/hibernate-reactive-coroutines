@@ -199,7 +199,7 @@ internal class HibernateReactiveTransactionManager(
 
     private fun hasTransactionTimedOut(sessionHolder: MutinySessionHolder): Boolean =
         sessionHolder.isTransactionTimedOut() ||
-                sessionHolder.toReactiveSessionContext().remainingTimeout() == kotlin.time.Duration.ZERO
+            sessionHolder.toReactiveSessionContext().remainingTimeout() == kotlin.time.Duration.ZERO
 
     private fun rollbackTimedOutTransaction(
         sessionHolder: MutinySessionHolder,
@@ -372,26 +372,26 @@ internal class HibernateReactiveTransactionManager(
 
     /** Holds transaction-local session state. */
     private class HibernateTransactionObject {
-        private var _sessionHolder: MutinySessionHolder? = null
-        private var _newSessionHolder: Boolean = false
+        private var currentSessionHolder: MutinySessionHolder? = null
+        private var newSessionHolder: Boolean = false
 
         fun setSessionHolder(holder: MutinySessionHolder?, isNew: Boolean) {
-            this._sessionHolder = holder
-            this._newSessionHolder = isNew
+            this.currentSessionHolder = holder
+            this.newSessionHolder = isNew
         }
 
         fun getSessionHolder(): MutinySessionHolder {
-            return _sessionHolder ?: throw IllegalStateException("No MutinySessionHolder available")
+            return currentSessionHolder ?: throw IllegalStateException("No MutinySessionHolder available")
         }
 
-        fun hasSessionHolder(): Boolean = _sessionHolder != null
+        fun hasSessionHolder(): Boolean = currentSessionHolder != null
 
-        fun isNewSessionHolder(): Boolean = _newSessionHolder
+        fun isNewSessionHolder(): Boolean = newSessionHolder
 
-        fun isTransactionActive(): Boolean = _sessionHolder?.isTransactionActive() == true
+        fun isTransactionActive(): Boolean = currentSessionHolder?.isTransactionActive() == true
 
         fun setRollbackOnly() {
-            _sessionHolder?.setRollbackOnly()
+            currentSessionHolder?.setRollbackOnly()
         }
     }
 }

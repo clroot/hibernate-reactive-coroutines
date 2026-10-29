@@ -1,8 +1,8 @@
 package io.clroot.hibernate.reactive.test
 
+import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
-import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -32,7 +32,10 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "page_test_first_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(
+                                    name = "page_test_first_${i.toString().padStart(2, '0')}",
+                                    value = testValue,
+                                ),
                             )
                         }
                     }
@@ -56,7 +59,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "page_test_last_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(name = "page_test_last_${i.toString().padStart(2, '0')}", value = testValue),
                             )
                         }
                     }
@@ -79,7 +82,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "page_test_sort_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(name = "page_test_sort_${i.toString().padStart(2, '0')}", value = testValue),
                             )
                         }
                     }
@@ -91,7 +94,9 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     }
 
                     page.content.map { it.name } shouldContainExactly listOf(
-                        "page_test_sort_09", "page_test_sort_08", "page_test_sort_07"
+                        "page_test_sort_09",
+                        "page_test_sort_08",
+                        "page_test_sort_07",
                     )
                 }
             }
@@ -102,7 +107,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "order_test_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(name = "order_test_${i.toString().padStart(2, '0')}", value = testValue),
                             )
                         }
                     }
@@ -123,7 +128,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "custom_page_$i", value = testValue)
+                                TestEntity(name = "custom_page_$i", value = testValue),
                             )
                         }
                     }
@@ -146,7 +151,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(5) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "slice_test_$i", value = sliceValue)
+                                TestEntity(name = "slice_test_$i", value = sliceValue),
                             )
                         }
                     }
@@ -166,7 +171,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(2) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "slice_last_$i", value = lastSliceValue)
+                                TestEntity(name = "slice_last_$i", value = lastSliceValue),
                             )
                         }
                     }
@@ -188,7 +193,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "priority_asc_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(name = "priority_asc_${i.toString().padStart(2, '0')}", value = testValue),
                             )
                         }
                     }
@@ -200,7 +205,9 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     }
 
                     page.content.map { it.name } shouldContainExactly listOf(
-                        "priority_asc_00", "priority_asc_01", "priority_asc_02"
+                        "priority_asc_00",
+                        "priority_asc_01",
+                        "priority_asc_02",
                     )
                 }
 
@@ -209,7 +216,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(10) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "priority_desc_${i.toString().padStart(2, '0')}", value = testValue)
+                                TestEntity(name = "priority_desc_${i.toString().padStart(2, '0')}", value = testValue),
                             )
                         }
                     }
@@ -221,7 +228,9 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     }
 
                     page.content.map { it.name } shouldContainExactly listOf(
-                        "priority_desc_09", "priority_desc_08", "priority_desc_07"
+                        "priority_desc_09",
+                        "priority_desc_08",
+                        "priority_desc_07",
                     )
                 }
             }
@@ -232,7 +241,7 @@ class PaginationIntegrationTest : IntegrationTestBase() {
                     tx.transactional {
                         repeat(3) { i ->
                             testEntityRepository.save(
-                                TestEntity(name = "smart_skip_$i", value = smartSkipValue)
+                                TestEntity(name = "smart_skip_$i", value = smartSkipValue),
                             )
                         }
                     }

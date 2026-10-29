@@ -19,14 +19,14 @@ public object CountQueryDeriver {
     private val simpleAliasRegex = Regex("[\\p{L}_$][\\p{L}\\p{N}_$]*")
     private val rootAliasRegex = Regex(
         "^\\s*(?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`)" +
-                "(?:\\.(?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`))*" +
-                "\\s+(?:AS\\s+)?([\\p{L}_$][\\p{L}\\p{N}_$]*)(?=\\s|$)",
+            "(?:\\.(?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`))*" +
+            "\\s+(?:AS\\s+)?([\\p{L}_$][\\p{L}\\p{N}_$]*)(?=\\s|$)",
         RegexOption.IGNORE_CASE,
     )
     private val rootFromRegex = Regex(
         "^\\s*((?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`)" +
-                "(?:\\.(?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`))*)" +
-                "(?:\\s+(?:(AS)\\s+)?([\\p{L}_$][\\p{L}\\p{N}_$]*))?",
+            "(?:\\.(?:[\\p{L}_$][\\p{L}\\p{N}_$]*|`(?:``|\\\\.|[^`])*`))*)" +
+            "(?:\\s+(?:(AS)\\s+)?([\\p{L}_$][\\p{L}\\p{N}_$]*))?",
         RegexOption.IGNORE_CASE,
     )
     private val separatorRegex = Regex(
@@ -172,9 +172,11 @@ public object CountQueryDeriver {
         }
         val alias = aliasCandidate?.takeIf {
             explicitAs || it.value.uppercase(Locale.ROOT) !in clauseStarters ||
-                    it.value.equals(selection, ignoreCase = true) ||
+                it.value.equals(selection, ignoreCase = true) ||
+                (
                     it.value.equals("JOIN", ignoreCase = true) &&
-                    (nextToken == null || nextToken.value in aliasFollowingClauses)
+                        (nextToken == null || nextToken.value in aliasFollowingClauses)
+                    )
         }
         val rootEnd = alias?.range?.last?.plus(1) ?: entity.range.last + 1
         return RootAlias(
@@ -215,7 +217,13 @@ public object CountQueryDeriver {
     private val STATEMENT_TOKENS = setOf("SELECT", "FROM", "UPDATE", "DELETE", "INSERT")
 
     private val aliasFollowingClauses = setOf(
-        "WHERE", "GROUP", "HAVING", "ORDER", "LIMIT", "OFFSET", "JOIN",
+        "WHERE",
+        "GROUP",
+        "HAVING",
+        "ORDER",
+        "LIMIT",
+        "OFFSET",
+        "JOIN",
     )
 
     private fun List<QueryToken>.findSequence(query: String, vararg values: String): QueryToken? {
@@ -227,8 +235,8 @@ public object CountQueryDeriver {
                     val token = this[index + offset]
                     val previous = getOrNull(index + offset - 1)
                     !token.qualified &&
-                            token.value == values[offset] &&
-                            (previous == null || offset == 0 || query.hasOnlySeparators(previous.end, token.start))
+                        token.value == values[offset] &&
+                        (previous == null || offset == 0 || query.hasOnlySeparators(previous.end, token.start))
                 }
             }
             ?.let(::get)
@@ -259,7 +267,7 @@ public object CountQueryDeriver {
                     val index = indexOf(token)
                     val next = getOrNull(index + 1)
                     next != null && next.value in fetchDirections &&
-                            query.hasOnlySeparators(token.end, next.start)
+                        query.hasOnlySeparators(token.end, next.start)
                 }
 
                 else -> nextCharacter?.isDigit() == true || nextCharacter == ':' || nextCharacter == '?'
@@ -365,7 +373,7 @@ public object CountQueryDeriver {
                     }
                     current == '*' && next == '/' -> malformed()
                     current == '$' && query.getOrNull(index - 1)?.isIdentifierPart() != true &&
-                            query.dollarDelimiterAt(index) != null -> malformed()
+                        query.dollarDelimiterAt(index) != null -> malformed()
                     current == '-' && next == '-' -> {
                         malformed()
                     }
@@ -383,7 +391,7 @@ public object CountQueryDeriver {
                     }
 
                     (current == ':' && next?.isIdentifierStart() == true) ||
-                            (current == '?' && next?.isDigit() == true) -> bindParameters += index
+                        (current == '?' && next?.isDigit() == true) -> bindParameters += index
 
                     depth == 0 && current == ',' -> topLevelCommas += index
 
@@ -426,7 +434,7 @@ public object CountQueryDeriver {
         val relevantTokens = allTokens.filter { it.start >= rootAlias.end && it.start < end }
         if (relevantTokens.any { token ->
                 !token.qualified && token.value in pathFunctions &&
-                        query.nextCodeCharacter(token.end) == '('
+                    query.nextCodeCharacter(token.end) == '('
             }
         ) {
             return true
@@ -500,8 +508,8 @@ public object CountQueryDeriver {
         val fragment = substring(start, end)
         val dot = fragment.indexOf('.')
         return dot >= 0 && fragment.indexOf('.', dot + 1) < 0 &&
-                separatorRegex.matches(fragment.substring(0, dot)) &&
-                separatorRegex.matches(fragment.substring(dot + 1))
+            separatorRegex.matches(fragment.substring(0, dot)) &&
+            separatorRegex.matches(fragment.substring(dot + 1))
     }
 
     private fun String.nextCodeCharacter(index: Int): Char? {

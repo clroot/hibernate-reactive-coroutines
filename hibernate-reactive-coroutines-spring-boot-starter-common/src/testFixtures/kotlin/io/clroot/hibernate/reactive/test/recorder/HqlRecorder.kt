@@ -47,7 +47,7 @@ class HqlRecorder {
         if (matching.isNotEmpty()) {
             throw AssertionError(
                 "Expected no queries containing '$substring', but found ${matching.size}: " +
-                        matching.map { it.hql },
+                    matching.map { it.hql },
             )
         }
     }

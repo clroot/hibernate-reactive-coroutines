@@ -127,7 +127,7 @@ private interface MemberRepository {
 
     @Query(
         "WITH recent AS (SELECT e.id AS id FROM Member e) " +
-                "SELECT e FROM Member e WHERE e.id IN (SELECT r.id FROM recent r)",
+            "SELECT e FROM Member e WHERE e.id IN (SELECT r.id FROM recent r)",
     )
     suspend fun findWithCte(): List<Member>
 }

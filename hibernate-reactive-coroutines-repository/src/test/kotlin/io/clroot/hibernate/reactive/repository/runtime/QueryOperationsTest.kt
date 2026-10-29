@@ -9,13 +9,13 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.hibernate.reactive.mutiny.Mutiny
 import jakarta.persistence.metamodel.Attribute
 import jakarta.persistence.metamodel.ManagedType
 import jakarta.persistence.metamodel.Metamodel
 import jakarta.persistence.metamodel.PluralAttribute
 import jakarta.persistence.metamodel.SingularAttribute
 import jakarta.persistence.metamodel.Type
+import org.hibernate.reactive.mutiny.Mutiny
 
 class QueryOperationsTest : DescribeSpec({
 
@@ -60,7 +60,7 @@ class QueryOperationsTest : DescribeSpec({
 
         it("applies ignoreCase with LOWER to a String property") {
             operations.buildSortClause(listOf(QueryOrder("name", ignoreCase = true))) shouldBe
-                    "LOWER(e.name) ASC"
+                "LOWER(e.name) ASC"
         }
 
         it("rejects ignoreCase on a non-String property") {

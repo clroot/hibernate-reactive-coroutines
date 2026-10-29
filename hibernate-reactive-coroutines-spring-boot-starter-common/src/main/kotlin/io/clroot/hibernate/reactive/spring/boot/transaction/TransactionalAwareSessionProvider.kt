@@ -1,14 +1,14 @@
 package io.clroot.hibernate.reactive.spring.boot.transaction
 
-import io.clroot.hibernate.reactive.ReadOnlyTransactionException
 import io.clroot.hibernate.reactive.ReactiveSessionContext
 import io.clroot.hibernate.reactive.ReactiveSessionOperations
+import io.clroot.hibernate.reactive.ReadOnlyTransactionException
 import io.clroot.hibernate.reactive.currentContextOrNull
 import io.smallrye.mutiny.Uni
 import io.smallrye.mutiny.coroutines.awaitSuspending
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.reactor.ReactorContext
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import kotlinx.coroutines.withContext
 import org.hibernate.reactive.mutiny.Mutiny
 import org.springframework.transaction.NoTransactionException
@@ -51,7 +51,7 @@ public open class TransactionalAwareSessionProvider(
             if (transactionalContext.isReadOnly) {
                 throw ReadOnlyTransactionException(
                     "Cannot perform write operation in read-only @Transactional. " +
-                            "Remove readOnly=true from @Transactional annotation.",
+                        "Remove readOnly=true from @Transactional annotation.",
                 )
             }
             return executeWithTransactionTimeout(transactionalContext, block)
@@ -62,7 +62,7 @@ public open class TransactionalAwareSessionProvider(
             existingContext?.isReadOnly == true -> {
                 throw ReadOnlyTransactionException(
                     "Cannot perform write operation in read-only transaction. " +
-                            "Use tx.transactional {} instead of tx.readOnly {}",
+                        "Use tx.transactional {} instead of tx.readOnly {}",
                 )
             }
 

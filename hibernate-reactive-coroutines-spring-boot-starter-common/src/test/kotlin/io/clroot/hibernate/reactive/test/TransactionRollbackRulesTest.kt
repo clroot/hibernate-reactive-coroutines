@@ -60,7 +60,7 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
         }
 
         describe("checked exception rollback behavior") {
-            /**
+            /*
              * Spring does not roll back checked exceptions by default.
              *
              * DefaultTransactionAttribute.rollbackOn(Throwable ex):
@@ -138,7 +138,9 @@ class TransactionRollbackRulesTest : IntegrationTestBase() {
                 rollbackService.findByName("inner-propagate").shouldBeNull()
             }
 
-            it("rolls back when an inner transaction is marked rollback-only even if the outer method catches its exception") {
+            it(
+                "rolls back when an inner transaction is marked rollback-only even if the outer method catches its exception",
+            ) {
                 // The shared transaction remains rollback-only; commit raises UnexpectedRollbackException.
                 shouldThrow<UnexpectedRollbackException> {
                     rollbackService.outerCatchesInnerException(

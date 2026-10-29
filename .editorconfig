@@ -1,0 +1,20 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+indent_size = 4
+indent_style = space
+max_line_length = 120
+ktlint_code_style = intellij_idea
+# Kotest specs are declared as `class X : DescribeSpec({ ... })`, which this rule would reflow.
+ktlint_standard_class-signature = disabled
+# Stylistic preferences that the codebase does not follow.
+ktlint_standard_function-expression-body = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+# Multiline signatures are kept on purpose even when they would fit on one line.
+ktlint_standard_function-signature = disabled

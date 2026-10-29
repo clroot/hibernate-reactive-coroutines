@@ -272,8 +272,10 @@ private object PropertyPathResolver {
                             decapitalize(method.name.substring(3))
                         }
                         method.name.startsWith("is") && method.name.length > 2 &&
-                            (method.returnType == Boolean::class.javaPrimitiveType ||
-                                method.returnType == Boolean::class.javaObjectType) -> {
+                            (
+                                method.returnType == Boolean::class.javaPrimitiveType ||
+                                    method.returnType == Boolean::class.javaObjectType
+                                ) -> {
                             decapitalize(method.name.substring(2))
                         }
                         current.isRecord && current.recordComponents.any { it.name == method.name } -> method.name

@@ -1,8 +1,8 @@
 package io.clroot.hibernate.reactive.test
 
+import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.clroot.hibernate.reactive.test.entity.TestEntity
 import io.clroot.hibernate.reactive.test.repository.TestEntityRepository
-import io.clroot.hibernate.reactive.ReactiveTransactionExecutor
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -134,7 +134,9 @@ class QueryAnnotationIntegrationTest : IntegrationTestBase() {
                     updated shouldHaveSize 1
                 }
 
-                it("clears stale entities from the transaction after a bulk update when clearAutomatically is enabled") {
+                it(
+                    "clears stale entities from the transaction after a bulk update when clearAutomatically is enabled",
+                ) {
                     tx.transactional {
                         val saved = testEntityRepository.save(TestEntity(name = "before_clear", value = 1))
                         val id = saved.id!!

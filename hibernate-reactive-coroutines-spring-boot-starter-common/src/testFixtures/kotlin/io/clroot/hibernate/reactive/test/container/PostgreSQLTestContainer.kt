@@ -82,8 +82,11 @@ object PostgreSQLTestContainer {
     fun configureSystemProperties(schemaName: String? = null) {
         val baseUrl = instance.jdbcUrl
         val url = if (schemaName != null) {
-            if (baseUrl.contains("?")) "$baseUrl&currentSchema=$schemaName"
-            else "$baseUrl?currentSchema=$schemaName"
+            if (baseUrl.contains("?")) {
+                "$baseUrl&currentSchema=$schemaName"
+            } else {
+                "$baseUrl?currentSchema=$schemaName"
+            }
         } else {
             baseUrl
         }

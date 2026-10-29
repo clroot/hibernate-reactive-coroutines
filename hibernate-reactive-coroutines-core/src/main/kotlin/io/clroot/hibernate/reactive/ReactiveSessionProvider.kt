@@ -46,7 +46,7 @@ public class ReactiveSessionProvider(
             context?.isReadOnly == true -> {
                 throw ReadOnlyTransactionException(
                     "Cannot perform write operation in read-only transaction. " +
-                            "Use tx.transactional {} instead of tx.readOnly {}",
+                        "Use tx.transactional {} instead of tx.readOnly {}",
                 )
             }
             context != null -> {

@@ -17,3 +17,13 @@ fun Project.lib(alias: String): Provider<MinimalExternalModuleDependency> =
         .named("libs")
         .findLibrary(alias)
         .orElseThrow { IllegalArgumentException("Version catalog 'libs' has no library '$alias'.") }
+
+/**
+ * Resolves a version from the `libs` version catalog, for tools configured by version string.
+ */
+fun Project.catalogVersion(alias: String): String =
+    extensions.getByType<VersionCatalogsExtension>()
+        .named("libs")
+        .findVersion(alias)
+        .orElseThrow { IllegalArgumentException("Version catalog 'libs' has no version '$alias'.") }
+        .requiredVersion

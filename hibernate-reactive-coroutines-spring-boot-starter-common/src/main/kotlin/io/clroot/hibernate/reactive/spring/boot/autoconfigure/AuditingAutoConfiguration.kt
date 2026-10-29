@@ -43,7 +43,7 @@ internal class AuditingAutoConfiguration {
         val candidates = auditorAware.stream().toList()
         check(candidates.size <= 1) {
             "Expected at most one ReactiveAuditorAware bean but found ${candidates.size}. " +
-                    "Declare a single one, or define your own ReactiveAuditingHandler bean to choose between them."
+                "Declare a single one, or define your own ReactiveAuditingHandler bean to choose between them."
         }
 
         return ReactiveAuditingHandler(candidates.firstOrNull())

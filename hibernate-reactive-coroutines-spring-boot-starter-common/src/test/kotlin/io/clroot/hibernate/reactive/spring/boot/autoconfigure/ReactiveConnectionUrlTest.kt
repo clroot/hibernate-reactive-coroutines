@@ -32,7 +32,7 @@ class ReactiveConnectionUrlTest : FunSpec({
                 "?options=sslmode%3Drequire&mysslmode=prefer&schema=currentSchema",
         ) shouldBe
             "postgresql://localhost:5432/orders" +
-                "?options=sslmode%3Drequire&mysslmode=prefer&schema=currentSchema"
+            "?options=sslmode%3Drequire&mysslmode=prefer&schema=currentSchema"
     }
 
     test("strips only the leading JDBC prefix when no query exists") {

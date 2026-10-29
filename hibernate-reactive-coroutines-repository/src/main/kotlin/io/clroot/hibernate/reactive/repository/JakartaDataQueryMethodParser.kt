@@ -1,19 +1,19 @@
 package io.clroot.hibernate.reactive.repository
 
 import io.clroot.hibernate.reactive.repository.query.CountQueryDeriver
+import io.clroot.hibernate.reactive.repository.query.Modifying
+import io.clroot.hibernate.reactive.repository.query.Param
+import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.QueryParameterParser
 import io.clroot.hibernate.reactive.repository.query.QueryParameterStyle
 import io.clroot.hibernate.reactive.repository.query.QueryParameters
 import io.clroot.hibernate.reactive.repository.query.QueryStatementType
-import io.clroot.hibernate.reactive.repository.query.Modifying
-import io.clroot.hibernate.reactive.repository.query.Param
-import io.clroot.hibernate.reactive.repository.query.Query
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryHqlCompiler
 import io.clroot.hibernate.reactive.repository.query.derived.DerivedQueryParser
 import io.clroot.hibernate.reactive.repository.query.derived.QuerySubject
 import io.clroot.hibernate.reactive.repository.runtime.PreparedRepositoryQuery
-import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryMethodScanner
+import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryKind
 import io.clroot.hibernate.reactive.repository.runtime.RepositoryQueryReturnType
 import jakarta.data.Order
 import jakarta.data.Sort
@@ -258,12 +258,16 @@ internal class JakartaDataQueryMethodParser(
             .firstOrNull { it.value > 1 }
             ?.key
         if (duplicateName != null) {
-            throw IllegalStateException("Method '${method.name}' declares duplicate query parameter name '$duplicateName'")
+            throw IllegalStateException(
+                "Method '${method.name}' declares duplicate query parameter name '$duplicateName'",
+            )
         }
         if (query.style != QueryParameterStyle.NONE && count.style != QueryParameterStyle.NONE &&
             query.style != count.style
         ) {
-            throw IllegalStateException("Query and count query for method '${method.name}' use different parameter styles")
+            throw IllegalStateException(
+                "Query and count query for method '${method.name}' use different parameter styles",
+            )
         }
 
         count.names.firstOrNull { it !in query.names }?.let { name ->
